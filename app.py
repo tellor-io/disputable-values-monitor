@@ -1,3 +1,3 @@
-import streamlit as st 
+from tellor_disputables.dashboard import dashboard
 
-st.write("hello world")
+dashboard()
