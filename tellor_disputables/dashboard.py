@@ -11,7 +11,7 @@ from time import sleep
 def dashboard():
     if check_password():
         st.write("🔎 Disputable Values Monitor 🧮")
-        st.write(f'Sending alerts to: {os.environ.get("ALERT_RECIPIENTS")}')
+        st.write(f'Sending alerts to: {", ".join(get_phone_numbers())}')
 
         twilio_client = get_twilio_client()
         recipients = get_phone_numbers()
