@@ -6,7 +6,7 @@ authors = ["oraclown <oburton@tellor.io>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "3.10"
+python = "3.10.2"
 streamlit = "^1.7.0"
 twilio = "^7.7.0"
 
