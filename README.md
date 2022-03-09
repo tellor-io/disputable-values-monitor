@@ -11,6 +11,10 @@ dashboard & text alerts for disputable values reported to Tellor oracles
 - compare event data value and fetched value.
 - update dashboard & sends alert if event value is disputable.
 
+## todo:
+- make explorer link column into hyperlink: [source](https://discuss.streamlit.io/t/make-streamlit-table-results-hyperlinks-or-add-radio-buttons-to-table/7883)
+
+
 ## dev setup/help/usage:
 edit `vars.example.sh` and export the needed environment variables:
 ```
