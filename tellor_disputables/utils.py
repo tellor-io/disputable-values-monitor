@@ -51,3 +51,7 @@ def get_tx_explorer_url(txhash: str, chain_id: int) -> str:
     }
     base_url = explorers[chain_id]
     return f"{base_url}tx/0x{txhash}"
+
+
+def disputable_str(disputable: bool) -> str:
+    return "yes ❗📲" if disputable else "no ✔️"

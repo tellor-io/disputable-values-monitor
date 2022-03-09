@@ -1,13 +1,13 @@
 import streamlit as st
-# from tellor_disputables.utils import check_password
 from tellor_disputables.alerts import send_text_msg
 from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.utils import get_tx_explorer_url
-# from tellor_disputables.utils import remove_default_index_col
-import os
+from tellor_disputables.utils import disputable_str
+from tellor_disputables.data import get_new_report
+from tellor_disputables.data import is_disputable
 from time import sleep
 import uuid
 import random
@@ -35,30 +35,34 @@ def dashboard():
 
     while True:
         # get fake data
-        tx_hash = uuid.uuid4().hex
-        value = f"${round(random.uniform(2000, 3500), 2)}"
-        disputable = random.random() > .995
-        disputable_str = "yes ❗📲" if disputable else "no ✔️"
-        chain_id = random.choice([1, 137])
-        link = get_tx_explorer_url(tx_hash, chain_id)
-        query_type = "SpotPrice"
+        new_report = get_new_report('{"blah":42}')
+
+        disputable = is_disputable(new_report.value, "")
+        link = get_tx_explorer_url(
+            new_report.transaction_hash,
+            new_report.chain_id)
         
         msg = generate_alert_msg(link)
         if disputable:
             send_text_msg(twilio_client, recipients, from_number, msg)
         
-        txs.append((chain_id, link, query_type, value, disputable_str))
+        txs.append((
+            new_report.chain_id,
+            link,
+            new_report.query_type,
+            new_report.value,
+            disputable_str(disputable)))
 
         if len(txs) > 10:
             del(txs[0])
 
-        chain_id, link, query_type, value, disputable_str = zip(*txs)
-        txs1 = dict(
-            Chain=chain_id,
-            Link=link,
-            QueryType=query_type,
-            ReportedValue=value,
-            Disputable=disputable_str)
-        table.dataframe(txs1)
+        chain_ids, links, query_types, values, disputable_strs = zip(*txs)
+        dataframe_state = dict(
+            Chain=chain_ids,
+            Link=links,
+            QueryType=query_types,
+            ReportedValue=values,
+            Disputable=disputable_strs)
+        table.dataframe(dataframe_state)
 
         sleep(3)
