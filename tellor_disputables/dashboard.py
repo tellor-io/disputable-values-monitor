@@ -5,6 +5,7 @@ from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import generate_alert_msg
+from tellor_disputables.utils import get_tx_explorer_url
 # from tellor_disputables.utils import remove_default_index_col
 import os
 from time import sleep
@@ -18,7 +19,6 @@ def dashboard():
 
     st.markdown("[source code](https://github.com/oraclown/tellor_disputes_monitor)")
 
-    # if check_password():
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
 
@@ -36,23 +36,28 @@ def dashboard():
     while True:
         # get fake data
         tx_hash = uuid.uuid4().hex
-        data = f"${round(random.uniform(2000, 3500), 2)}"
+        value = f"${round(random.uniform(2000, 3500), 2)}"
         disputable = random.random() > .995
         disputable_str = "yes ❗📲" if disputable else "no ✔️"
+        chain_id = random.choice([1, 137])
+        link = get_tx_explorer_url(tx_hash, chain_id)
+        query_type = "SpotPrice"
         
-        msg = generate_alert_msg(tx_hash)
+        msg = generate_alert_msg(link)
         if disputable:
             send_text_msg(twilio_client, recipients, from_number, msg)
         
-        txs.append((tx_hash,data,disputable_str))
+        txs.append((chain_id, link, query_type, value, disputable_str))
 
         if len(txs) > 10:
             del(txs[0])
 
-        tx_hash, data, disputable_str = zip(*txs)
+        chain_id, link, query_type, value, disputable_str = zip(*txs)
         txs1 = dict(
-            TxHash=tx_hash,
-            ReportedValue=data,
+            Chain=chain_id,
+            Link=link,
+            QueryType=query_type,
+            ReportedValue=value,
             Disputable=disputable_str)
         table.dataframe(txs1)
 
