@@ -29,3 +29,16 @@ def check_password():
     else:
         # Password correct.
         return True
+
+
+def remove_default_index_col():
+    # CSS to inject contained in a string
+    hide_table_row_index = """
+                <style>
+                tbody th {display:none}
+                .blank {display:none}
+                </style>
+                """
+
+    # Inject CSS with Markdown
+    st.markdown(hide_table_row_index, unsafe_allow_html=True)
