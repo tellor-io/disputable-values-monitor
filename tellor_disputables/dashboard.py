@@ -11,11 +11,12 @@ from time import sleep
 def dashboard():
     # if check_password():
     st.write("🔎 Disputable Values Monitor 🧮")
-    st.write(f'Sending alerts to: {", ".join(get_phone_numbers())}')
+    # st.write(f'Sending alerts to: {", ".join(get_phone_numbers())}')
+    st.write(os.environ.get("TWILIO_FROM"))
 
-    twilio_client = get_twilio_client()
-    recipients = get_phone_numbers()
-    from_number = get_from_number()
+    # twilio_client = get_twilio_client()
+    # recipients = get_phone_numbers()
+    # from_number = get_from_number()
 
     count = 1
     while True:
