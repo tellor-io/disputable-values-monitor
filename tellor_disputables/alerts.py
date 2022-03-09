@@ -19,11 +19,13 @@ def get_twilio_client():
 
 
 def get_phone_numbers() -> list[str]:
-    return os.environ.get("ALERT_RECIPIENTS")
+    return json.loads(os.environ.get("ALERT_RECIPIENTS"))
 
 
 def send_text_msg(client, recipients, from_number, msg):
+    # print(type(recipients))
     for num in recipients:
+        # print('num', num)
         client.messages.create(
             to=num,
             from_=from_number,

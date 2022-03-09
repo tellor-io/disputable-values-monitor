@@ -13,7 +13,10 @@ import random
 
 
 def dashboard():
-    st.write("Disputable Values Monitor 🧮🔎")
+    st.title("Disputable Values Monitor 📒🔎📲")
+    st.write("get text alerts when potentially bad data is reported to Tellor oracles")
+
+    st.markdown("[source code](https://github.com/oraclown/tellor_disputes_monitor)")
 
     # if check_password():
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
@@ -34,8 +37,8 @@ def dashboard():
         # get fake data
         tx_hash = uuid.uuid4().hex
         data = f"${round(random.uniform(2000, 3500), 2)}"
-        disputable = random.random() > .999
-        disputable_str = "yes ❗" if disputable else "no ✔️"
+        disputable = random.random() > .995
+        disputable_str = "yes ❗📲" if disputable else "no ✔️"
         
         msg = generate_alert_msg(tx_hash)
         if disputable:
