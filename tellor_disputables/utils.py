@@ -42,3 +42,12 @@ def remove_default_index_col():
 
     # Inject CSS with Markdown
     st.markdown(hide_table_row_index, unsafe_allow_html=True)
+
+
+def get_tx_explorer_url(txhash: str, chain_id: int) -> str:
+    explorers = {
+        1: "https://etherscan.io/",
+        137: "https://polygonscan.com/"
+    }
+    base_url = explorers[chain_id]
+    return f"{base_url}tx/0x{txhash}"

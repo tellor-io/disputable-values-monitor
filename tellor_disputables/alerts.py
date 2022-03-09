@@ -3,8 +3,8 @@ import os
 import json
 
 
-def generate_alert_msg(txhash: str) -> str:
-    return f"\n❗DISPUTABLE VALUE❗\nhttps://rinkeby.etherscan.io/tx/0x{txhash}"
+def generate_alert_msg(link: str) -> str:
+    return f"\n❗DISPUTABLE VALUE❗\n{link}"
 
 
 def get_from_number() -> str:
