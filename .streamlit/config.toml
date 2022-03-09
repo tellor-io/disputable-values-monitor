@@ -1,8 +1,0 @@
-[server]
-headless = true
-enableCORS=false
-port = 443
-baseUrlPath = "https://tellor_disputes_monitor.oraclown.repl.co"
-
-[browser]
-serverAddress = "0.0.0.0"
