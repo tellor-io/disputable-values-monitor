@@ -3,8 +3,8 @@ import os
 import json
 
 
-def generate_alert_msg():
-    return "🔮 this is from tellor disputables app 🔮"
+def generate_alert_msg(txhash):
+    return f"\n❗DISPUTABLE VALUE❗\nhttps://rinkeby.etherscan.io/tx/0x{txhash}"
 
 
 def get_from_number():
@@ -22,9 +22,7 @@ def get_phone_numbers():
     return json.loads(os.environ.get("ALERT_RECIPIENTS"))
 
 
-def send_text_msg(client, recipients, from_number):
-    msg = generate_alert_msg()
-
+def send_text_msg(client, recipients, from_number, msg):
     for num in recipients:
         client.messages.create(
             to=num,
