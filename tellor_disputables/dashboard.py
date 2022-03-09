@@ -13,29 +13,28 @@ import random
 
 
 def dashboard():
+    st.write("Disputable Values Monitor 🧮🔎")
+
     # if check_password():
-    # st.write(f'Sending alerts to: {", ".join(get_phone_numbers())}')
+    st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
 
     twilio_client = get_twilio_client()
     recipients = get_phone_numbers()
     from_number = get_from_number()
-    # send_text_msg(twilio_client, recipients, from_number)
 
     @st.cache(allow_output_mutation=True)
     def Txs():
         return []
 
     txs=Txs()
-
-    st.write("Disputable Values Monitor 🧮🔎")
     table = st.empty()
 
     while True:
         # get fake data
         tx_hash = uuid.uuid4().hex
         data = f"${round(random.uniform(2000, 3500), 2)}"
-        disputable = random.random() > .99
+        disputable = random.random() > .999
         disputable_str = "yes ❗" if disputable else "no ✔️"
         
         msg = generate_alert_msg(tx_hash)

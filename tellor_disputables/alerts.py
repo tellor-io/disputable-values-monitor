@@ -3,11 +3,11 @@ import os
 import json
 
 
-def generate_alert_msg(txhash):
+def generate_alert_msg(txhash: str) -> str:
     return f"\n❗DISPUTABLE VALUE❗\nhttps://rinkeby.etherscan.io/tx/0x{txhash}"
 
 
-def get_from_number():
+def get_from_number() -> str:
     return os.environ.get("TWILIO_FROM")
 
 
@@ -18,8 +18,8 @@ def get_twilio_client():
     )
 
 
-def get_phone_numbers():
-    return json.loads(os.environ.get("ALERT_RECIPIENTS"))
+def get_phone_numbers() -> list[str]:
+    return os.environ.get("ALERT_RECIPIENTS")
 
 
 def send_text_msg(client, recipients, from_number, msg):
