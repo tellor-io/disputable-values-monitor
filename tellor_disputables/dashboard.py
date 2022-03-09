@@ -16,7 +16,7 @@ def dashboard():
     st.write("Disputable Values Monitor 🧮🔎")
 
     # if check_password():
-    st.write(f'Sending alerts to: {get_phone_numbers()}')
+    # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
 
     twilio_client = get_twilio_client()
