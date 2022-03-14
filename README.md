@@ -26,6 +26,8 @@ dashboard & text alerts for disputable values reported to Tellor oracles
 - fix env vars not being found by heroku deployed app
 - move deployed app to paid team heroku (so doesn't shut down when not used)
 
+- test discord github updates
+
 ## nice-to-have improvement:
 - make explorer link column into hyperlink: [source](https://discuss.streamlit.io/t/make-streamlit-table-results-hyperlinks-or-add-radio-buttons-to-table/7883)
 
