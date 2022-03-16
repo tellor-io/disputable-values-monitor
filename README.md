@@ -11,10 +11,8 @@ disputable-values-monitor/tellor_disputables/dashboard.py", line 108, in dashboa
     displayed_events.remove(display_rows[0][0])
 KeyError: '0x096c46968983f84f0b6e89c070b074169eee93e7168f1098936cf7dab7d26155'
 ```
-- check if disputable
-- fetch values for that `queryId`.
-- compare event data value and fetched value.
-- update dashboard & sends alert if event value is disputable.
+- fetch new value for given event `queryId`.
+- compare event data value and fetched value (check if disputable)
 
 ### 2. tests
 - add unit tests for all funcs
