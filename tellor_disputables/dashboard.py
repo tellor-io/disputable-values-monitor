@@ -83,8 +83,8 @@ def dashboard():
                 # Determine if value disputable
                 disputable = is_disputable(new_report.value, "")
                 link = get_tx_explorer_url(
-                    new_report.tx_hash,
-                    new_report.chain_id)
+                    tx_hash=new_report.tx_hash,
+                    chain_id=new_report.chain_id)
                 
                 # Alert via text msg
                 msg = generate_alert_msg(link)

@@ -6,8 +6,8 @@ from web3 import Web3
 import os
 from telliot_core.directory import contract_directory
 import asyncio
-from web3.datastructures import AttributeDict
-from hexbytes import HexBytes
+# from web3.datastructures import AttributeDict
+# from hexbytes import HexBytes
 from datetime import datetime
 from dateutil import tz
 
@@ -100,7 +100,7 @@ def is_disputable(val: float, query_data: str):
 @dataclass
 class NewReport:
     # NewReport (bytes32 _queryId, uint256 _time, bytes _value, uint256 _reward, uint256 _nonce, bytes _queryData, address _reporter)
-    transaction_hash: str
+    tx_hash: str
     eastern_time: str
     chain_id: int
     link: str
@@ -173,14 +173,28 @@ def parse_new_report_event(event, web3, contract):
     # x = contract.events.NewReport.processLog(d)
     tx_hash = event['transactionHash']
     receipt = web3.eth.getTransactionReceipt(tx_hash)
-    args = contract.events.NewReport().processReceipt(receipt)["args"]
-    query_id = args["_queryId"].decode('utf8')
+    receipt = contract.events.NewReport().processReceipt(receipt)
+    print('RECEIPT', receipt)
+    
+    args = receipt[0]["args"]
+    query_id = args["_queryId"]
+    print('QUERY ID', query_id)
+    query_id_decoded = "as;dlfkja;sdlfkj"#query_id.decode('utf8') # TODO replace with telliot_core decoder
+    print('QUERY ID DECODED', query_id_decoded)
     est = timestamp_to_eastern(args["_time"])
-    value = args["_value"].decode('utf8') # replace with telliot_core decoder
+    # value = args["_value"].decode('utf8') # TODO replace with telliot_core decoder
+    value = 20.
     cid = web3.eth.chain_id
-    query_type = "fake"
+    query_type = query_id_decoded
+    # TODO: return None if args['event'] != NewReport
 
-    return NewReport(cid, est, tx_hash, "link", query_type, value)
+    return NewReport(
+        chain_id=cid,
+        eastern_time=est,
+        tx_hash=str(tx_hash),
+        link="link",
+        query_type=query_type,
+        value=value)
 
 
 def main():
