@@ -11,6 +11,7 @@ from hexbytes import HexBytes
 from datetime import datetime
 from dateutil import tz
 
+
 def get_infura_node_url(chain_id: int) -> str:
     urls = {
         1: "https://mainnet.infura.io/v3/",
@@ -28,22 +29,17 @@ def get_contract_info(chain_id):
     abi = contract_info.get_abi(chain_id=chain_id)
     return addr, abi
 
+
 def get_web3(chain_id: int):
     node_url = get_infura_node_url(chain_id)
     return Web3(Web3.HTTPProvider(node_url))
+
 
 def get_contract(web3, addr, abi):
     return web3.eth.contract(
         address=addr,
         abi=abi,
     )
-
-
-# define function to handle events and print to the console
-def handle_event(event):
-    # print(Web3.toJSON(event))
-    print(event)
-    # and whatever
 
 
 # asynchronous defined function to loop
@@ -62,7 +58,7 @@ async def eth_log_loop(event_filter, poll_interval, chain_id):
     return unique_events_lis
 
 
-async def poly_log_loop(event_filter, poll_interval, chain_id, loop_name, web3, addr):
+async def poly_log_loop(web3, addr): #, event_filter, poll_interval, chain_id, loop_name):
     # while True:
     num = web3.eth.get_block_number()
     events = web3.eth.get_logs({
@@ -77,7 +73,7 @@ async def poly_log_loop(event_filter, poll_interval, chain_id, loop_name, web3, 
         txhash = event["transactionHash"]
         if txhash not in unique_events:
             unique_events[txhash] = event
-            unique_events_lis.append((chain_id, event))
+            unique_events_lis.append((web3.eth.chain_id, event))
             # print('LOOP NAME:', loop_name)
             # handle_event(event)
         # await asyncio.sleep(poll_interval)
@@ -95,6 +91,9 @@ def get_value_by_query_id(query_id):
 
 # def is_disputable(reported_val, trusted_val, conf_threshold):
 def is_disputable(val: float, query_data: str):
+    # get feed based on query id
+    # feed.fetch_new_datapoint
+    # compare reporter_val to datpoint val
     return random.random() > .995
 
 
@@ -133,8 +132,8 @@ def get_new_report(event_json: str):
     )
 
 
-def create_eth_event_filter(chain_id):
-    contract = get_contract(chain_id=chain_id)
+def create_eth_event_filter(web3, addr, abi):
+    contract = get_contract(web3, addr, abi)
     return contract.events.NewReport.createFilter(fromBlock='latest')
 
 
@@ -142,17 +141,17 @@ def create_polygon_event_filter(chain_id):
     return None
 
 
-async def get_events(eth_web3, eth_oracle_addr, poly_web3, poly_oracle_addr):
-    eth_mainnet_filter = create_eth_event_filter(1)
-    eth_testnet_filter = create_eth_event_filter(4)
-    polygon_mainnet_filter = create_polygon_event_filter(137)
-    polygon_testnet_filter = create_polygon_event_filter(80001)
+async def get_events(eth_web3, eth_oracle_addr, eth_abi, poly_web3, poly_oracle_addr):
+    eth_mainnet_filter = create_eth_event_filter(eth_web3, eth_oracle_addr, eth_abi)
+    # eth_testnet_filter = create_eth_event_filter(4)
+    # polygon_mainnet_filter = create_polygon_event_filter(137)
+    # polygon_testnet_filter = create_polygon_event_filter(80001)
 
     events_lists = await asyncio.gather(
                 eth_log_loop(eth_mainnet_filter, 1, chain_id=1),
                 # eth_log_loop(eth_testnet_filter, 2),
                 # poly_log_loop(polygon_mainnet_filter, 2, 137, "tammy"),
-                poly_log_loop(polygon_testnet_filter, 1, 80001, "bob"),
+                poly_log_loop(poly_web3, poly_oracle_addr),
     )
     return events_lists
 
