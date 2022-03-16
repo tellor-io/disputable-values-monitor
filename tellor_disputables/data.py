@@ -12,6 +12,8 @@ from telliot_core.queries.abi_query import AbiQuery
 from telliot_core.queries.json_query import JsonQuery
 from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
 from typing import Optional
+from telliot_core.queries.legacy_query import LegacyRequest
+from telliot_core.api import SpotPrice
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -99,7 +101,8 @@ class NewReport:
     link: str
     query_type: str 
     value: float 
-    
+    asset: str
+    currency: str
 
 
 def timestamp_to_eastern(timestamp: int) -> str:
@@ -165,6 +168,28 @@ def get_query_from_data(query_data):
     return q
 
 
+LEGACY_ASSETS = {
+    1:"ETH",
+    2:"BTC",
+    10:"AMPL",
+    50:"TRB",
+    59:"ETH",
+}
+
+
+LEGACY_CURRENCIES = {
+    1:"USD",
+    2:"USD",
+    10:"USD",
+    50:"USD",
+    59:"JPY",
+}
+
+
+def get_legacy_request_pair_info(legacy_id: int):
+    return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
+
+
 def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
     tx_hash = event['transactionHash']
     receipt = get_tx_receipt(tx_hash, web3, contract)
@@ -173,6 +198,15 @@ def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
     args = receipt["args"]
     q = get_query_from_data(args["_queryData"])
 
+    if isinstance(q, SpotPrice):
+        asset = q.asset.upper()
+        currency = q.currency.upper()
+    elif isinstance(q, LegacyRequest):
+        asset, currency = get_legacy_request_pair_info(q.legacy_id)
+    else:
+        print('unsupported query type')
+        return None
+
     val = q.value_type.decode(args["_value"])
     return NewReport(
         chain_id=web3.eth.chain_id,
@@ -180,7 +214,9 @@ def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
         tx_hash=tx_hash.hex(),
         link="link",
         query_type=type(q).__name__,
-        value=val)
+        value=val,
+        asset=asset,
+        currency=currency)
 
 
 def main():

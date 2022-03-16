@@ -26,6 +26,8 @@ def dashboard():
 
     st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
 
+    st.write("(only checks disputability of SpotPrice and LegacyRequest query types")
+
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
 
@@ -63,7 +65,7 @@ def dashboard():
         ))
 
         for event_list in event_lists:
-            event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
+            # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
@@ -91,23 +93,30 @@ def dashboard():
                     send_text_msg(twilio_client, recipients, from_number, msg)
             
                 display_rows.append((
+                    new_report.tx_hash,
                     new_report.eastern_time,
                     link,
                     new_report.query_type,
                     new_report.value,
-                    disputable_str(disputable)))
+                    disputable_str(disputable),
+                    new_report.asset,
+                    new_report.currency
+                    ))
 
                 # Prune display
                 if len(display_rows) > 10:
+                    # TODO FIX
                     displayed_events.remove(display_rows[0][0])
                     del(display_rows[0])
 
                 # Display table
-                times, links, query_types, values, disputable_strs = zip(*display_rows)
+                _, times, links, _, values, disputable_strs, assets, currencies = zip(*display_rows)
                 dataframe_state = dict(
                     When=times,
                     Transaction=links,
-                    QueryType=query_types,
+                    # QueryType=query_types,
+                    Asset=assets,
+                    Currency=currencies,
                     Value=values,
                     Disputable=disputable_strs)
                 table.dataframe(dataframe_state)
