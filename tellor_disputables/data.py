@@ -6,10 +6,12 @@ from web3 import Web3
 import os
 from telliot_core.directory import contract_directory
 import asyncio
-# from web3.datastructures import AttributeDict
-# from hexbytes import HexBytes
 from datetime import datetime
 from dateutil import tz
+from telliot_core.queries.abi_query import AbiQuery
+from telliot_core.queries.json_query import JsonQuery
+from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
+from typing import Optional
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -81,14 +83,6 @@ async def poly_log_loop(web3, addr): #, event_filter, poll_interval, chain_id, l
     return unique_events_lis
 
 
-def get_new_reports():
-    pass
-
-
-def get_value_by_query_id(query_id):
-    pass
-
-
 # def is_disputable(reported_val, trusted_val, conf_threshold):
 def is_disputable(val: float, query_data: str):
     # get feed based on query id
@@ -99,7 +93,6 @@ def is_disputable(val: float, query_data: str):
 
 @dataclass
 class NewReport:
-    # NewReport (bytes32 _queryId, uint256 _time, bytes _value, uint256 _reward, uint256 _nonce, bytes _queryData, address _reporter)
     tx_hash: str
     eastern_time: str
     chain_id: int
@@ -156,51 +149,51 @@ async def get_events(eth_web3, eth_oracle_addr, eth_abi, poly_web3, poly_oracle_
     return events_lists
 
 
-def parse_new_report_event(event, web3, contract):
-    # d = AttributeDict({
-    #     'address': '0x41b66dd93b03e89D29114a7613A6f9f0d4F40178',
-    #     'blockHash': HexBytes('0xa35a46281697bc9ddd4f19e2c2ea3d84ba2e7f9449a3aaae083e936b7f01265e'),
-    #     'blockNumber': 25471196,
-    #     'data': '0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000622b8b5400000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000590000000000000000000000000000000000000000000000000000000000000100000000000000000000000000d5f1cc896542c111c7aa7d7fae2c3d654f34b92700000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000908625e1000000000000000000000000000000000000000000000000000000000000000c000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000d4c6567616379526571756573740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002',
-    #     'logIndex': 103,
-    #     'removed': False,
-    #     'topics': [HexBytes('0x48e9e2c732ba278de6ac88a3a57a5c5ba13d3d8370e709b3b98333a57876ca95')],
-    #     'transactionHash': HexBytes('0x47b3add1a2492760675aebcf0e4c4f953265dee0fc52fd608d12e827138ff948'),
-    #     'transactionIndex': 2})
-    # addr, abi = get_contract_info(80001)
-    # web3 = get_web3(80001)
-    # contract = get_contract(web3, addr, abi)
-    # x = contract.events.NewReport.processLog(d)
-    tx_hash = event['transactionHash']
+def get_tx_receipt_args(tx_hash, web3, contract):
     receipt = web3.eth.getTransactionReceipt(tx_hash)
     receipt = contract.events.NewReport().processReceipt(receipt)
-    print('RECEIPT', receipt)
-    
-    args = receipt[0]["args"]
-    query_id = args["_queryId"]
-    print('QUERY ID', query_id)
-    query_id_decoded = "as;dlfkja;sdlfkj"#query_id.decode('utf8') # TODO replace with telliot_core decoder
-    print('QUERY ID DECODED', query_id_decoded)
-    est = timestamp_to_eastern(args["_time"])
-    # value = args["_value"].decode('utf8') # TODO replace with telliot_core decoder
-    value = 20.
-    cid = web3.eth.chain_id
-    query_type = query_id_decoded
-    # TODO: return None if args['event'] != NewReport
+    return receipt[0]["args"]
 
+
+def get_query_from_data(query_data):
+    q = None
+    for q_type in (AbiQuery, JsonQuery):
+        try:
+            q = q_type.get_query_from_data(query_data)
+        except:
+            continue
+    return q
+
+
+def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
+    tx_hash = event['transactionHash']
+    args = get_tx_receipt_args(tx_hash, web3, contract)
+    if args["_event"] != "NewReport":
+        return None
+    q = get_query_from_data(args["_queryData"])
+
+    val = q.value_type.decode(args["_value"])
     return NewReport(
-        chain_id=cid,
-        eastern_time=est,
+        chain_id=web3.eth.chain_id,
+        eastern_time=args["_time"],
         tx_hash=str(tx_hash),
         link="link",
-        query_type=query_type,
-        value=value)
+        query_type=str(type(q)),
+        value=val)
 
 
 def main():
     # _ = asyncio.run(get_events())
-    # test_parse_new_report()
-    pass
+    poly_chain_id = 80001
+    poly_web3 = get_web3(poly_chain_id)
+    poly_addr, poly_abi = get_contract_info(poly_chain_id)
+    poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
+    new_report = parse_new_report_event(
+        EXAMPLE_NEW_REPORT_EVENT,
+        poly_web3,
+        poly_contract)
+    print(new_report)
+    
 
 
 if __name__ == "__main__":

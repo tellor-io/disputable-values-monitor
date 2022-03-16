@@ -13,6 +13,7 @@ from tellor_disputables.data import get_web3
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import get_contract
+from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
 from time import sleep
 import uuid
 import random
@@ -61,11 +62,12 @@ def dashboard():
             poly_web3,
             poly_addr,
         ))
-        print('EVENTS!!!:', event_lists)
-        print('COUNT!!!:', count)
+        # print('EVENTS!!!:', event_lists)
+        # print('COUNT!!!:', count)
         count += 1
 
         for event_list in event_lists:
+            # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
