@@ -5,6 +5,12 @@ dashboard & text alerts for disputable values reported to Tellor oracles
 
 ## to do:
 ### 1. display updates
+- fix removing older txs from table:
+```
+disputable-values-monitor/tellor_disputables/dashboard.py", line 108, in dashboard
+    displayed_events.remove(display_rows[0][0])
+KeyError: '0x096c46968983f84f0b6e89c070b074169eee93e7168f1098936cf7dab7d26155'
+```
 - check if disputable
 - fetch values for that `queryId`.
 - compare event data value and fetched value.
