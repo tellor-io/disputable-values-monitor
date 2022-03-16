@@ -24,7 +24,7 @@ def dashboard():
     st.title("Disputable Values Monitor 📒🔎📲")
     st.write("get text alerts when potentially bad data is reported to Tellor oracles")
 
-    st.markdown("[source code](https://github.com/oraclown/tellor_disputes_monitor)")
+    st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
 
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
@@ -52,7 +52,6 @@ def dashboard():
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
 
 
-    count = 0
     while True:
         # Fetch NewReport events
         event_lists = asyncio.run(get_events(
@@ -62,12 +61,9 @@ def dashboard():
             poly_web3,
             poly_addr,
         ))
-        # print('EVENTS!!!:', event_lists)
-        # print('COUNT!!!:', count)
-        count += 1
 
         for event_list in event_lists:
-            # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
+            event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
@@ -76,6 +72,7 @@ def dashboard():
                     new_report = parse_new_report_event(event, poly_web3, poly_contract)
                 else:
                     print("unsupported chain!")
+                    continue
 
                 # Skip duplicate events
                 if new_report.tx_hash in displayed_events:
@@ -94,9 +91,7 @@ def dashboard():
                     send_text_msg(twilio_client, recipients, from_number, msg)
             
                 display_rows.append((
-                    new_report.tx_hash,
                     new_report.eastern_time,
-                    chain_id,
                     link,
                     new_report.query_type,
                     new_report.value,
@@ -108,13 +103,12 @@ def dashboard():
                     del(display_rows[0])
 
                 # Display table
-                _, times, chain_ids, links, query_types, values, disputable_strs = zip(*display_rows)
+                times, links, query_types, values, disputable_strs = zip(*display_rows)
                 dataframe_state = dict(
                     When=times,
-                    Chain=chain_ids,
-                    Link=links,
+                    Transaction=links,
                     QueryType=query_types,
-                    ReportedValue=values,
+                    Value=values,
                     Disputable=disputable_strs)
                 table.dataframe(dataframe_state)
 
