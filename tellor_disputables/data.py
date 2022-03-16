@@ -8,7 +8,8 @@ from telliot_core.directory import contract_directory
 import asyncio
 from web3.datastructures import AttributeDict
 from hexbytes import HexBytes
-
+from datetime import datetime
+from dateutil import tz
 
 def get_infura_node_url(chain_id: int) -> str:
     urls = {
@@ -101,9 +102,19 @@ def is_disputable(val: float, query_data: str):
 class NewReport:
     # NewReport (bytes32 _queryId, uint256 _time, bytes _value, uint256 _reward, uint256 _nonce, bytes _queryData, address _reporter)
     transaction_hash: str
-    value: float
-    chain_id: int 
+    eastern_time: str
+    chain_id: int
+    link: str
     query_type: str 
+    value: float 
+    
+
+
+def timestamp_to_eastern(timestamp: int) -> str:
+    est = tz.gettz("EST")
+    dt = datetime.fromtimestamp(timestamp).astimezone(est)
+
+    return str(dt)
 
 
 def get_new_report(event_json: str):
@@ -165,17 +176,18 @@ def parse_new_report_event(event, web3, contract):
     receipt = web3.eth.getTransactionReceipt(tx_hash)
     args = contract.events.NewReport().processReceipt(receipt)["args"]
     query_id = args["_queryId"].decode('utf8')
-    timestamp = args["_time"]
-    value = args["_value"].decode('utf8')
+    est = timestamp_to_eastern(args["_time"])
+    value = args["_value"].decode('utf8') # replace with telliot_core decoder
+    cid = web3.eth.chain_id
+    query_type = "fake"
 
-    
-    print(type(x))
-    print(x)
+    return NewReport(cid, est, tx_hash, "link", query_type, value)
 
 
 def main():
     # _ = asyncio.run(get_events())
-    test_parse_new_report()
+    # test_parse_new_report()
+    pass
 
 
 if __name__ == "__main__":
