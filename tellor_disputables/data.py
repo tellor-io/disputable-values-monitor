@@ -149,10 +149,10 @@ async def get_events(eth_web3, eth_oracle_addr, eth_abi, poly_web3, poly_oracle_
     return events_lists
 
 
-def get_tx_receipt_args(tx_hash, web3, contract):
+def get_tx_receipt(tx_hash, web3, contract):
     receipt = web3.eth.getTransactionReceipt(tx_hash)
-    receipt = contract.events.NewReport().processReceipt(receipt)
-    return receipt[0]["args"]
+    receipt = contract.events.NewReport().processReceipt(receipt)[0]
+    return receipt
 
 
 def get_query_from_data(query_data):
@@ -167,18 +167,19 @@ def get_query_from_data(query_data):
 
 def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
     tx_hash = event['transactionHash']
-    args = get_tx_receipt_args(tx_hash, web3, contract)
-    if args["_event"] != "NewReport":
+    receipt = get_tx_receipt(tx_hash, web3, contract)
+    if receipt["event"] != "NewReport":
         return None
+    args = receipt["args"]
     q = get_query_from_data(args["_queryData"])
 
     val = q.value_type.decode(args["_value"])
     return NewReport(
         chain_id=web3.eth.chain_id,
         eastern_time=args["_time"],
-        tx_hash=str(tx_hash),
+        tx_hash=tx_hash.hex(),
         link="link",
-        query_type=str(type(q)),
+        query_type=type(q).__name__,
         value=val)
 
 
