@@ -13,6 +13,7 @@ from tellor_disputables.data import get_web3
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import get_contract
+from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
 from time import sleep
 import uuid
 import random
@@ -23,7 +24,9 @@ def dashboard():
     st.title("Disputable Values Monitor 📒🔎📲")
     st.write("get text alerts when potentially bad data is reported to Tellor oracles")
 
-    st.markdown("[source code](https://github.com/oraclown/tellor_disputes_monitor)")
+    st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
+
+    st.write("(only checks disputability of SpotPrice and LegacyRequest query types")
 
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
@@ -51,20 +54,18 @@ def dashboard():
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
 
 
-    count = 0
     while True:
-        # get new 
+        # Fetch NewReport events
         event_lists = asyncio.run(get_events(
             eth_web3,
             eth_addr,
+            eth_abi,
             poly_web3,
             poly_addr,
         ))
-        print('EVENTS!!!:', event_lists)
-        print('COUNT!!!:', count)
-        count += 1
 
         for event_list in event_lists:
+            # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
@@ -73,21 +74,20 @@ def dashboard():
                     new_report = parse_new_report_event(event, poly_web3, poly_contract)
                 else:
                     print("unsupported chain!")
+                    continue
 
                 # Skip duplicate events
                 if new_report.tx_hash in displayed_events:
                     continue
-
                 displayed_events.add(new_report.tx_hash)
 
-                # get fake data
-                # new_report = get_new_report('{"blah":42}')
-
+                # Determine if value disputable
                 disputable = is_disputable(new_report.value, "")
                 link = get_tx_explorer_url(
-                    new_report.tx_hash,
-                    new_report.chain_id)
+                    tx_hash=new_report.tx_hash,
+                    chain_id=new_report.chain_id)
                 
+                # Alert via text msg
                 msg = generate_alert_msg(link)
                 if disputable:
                     send_text_msg(twilio_client, recipients, from_number, msg)
@@ -95,23 +95,29 @@ def dashboard():
                 display_rows.append((
                     new_report.tx_hash,
                     new_report.eastern_time,
-                    chain_id,
                     link,
                     new_report.query_type,
                     new_report.value,
-                    disputable_str(disputable)))
+                    disputable_str(disputable),
+                    new_report.asset,
+                    new_report.currency
+                    ))
 
+                # Prune display
                 if len(display_rows) > 10:
+                    # TODO FIX
                     displayed_events.remove(display_rows[0][0])
                     del(display_rows[0])
 
-                _, times, chain_ids, links, query_types, values, disputable_strs = zip(*display_rows)
+                # Display table
+                _, times, links, _, values, disputable_strs, assets, currencies = zip(*display_rows)
                 dataframe_state = dict(
                     When=times,
-                    Chain=chain_ids,
-                    Link=links,
-                    QueryType=query_types,
-                    ReportedValue=values,
+                    Transaction=links,
+                    # QueryType=query_types,
+                    Asset=assets,
+                    Currency=currencies,
+                    Value=values,
                     Disputable=disputable_strs)
                 table.dataframe(dataframe_state)
 
