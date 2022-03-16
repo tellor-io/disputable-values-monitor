@@ -53,10 +53,11 @@ def dashboard():
 
     count = 0
     while True:
-        # get new 
+        # Fetch NewReport events
         event_lists = asyncio.run(get_events(
             eth_web3,
             eth_addr,
+            eth_abi,
             poly_web3,
             poly_addr,
         ))
@@ -77,17 +78,15 @@ def dashboard():
                 # Skip duplicate events
                 if new_report.tx_hash in displayed_events:
                     continue
-
                 displayed_events.add(new_report.tx_hash)
 
-                # get fake data
-                # new_report = get_new_report('{"blah":42}')
-
+                # Determine if value disputable
                 disputable = is_disputable(new_report.value, "")
                 link = get_tx_explorer_url(
                     new_report.tx_hash,
                     new_report.chain_id)
                 
+                # Alert via text msg
                 msg = generate_alert_msg(link)
                 if disputable:
                     send_text_msg(twilio_client, recipients, from_number, msg)
@@ -101,10 +100,12 @@ def dashboard():
                     new_report.value,
                     disputable_str(disputable)))
 
+                # Prune display
                 if len(display_rows) > 10:
                     displayed_events.remove(display_rows[0][0])
                     del(display_rows[0])
 
+                # Display table
                 _, times, chain_ids, links, query_types, values, disputable_strs = zip(*display_rows)
                 dataframe_state = dict(
                     When=times,
