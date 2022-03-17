@@ -4,8 +4,6 @@ from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import generate_alert_msg
-from tellor_disputables.utils import disputable_str
-from tellor_disputables.data import is_disputable
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import get_contract_info
@@ -23,7 +21,7 @@ def dashboard():
 
     st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
 
-    st.write("(only checks disputability of SpotPrice and LegacyRequest query types")
+    st.write("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))
@@ -77,17 +75,13 @@ def dashboard():
                 if new_report.tx_hash in displayed_events:
                     continue
                 displayed_events.add(new_report.tx_hash)
-
-                # Determine if value disputable
-                disputable = is_disputable(
-                    new_report.value,
-                    new_report.query_id,
-                    CONFIDENCE_THRESHOLD)
                 
-                # Alert via text msg
-                msg = generate_alert_msg(new_report.link)
-                if disputable:
-                    send_text_msg(twilio_client, recipients, from_number, msg)
+                # Account for unsupported queryIDs
+                if new_report.disputable is not None:
+                    # Alert via text msg
+                    msg = generate_alert_msg(new_report.link)
+                    if new_report.disputable:
+                        send_text_msg(twilio_client, recipients, from_number, msg)
             
                 display_rows.append((
                     new_report.tx_hash,
@@ -95,7 +89,7 @@ def dashboard():
                     new_report.link,
                     new_report.query_type,
                     new_report.value,
-                    disputable_str(disputable),
+                    new_report.status_str,
                     new_report.asset,
                     new_report.currency
                     ))

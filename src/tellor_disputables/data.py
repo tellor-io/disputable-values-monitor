@@ -17,6 +17,8 @@ from telliot_core.api import SpotPrice
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import LEGACY_ASSETS, LEGACY_CURRENCIES
 from tellor_disputables.utils import get_tx_explorer_url
+from tellor_disputables import CONFIDENCE_THRESHOLD
+from tellor_disputables.utils import disputable_str
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -89,13 +91,16 @@ async def poly_log_loop(web3, addr): #, event_filter, poll_interval, chain_id, l
 
 
 # def is_disputable(reported_val, trusted_val, conf_threshold):
-def is_disputable(reported_val: float, query_id: str, conf_threshold: float):
+def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
+    if query_id not in DATAFEED_LOOKUP:
+        print(f"new report for unsupported query ID: {query_id}")
+        return None
     current_feed = DATAFEED_LOOKUP[query_id]
     trusted_val = asyncio.run(current_feed.source.fetch_new_datapoint())[0]
 
-    print("reported val: ", reported_val, " trusted val: ", trusted_val)
+    # print("reported val: ", reported_val, " trusted val: ", trusted_val)
     percent_diff = (reported_val - trusted_val) / trusted_val
-    print("percent_diff: ", percent_diff)
+    # print("percent_diff: ", percent_diff)
     return abs(percent_diff) > conf_threshold
 
 
@@ -111,6 +116,8 @@ class NewReport:
     asset: str
     currency: str
     query_id: str
+    disputable: Optional[bool]
+    status_str: str
 
 
 def timestamp_to_eastern(timestamp: int) -> str:
@@ -198,10 +205,13 @@ def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
         return None
 
     val = q.value_type.decode(args["_value"])
-    print('QUERY ID HEX', str(q.query_id.hex()))
     link = get_tx_explorer_url(
             tx_hash=tx_hash.hex(),
             chain_id=web3.eth.chain_id)
+    query_id = str(q.query_id.hex())
+    # Determine if value disputable
+    disputable = is_disputable(val,query_id,CONFIDENCE_THRESHOLD)
+    status_str = disputable_str(disputable, query_id)
 
     return NewReport(
         chain_id=web3.eth.chain_id,
@@ -212,7 +222,9 @@ def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
         value=val,
         asset=asset,
         currency=currency,
-        query_id=str(q.query_id.hex()),
+        query_id=query_id,
+        disputable=disputable,
+        status_str = status_str
         )
 
 
