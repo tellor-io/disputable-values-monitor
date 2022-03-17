@@ -10,10 +10,11 @@ from datetime import datetime
 from dateutil import tz
 from telliot_core.queries.abi_query import AbiQuery
 from telliot_core.queries.json_query import JsonQuery
-from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
+from utils import EXAMPLE_NEW_REPORT_EVENT
 from typing import Optional
 from telliot_core.queries.legacy_query import LegacyRequest
 from telliot_core.api import SpotPrice
+from telliot_feed_examples import feeds
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -84,13 +85,34 @@ async def poly_log_loop(web3, addr): #, event_filter, poll_interval, chain_id, l
     
     return unique_events_lis
 
+query_feed_map = {
+    "0x000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
+        # "0x35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,  # will be in next release
+    "0x0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
+        # "	0xd913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,  # will be in next release
+        # "": feeds.diva_protocol_feed.assemble_diva_datafeed,  # will be in next release
+    "0x000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
+    "0x0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
+        # "": feeds.idle_usd_feed.idle_usd_median_feed,  # will be in next release
+        # "": feeds.matic_usd_feed.matic_usd_median_feed,  # will be in next release
+        # "": feeds.mkr_usd_feed.mkr_usd_median_feed,  # will be in next release
+    "0xee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
+    "0x0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
+    "0x0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed
+        # "": feeds.vesq.vsq_usd_median_feed #not yet supported here for some reason
+}
+
 
 # def is_disputable(reported_val, trusted_val, conf_threshold):
-def is_disputable(val: float, query_data: str):
-    # get feed based on query id
-    # feed.fetch_new_datapoint
-    # compare reporter_val to datpoint val
-    return random.random() > .995
+def is_disputable(reported_val: float, query_id: str, conf_threshold: float):
+    current_feed = query_feed_map[query_id]
+    trusted_val = asyncio.run(current_feed.source.fetch_new_datapoint())[0]
+
+    print("reported val: ", reported_val, " trusted val: ", trusted_val)
+    percent_diff = (reported_val - trusted_val) / trusted_val
+    print("percent_diff: ", percent_diff)
+    return abs(percent_diff) > conf_threshold
+
 
 
 @dataclass
