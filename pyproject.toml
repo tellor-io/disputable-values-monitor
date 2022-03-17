@@ -4,6 +4,7 @@ version = "0.0.1"
 description = "dashboard & text alerts for disputable values reported to Tellor oracles"
 authors = ["oraclown <info@tellor.io>"]
 license = "MIT"
+packages = [{ include = "tellor_disputables", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "3.10.2"
@@ -21,3 +22,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 data = "tellor_disputables.data:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

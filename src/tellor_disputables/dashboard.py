@@ -21,7 +21,7 @@ def dashboard():
 
     st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
 
-    st.write("(only checks disputability of SpotPrice and LegacyRequest query types")
+    st.write("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
     # st.write(f'Sending alerts to: {get_phone_numbers()}')
     # st.write(os.environ.get("TWILIO_FROM"))

@@ -4,22 +4,15 @@ dashboard & text alerts for disputable values reported to Tellor oracles
 [SEE THE APP](https://tellor-disputables.herokuapp.com/)
 
 ## to do:
-### 1. display updates
-- fix removing older txs from table:
-```
-disputable-values-monitor/tellor_disputables/dashboard.py", line 108, in dashboard
-    displayed_events.remove(display_rows[0][0])
-KeyError: '0x096c46968983f84f0b6e89c070b074169eee93e7168f1098936cf7dab7d26155'
-```
 
-### 2. tests
+### 1. tests
 - add unit tests for all funcs
 
-### 3. app deployment
+### 2. app deployment
 - fix env vars not being found by heroku deployed app
 - move deployed app to paid team heroku (so doesn't shut down when not used)
 
-### 4. make modular
+### 3. make modular
 - make it easy to use things from this repo in reporter software, or at least easy to move them over there
 
 ## nice-to-have improvement:
