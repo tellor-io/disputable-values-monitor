@@ -16,6 +16,7 @@ from telliot_core.queries.legacy_query import LegacyRequest
 from telliot_core.api import SpotPrice
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import LEGACY_ASSETS, LEGACY_CURRENCIES
+from tellor_disputables.utils import get_tx_explorer_url
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -197,15 +198,22 @@ def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
         return None
 
     val = q.value_type.decode(args["_value"])
+    print('QUERY ID HEX', str(q.query_id.hex()))
+    link = get_tx_explorer_url(
+            tx_hash=tx_hash.hex(),
+            chain_id=web3.eth.chain_id)
+
     return NewReport(
         chain_id=web3.eth.chain_id,
         eastern_time=args["_time"],
         tx_hash=tx_hash.hex(),
-        link="link",
+        link=link,
         query_type=type(q).__name__,
         value=val,
         asset=asset,
-        currency=currency)
+        currency=currency,
+        query_id=str(q.query_id.hex()),
+        )
 
 
 def main():
