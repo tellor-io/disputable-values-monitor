@@ -25,6 +25,10 @@ edit `vars.example.sh` and export the needed environment variables:
 ```
 source vars.example.sh
 ```
+run tests:
+```
+poetry run pytest
+```
 run dashboard:
 ```
 poetry run streamlit run app.py
