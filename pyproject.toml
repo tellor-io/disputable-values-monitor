@@ -2,7 +2,7 @@
 name = "tellor-disputables"
 version = "0.0.1"
 description = "dashboard & text alerts for disputable values reported to Tellor oracles"
-authors = ["oraclown <oburton@tellor.io>"]
+authors = ["oraclown <info@tellor.io>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
