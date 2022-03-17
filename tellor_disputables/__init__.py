@@ -8,19 +8,19 @@ CONFIDENCE_THRESHOLD = .50
 
 
 DATAFEED_LOOKUP = {
-    "0x000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
+    "000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
         # "0x35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,  # will be in next release
-    "0x0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
+    "0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
         # "	0xd913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,  # will be in next release
         # "": feeds.diva_protocol_feed.assemble_diva_datafeed,  # will be in next release
-    "0x000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
-    "0x0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
+    "000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
+    "0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
         # "": feeds.idle_usd_feed.idle_usd_median_feed,  # will be in next release
         # "": feeds.matic_usd_feed.matic_usd_median_feed,  # will be in next release
         # "": feeds.mkr_usd_feed.mkr_usd_median_feed,  # will be in next release
-    "0xee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
-    "0x0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
-    "0x0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed
+    "ee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
+    "0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
+    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed
         # "": feeds.vesq.vsq_usd_median_feed #not yet supported here for some reason
 }
 
