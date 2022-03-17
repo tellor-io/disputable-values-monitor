@@ -4,9 +4,7 @@ from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import generate_alert_msg
-from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import disputable_str
-from tellor_disputables.data import get_new_report
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_web3
@@ -15,9 +13,8 @@ from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import get_contract
 # from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from time import sleep
-import uuid
-import random
 import asyncio
+from tellor_disputables import CONFIDENCE_THRESHOLD
 
 
 def dashboard():
@@ -82,20 +79,20 @@ def dashboard():
                 displayed_events.add(new_report.tx_hash)
 
                 # Determine if value disputable
-                disputable = is_disputable(new_report.value, "")
-                link = get_tx_explorer_url(
-                    tx_hash=new_report.tx_hash,
-                    chain_id=new_report.chain_id)
+                disputable = is_disputable(
+                    new_report.value,
+                    new_report.query_id,
+                    CONFIDENCE_THRESHOLD)
                 
                 # Alert via text msg
-                msg = generate_alert_msg(link)
+                msg = generate_alert_msg(new_report.link)
                 if disputable:
                     send_text_msg(twilio_client, recipients, from_number, msg)
             
                 display_rows.append((
                     new_report.tx_hash,
                     new_report.eastern_time,
-                    link,
+                    new_report.link,
                     new_report.query_type,
                     new_report.value,
                     disputable_str(disputable),

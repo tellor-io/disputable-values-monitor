@@ -4,6 +4,9 @@ from hexbytes import HexBytes
 from telliot_feed_examples import feeds
 
 
+CONFIDENCE_THRESHOLD = .50
+
+
 DATAFEED_LOOKUP = {
     "0x000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
         # "0x35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,  # will be in next release
