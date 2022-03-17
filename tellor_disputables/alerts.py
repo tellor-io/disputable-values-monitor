@@ -1,6 +1,6 @@
 from twilio.rest import Client
 import os
-import json
+# import json
 
 
 def generate_alert_msg(link: str) -> str:
