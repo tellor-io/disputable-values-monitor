@@ -13,7 +13,7 @@ from tellor_disputables.data import get_web3
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import get_contract
-from tellor_disputables.utils import EXAMPLE_NEW_REPORT_EVENT
+# from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from time import sleep
 import uuid
 import random
