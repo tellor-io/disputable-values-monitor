@@ -131,3 +131,6 @@ dmypy.json
 # secrets
 secrets.toml
 vars.sh
+
+# Mac specific files
+.DS_Store
