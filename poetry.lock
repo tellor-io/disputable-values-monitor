@@ -1492,6 +1492,17 @@ validators = "*"
 watchdog = {version = "*", markers = "platform_system != \"Darwin\""}
 
 [[package]]
+name = "tabulate"
+version = "0.8.9"
+description = "Pretty-print tabular data"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.extras]
+widechars = ["wcwidth"]
+
+[[package]]
 name = "telliot-core"
 version = "0.1.3"
 description = "Telliot is a Python framework for interacting with the decentralized TellorX network."
@@ -1775,7 +1786,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10.2"
-content-hash = "2fe8b2fef6aa535520597a716a905affa53d46439fa3a1dda0c53741a76bc0cd"
+content-hash = "e692f1c708ada3aff7883fbfc95622e1d172ff271d5579b62d3ddeb7bad8fb9e"
 
 [metadata.files]
 aiohttp = [
@@ -2876,6 +2887,10 @@ stack-data = [
 streamlit = [
     {file = "streamlit-1.7.0-py2.py3-none-any.whl", hash = "sha256:8c411afd0d67ded9fe2efdd57da3b4ac43286177a6b6ada74d499e19367461f3"},
     {file = "streamlit-1.7.0.tar.gz", hash = "sha256:f9e41d05e1ea85d0a00e980456180a505b204e5aa25c4359262c054ed196f2c4"},
+]
+tabulate = [
+    {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
+    {file = "tabulate-0.8.9.tar.gz", hash = "sha256:eb1d13f25760052e8931f2ef80aaf6045a6cceb47514db8beab24cded16f13a7"},
 ]
 telliot-core = [
     {file = "telliot_core-0.1.3-py3-none-any.whl", hash = "sha256:fb4b5e45537454ca53af9a0192ee5205f1b86144a59719bea2b8dbfdeee7ddd8"},
