@@ -2,18 +2,17 @@
 console dashboard & text alerts for disputable values reported to Tellor oracles
 
 ## to do:
-### make cli print alerts & dashboard even if no twiliot keys provided
-### 1. tests
-- add unit tests for all funcs
+### 1. add more tests
 ### 2. clean up & refactor functions
-- a lot of funcs are gross & messy
-### 3. make modular
-- make it easy to use things from this repo in reporter software, or at least easy to move them over there
+### 3. make key functionality modular
 ### 4. add type hinting
+
+## next steps:
+### 1. extensive user testing by Tellor team/community
 
 ## nice-to-have improvement:
 - gif using cli tool in README
-- parse timestamp into ET
+- parse timestamp into ET, until then use [this](https://www.unixtimestamp.com/index.php) to get local time
 
 ## requirements:
 - Python >= 3.10

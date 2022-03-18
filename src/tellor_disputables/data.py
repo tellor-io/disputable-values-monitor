@@ -19,6 +19,7 @@ from tellor_disputables import LEGACY_ASSETS, LEGACY_CURRENCIES
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables import CONFIDENCE_THRESHOLD
 from tellor_disputables.utils import disputable_str
+from web3.exceptions import TransactionNotFound
 
 
 def get_infura_node_url(chain_id: int) -> str:
@@ -189,7 +190,12 @@ def get_legacy_request_pair_info(legacy_id: int):
 
 def parse_new_report_event(event, web3, contract) -> Optional[NewReport]:
     tx_hash = event['transactionHash']
-    receipt = get_tx_receipt(tx_hash, web3, contract)
+    try:
+        receipt = get_tx_receipt(tx_hash, web3, contract)
+    except TransactionNotFound:
+        print("transaction not found")
+        return None
+
     if receipt["event"] != "NewReport":
         return None
     args = receipt["args"]
