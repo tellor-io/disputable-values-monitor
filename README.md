@@ -16,8 +16,9 @@ console dashboard & text alerts for disputable values reported to Tellor oracles
 - parse timestamp into ET
 
 ## requirements:
-- install [poetry]()
-- to get alerts via text, [get twilio keys](https://www.twilio.com/docs/sms/quickstart/python), edit `vars.example.sh`, and export environment variables:
+- Python >= 3.10
+- install [poetry](https://github.com/python-poetry/poetry)
+- get [twilio things](https://www.twilio.com/docs/sms/quickstart/python), [infura key](https://infura.io), edit `vars.example.sh`, and export environment variables:
 ```
 source vars.example.sh
 ```
