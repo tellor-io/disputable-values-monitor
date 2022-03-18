@@ -1,6 +1,8 @@
 # Tellor Disputables
 console dashboard & text alerts for disputable values reported to Tellor oracles
 
+![](demo.gif)
+
 ## requirements:
 - Python >= 3.10
 - install [poetry](https://github.com/python-poetry/poetry)
