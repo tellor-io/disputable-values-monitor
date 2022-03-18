@@ -8,7 +8,6 @@ packages = [{ include = "tellor_disputables", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "3.10.2"
-streamlit = "^1.7.0"
 twilio = "^7.7.0"
 web3 = "^5.28.0"
 telliot-core = "^0.1.3"
