@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 
 
 def get_tx_explorer_url(tx_hash: str, chain_id: int) -> str:
@@ -16,3 +17,12 @@ def disputable_str(disputable: Optional[bool], query_id: str) -> str:
     if disputable is not None:
         return "yes ❗📲" if disputable else "no ✔️"
     return f"❗unsupported query ID: {query_id}"
+
+
+def clear_console() -> None:
+    # windows
+    if os.name == 'nt':
+        _ = os.system('cls')
+    # mac, linux (name=="posix")
+    else:
+        _ = os.system('clear')

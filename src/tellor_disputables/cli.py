@@ -1,4 +1,3 @@
-import streamlit as st
 from tellor_disputables.alerts import send_text_msg
 from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
@@ -9,33 +8,32 @@ from tellor_disputables.data import get_web3
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import get_contract
-# from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
+from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from time import sleep
 import asyncio
 from tellor_disputables import CONFIDENCE_THRESHOLD
+import pandas as pd
+import warnings
+from tellor_disputables.utils import clear_console
 
 
-def dashboard():
-    st.title("Disputable Values Monitor 📒🔎📲")
-    st.write("get text alerts when potentially bad data is reported to Tellor oracles")
+warnings.simplefilter("ignore", UserWarning)
 
-    st.markdown("[source code](https://github.com/tellor-io/disputable-values-monitor)")
 
-    st.write("(only checks disputability of SpotPrice and LegacyRequest query types)")
+def print_title_info() -> None:
+    print("Disputable Values Monitor 📒🔎📲")
+    # print("get text alerts when potentially bad data is reported to Tellor oracles")
+    # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
-    # st.write(f'Sending alerts to: {get_phone_numbers()}')
-    # st.write(os.environ.get("TWILIO_FROM"))
+
+def cli() -> None:
+    print_title_info()
 
     twilio_client = get_twilio_client()
     recipients = get_phone_numbers()
     from_number = get_from_number()
 
-    @st.cache(allow_output_mutation=True)
-    def Rows():
-        return []
-
-    display_rows = Rows()
-    table = st.empty()
+    display_rows = []
     displayed_events = set()
 
     # Get contract addresses & web3 instances
@@ -47,7 +45,6 @@ def dashboard():
     poly_web3 = get_web3(poly_chain_id)
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
-
 
     while True:
         # Fetch NewReport events
@@ -62,6 +59,7 @@ def dashboard():
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
+
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
                     new_report = parse_new_report_event(event, eth_web3, eth_contract)
@@ -75,6 +73,10 @@ def dashboard():
                 if new_report.tx_hash in displayed_events:
                     continue
                 displayed_events.add(new_report.tx_hash)
+
+                # Refesh
+                clear_console()
+                print_title_info()
                 
                 # Account for unsupported queryIDs
                 if new_report.disputable is not None:
@@ -96,7 +98,6 @@ def dashboard():
 
                 # Prune display
                 if len(display_rows) > 10:
-                    # TODO FIX
                     displayed_events.remove(display_rows[0][0])
                     del(display_rows[0])
 
@@ -110,6 +111,15 @@ def dashboard():
                     Currency=currencies,
                     Value=values,
                     Disputable=disputable_strs)
-                table.dataframe(dataframe_state)
+                df = pd.DataFrame.from_dict(dataframe_state)
+                print(df.to_markdown(), end="\r")
 
         sleep(1)
+
+
+def main() -> None:
+    cli()
+
+
+if __name__ == '__main__':
+    main()
