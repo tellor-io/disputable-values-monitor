@@ -13,12 +13,21 @@ from time import sleep
 import asyncio
 from tellor_disputables import CONFIDENCE_THRESHOLD
 import pandas as pd
+import warnings
+from tellor_disputables.utils import clear_console
 
 
-def cli():
+warnings.simplefilter("ignore", UserWarning)
+
+
+def print_title_info() -> None:
     print("Disputable Values Monitor 📒🔎📲")
-    print("get text alerts when potentially bad data is reported to Tellor oracles")
-    print("(only checks disputability of SpotPrice and LegacyRequest query types)")
+    # print("get text alerts when potentially bad data is reported to Tellor oracles")
+    # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
+
+
+def cli() -> None:
+    print_title_info()
 
     twilio_client = get_twilio_client()
     recipients = get_phone_numbers()
@@ -48,8 +57,9 @@ def cli():
         ))
 
         for event_list in event_lists:
-            event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
+            # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
+
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
                     new_report = parse_new_report_event(event, eth_web3, eth_contract)
@@ -63,6 +73,10 @@ def cli():
                 if new_report.tx_hash in displayed_events:
                     continue
                 displayed_events.add(new_report.tx_hash)
+
+                # Refesh
+                clear_console()
+                print_title_info()
                 
                 # Account for unsupported queryIDs
                 if new_report.disputable is not None:
@@ -98,14 +112,12 @@ def cli():
                     Value=values,
                     Disputable=disputable_strs)
                 df = pd.DataFrame.from_dict(dataframe_state)
-                print(df.to_markdown())
+                print(df.to_markdown(), end="\r")
 
         sleep(1)
 
 
-def main():
-    # just move listener out of dashboard and simply print to console
-    # pretty print what was in dashboard table to console
+def main() -> None:
     cli()
 
 
