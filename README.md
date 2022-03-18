@@ -5,17 +5,16 @@ dashboard & text alerts for disputable values reported to Tellor oracles
 
 ## to do:
 
+### !!!~~~~~make it into cli tool...
+
 ### 1. tests
 - add unit tests for all funcs
-
-### 2. app deployment
-- fix env vars not being found by heroku deployed app
-- move deployed app to paid team heroku (so doesn't shut down when not used)
 
 ### 3. make modular
 - make it easy to use things from this repo in reporter software, or at least easy to move them over there
 
 ## nice-to-have improvement:
+- gif using cli tool in README
 - parse timestamp into ET
 - make explorer link column into hyperlink: [source](https://discuss.streamlit.io/t/make-streamlit-table-results-hyperlinks-or-add-radio-buttons-to-table/7883)
 
