@@ -1,19 +1,6 @@
 # Tellor Disputables
 console dashboard & text alerts for disputable values reported to Tellor oracles
 
-## to do:
-### 1. add more tests
-### 2. clean up & refactor functions
-### 3. make key functionality modular
-### 4. add type hinting
-
-## next steps:
-### 1. extensive user testing by Tellor team/community
-
-## nice-to-have improvement:
-- gif using cli tool in README
-- parse timestamp into ET, until then use [this](https://www.unixtimestamp.com/index.php) to get local time
-
 ## requirements:
 - Python >= 3.10
 - install [poetry](https://github.com/python-poetry/poetry)
