@@ -11,7 +11,10 @@ from src.tellor_disputables.alerts import get_phone_numbers
 def test_generate_alert_msg():
     link = "example transaction link"
     msg = generate_alert_msg(link)
+    print(msg)
     assert isinstance(msg, str)
+    assert "example transaction link" in msg
+    assert "DISPUTABLE VALUE" in msg
 
 
 def test_get_from_number():
