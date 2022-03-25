@@ -21,6 +21,14 @@ source vars.example.sh
 poetry run cli
 ```
 
+## Configuration
+Update chains you want to monitor and the confidence threshold for disputable values in `/tellor_disputables/__init__.py`:
+```
+ETHEREUM_CHAIN_ID = 4
+POLYGON_CHAIN_ID = 80001
+CONFIDENCE_THRESHOLD = 0.50
+```
+
 ## Dev setup/help:
 Run tests:
 ```

@@ -5,8 +5,8 @@ from telliot_feed_examples import feeds
 from web3.datastructures import AttributeDict
 
 
-ETHEREUM_CHAIN_ID = 4
-POLYGON_CHAIN_ID = 80001
+ETHEREUM_CHAIN_ID = 4  # Testnet
+POLYGON_CHAIN_ID = 80001  # Testnet
 CONFIDENCE_THRESHOLD = 0.50
 
 
