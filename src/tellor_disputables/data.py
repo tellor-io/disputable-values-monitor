@@ -63,40 +63,36 @@ def get_contract(web3: Web3, addr: str, abi: str) -> Contract:
     )
 
 
-# asynchronous defined function to loop
-# this loop sets up an event filter and is looking for new entires for the "PairCreated" event
-# this loop runs on a poll interval
-async def eth_log_loop(event_filter: Any, poll_interval: int, chain_id: int) -> list[tuple[int, Any]]:
+async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]]:
     """Generate a list of NewReport events given a
     polling interval and an event filter."""
-    # while True:
     unique_events = {}
     unique_events_lis = []
+
     for event in event_filter.get_new_entries():
         txhash = event["transactionHash"]
+
         if txhash not in unique_events:
             unique_events[txhash] = event
             unique_events_lis.append((chain_id, event))
-        # await asyncio.sleep(poll_interval)
+
     return unique_events_lis
 
 
 async def poly_log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     """Generate a list of NewReport events given a polling interval."""
-    # while True:
     num = web3.eth.get_block_number()
     events = web3.eth.get_logs({"fromBlock": num, "toBlock": num + 100, "address": addr})  # type: ignore
 
     unique_events = {}
     unique_events_lis = []
+
     for event in events:
         txhash = event["transactionHash"]
+
         if txhash not in unique_events:
             unique_events[txhash] = event
             unique_events_lis.append((web3.eth.chain_id, event))
-            # print('LOOP NAME:', loop_name)
-            # handle_event(event)
-        # await asyncio.sleep(poll_interval)
 
     return unique_events_lis
 
@@ -106,12 +102,11 @@ def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> 
     if query_id not in DATAFEED_LOOKUP:
         print(f"new report for unsupported query ID: {query_id}")
         return None
+
     current_feed = DATAFEED_LOOKUP[query_id]
     trusted_val = asyncio.run(current_feed.source.fetch_new_datapoint())[0]
-
-    # print("reported val: ", reported_val, " trusted val: ", trusted_val)
     percent_diff = (reported_val - trusted_val) / trusted_val
-    # print("percent_diff: ", percent_diff)
+
     return bool(abs(percent_diff) > conf_threshold)
 
 
@@ -156,14 +151,12 @@ async def get_events(
     """Get all events from the Ethereum and Polygon chains."""
     eth_mainnet_filter = create_eth_event_filter(eth_web3, eth_oracle_addr, eth_abi)
     # eth_testnet_filter = create_eth_event_filter(4)
-    # polygon_mainnet_filter = create_polygon_event_filter(137)
-    # polygon_testnet_filter = create_polygon_event_filter(80001)
 
     events_lists = await asyncio.gather(
-        eth_log_loop(eth_mainnet_filter, 1, chain_id=1),
-        # eth_log_loop(eth_testnet_filter, 2),
-        # poly_log_loop(polygon_mainnet_filter, 2, 137, "tammy"),
-        poly_log_loop(poly_web3, poly_oracle_addr),
+        eth_log_loop(eth_mainnet_filter, 1, chain_id=1),  # Mainnet
+        # eth_log_loop(eth_testnet_filter, 2), # Rinkeby tesetnet
+        # poly_log_loop(poly_web3, poly_oracle_addr), # Mainnet
+        poly_log_loop(poly_web3, poly_oracle_addr),  # Mumbai testnet
     )
     return events_lists
 
@@ -206,9 +199,9 @@ def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract:
 
     if receipt["event"] != "NewReport":
         return None
+
     args = receipt["args"]
     q = get_query_from_data(args["_queryData"])
-
     if isinstance(q, SpotPrice):
         asset = q.asset.upper()
         currency = q.currency.upper()
@@ -221,7 +214,6 @@ def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract:
     val = q.value_type.decode(args["_value"])
     link = get_tx_explorer_url(tx_hash=tx_hash.hex(), chain_id=web3.eth.chain_id)
     query_id = str(q.query_id.hex())
-    # Determine if value disputable
     disputable = is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
     status_str = disputable_str(disputable, query_id)
 
@@ -246,8 +238,6 @@ def main() -> None:
     poly_chain_id = 80001
     poly_web3 = get_web3(poly_chain_id)
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
-    print("poly addr type", type(poly_addr))
-    print("poly abi type", type(poly_abi))
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
     new_report = parse_new_report_event(EXAMPLE_NEW_REPORT_EVENT, poly_web3, poly_contract)
     print(new_report)
