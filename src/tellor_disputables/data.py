@@ -79,8 +79,8 @@ async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]
     return unique_events_lis
 
 
-async def poly_log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
-    """Generate a list of NewReport events given a polling interval."""
+async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
+    """Generate a list of recent events from a contract."""
     num = web3.eth.get_block_number()
     events = web3.eth.get_logs({"fromBlock": num, "toBlock": num + 100, "address": addr})  # type: ignore
 
@@ -149,14 +149,12 @@ async def get_events(
     poly_oracle_addr: str,
 ) -> tuple[list[tuple[int, Any]], list[tuple[int, Any]]]:
     """Get all events from the Ethereum and Polygon chains."""
-    eth_mainnet_filter = create_eth_event_filter(eth_web3, eth_oracle_addr, eth_abi)
-    # eth_testnet_filter = create_eth_event_filter(4)
+    # eth_filter = create_eth_event_filter(eth_web3, eth_oracle_addr, eth_abi)
 
     events_lists = await asyncio.gather(
-        eth_log_loop(eth_mainnet_filter, 1, chain_id=1),  # Mainnet
-        # eth_log_loop(eth_testnet_filter, 2), # Rinkeby tesetnet
-        # poly_log_loop(poly_web3, poly_oracle_addr), # Mainnet
-        poly_log_loop(poly_web3, poly_oracle_addr),  # Mumbai testnet
+        # eth_log_loop(eth_filter, 1),  # this is broken
+        log_loop(eth_web3, eth_oracle_addr),
+        log_loop(poly_web3, poly_oracle_addr),
     )
     return events_lists
 
