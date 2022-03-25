@@ -5,6 +5,8 @@ from time import sleep
 
 import pandas as pd
 
+from tellor_disputables import ETHEREUM_CHAIN_ID
+from tellor_disputables import POLYGON_CHAIN_ID
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
@@ -35,7 +37,7 @@ def cli() -> None:
     recipients = get_phone_numbers()
     from_number = get_from_number()
     if recipients is None or from_number is None:
-        print("Missing phone numbers. Exiting.")
+        print("Missing phone numbers. See README for required environment variables. Exiting.")
         return
     twilio_client = get_twilio_client()
 
@@ -43,11 +45,11 @@ def cli() -> None:
     displayed_events = set()
 
     # Get contract addresses & web3 instances
-    eth_chain_id = 1
+    eth_chain_id = ETHEREUM_CHAIN_ID
     eth_web3 = get_web3(eth_chain_id)
     eth_addr, eth_abi = get_contract_info(eth_chain_id)
     eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
-    poly_chain_id = 80001
+    poly_chain_id = POLYGON_CHAIN_ID
     poly_web3 = get_web3(poly_chain_id)
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
