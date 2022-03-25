@@ -911,6 +911,14 @@ pytz = "*"
 requests = ">=2.0.0"
 
 [[package]]
+name = "types-python-dateutil"
+version = "2.8.10"
+description = "Typing stubs for python-dateutil"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "typing-extensions"
 version = "4.1.1"
 description = "Backported and Experimental Type Hints for Python 3.6+"
@@ -1010,7 +1018,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "3.10.2"
-content-hash = "869da6503d3c7cefa5dc32477a562abd91a7cea697b657b4142edd69ac1863bd"
+content-hash = "7a8efd16f5520c082b4eca5e4caeb9d110e8e724e5c1fb89fe2584cf25a5968e"
 
 [metadata.files]
 aiohttp = [
@@ -1715,6 +1723,10 @@ toolz = [
 twilio = [
     {file = "twilio-7.8.0-py2.py3-none-any.whl", hash = "sha256:f0707090c57795ee6747b849d6b7762d06c80eb2570c4f5bb37596f888ee1471"},
     {file = "twilio-7.8.0.tar.gz", hash = "sha256:0ab9d02313ce10a7f7d94dffbbc0c8ca5c6aaa8b2ec4fa392a9dfedf64bb361a"},
+]
+types-python-dateutil = [
+    {file = "types-python-dateutil-2.8.10.tar.gz", hash = "sha256:6bcf3aae7242e5793bafd7b2bcfb4e255eb7b2b3144acd0df0e182dce58ccad3"},
+    {file = "types_python_dateutil-2.8.10-py3-none-any.whl", hash = "sha256:1f6d2305513d54da353a9dde7ed8a9ef46e8987377291612a0e2b9aac2d2b875"},
 ]
 typing-extensions = [
     {file = "typing_extensions-4.1.1-py3-none-any.whl", hash = "sha256:21c85e0fe4b9a155d0799430b0ad741cdce7e359660ccbd8b530613e8df88ce2"},
