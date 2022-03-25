@@ -22,11 +22,19 @@ poetry run cli
 ```
 
 ## Dev setup/help:
-run tests:
+Run tests:
 ```
 poetry run pytest
 ```
-generate requirements.txt:
+Format/lint code:
+```
+poetry run pre-commit run --all-files
+```
+Check type hinting:
+```
+poetry run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
+```
+Generate requirements.txt:
 ```
 poetry export -f requirements.txt --output requirements.txt --without-hashes
 ```

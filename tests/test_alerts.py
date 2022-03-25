@@ -1,11 +1,12 @@
-import pytest
-from twilio.rest import Client
+"""Tests for generating alert messages."""
 import os
+
+from twilio.rest import Client
 
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.alerts import get_from_number
-from tellor_disputables.alerts import get_twilio_client
 from tellor_disputables.alerts import get_phone_numbers
+from tellor_disputables.alerts import get_twilio_client
 
 
 def test_generate_alert_msg():
