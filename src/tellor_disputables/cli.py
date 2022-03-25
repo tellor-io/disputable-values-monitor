@@ -32,9 +32,12 @@ def cli() -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     print_title_info()
 
-    twilio_client = get_twilio_client()
     recipients = get_phone_numbers()
     from_number = get_from_number()
+    if recipients is None or from_number is None:
+        print("Missing phone numbers. Exiting.")
+        return
+    twilio_client = get_twilio_client()
 
     display_rows = []
     displayed_events = set()
@@ -74,8 +77,8 @@ def cli() -> None:
                     print("unsupported chain!")
                     continue
 
-                # Skip duplicate events
-                if new_report.tx_hash in displayed_events:
+                # Skip duplicate & missing events
+                if new_report is None or new_report.tx_hash in displayed_events:
                     continue
                 displayed_events.add(new_report.tx_hash)
 
