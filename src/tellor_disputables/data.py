@@ -153,7 +153,7 @@ async def get_events(
     # eth_testnet_filter = create_eth_event_filter(4)
 
     events_lists = await asyncio.gather(
-        eth_log_loop(eth_mainnet_filter, 1, chain_id=1), # Mainnet
+        eth_log_loop(eth_mainnet_filter, 1, chain_id=1),  # Mainnet
         # eth_log_loop(eth_testnet_filter, 2), # Rinkeby tesetnet
         # poly_log_loop(poly_web3, poly_oracle_addr), # Mainnet
         poly_log_loop(poly_web3, poly_oracle_addr),  # Mumbai testnet
