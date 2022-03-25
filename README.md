@@ -5,7 +5,10 @@ A CLI dashboard & text alerts app for disputable values reported to Tellor oracl
 
 ## Requirements:
 - Python >= 3.10
-- Install [Poetry](https://github.com/python-poetry/poetry).
+- Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
+```
+poetry install
+```
 ### Update environment variables:
 In `vars.example.sh`:
 - List phone numbers you want alerts sent to (`ALERT_RECIPIENTS`).
