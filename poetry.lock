@@ -845,7 +845,7 @@ widechars = ["wcwidth"]
 
 [[package]]
 name = "telliot-core"
-version = "0.1.3"
+version = "0.1.4"
 description = "Telliot is a Python framework for interacting with the decentralized TellorX network."
 category = "main"
 optional = false
@@ -862,7 +862,7 @@ web3 = ">=5.26.0"
 
 [[package]]
 name = "telliot-feed-examples"
-version = "0.0.13"
+version = "0.0.14"
 description = "Contains examples and plugins for reporting to the TellorX Oracle."
 category = "main"
 optional = false

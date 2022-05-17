@@ -5,27 +5,26 @@ from telliot_feed_examples import feeds
 from web3.datastructures import AttributeDict
 
 
-ETHEREUM_CHAIN_ID = 4  # Testnet
-POLYGON_CHAIN_ID = 80001  # Testnet
+ETHEREUM_CHAIN_ID = 1  # mainnet
+POLYGON_CHAIN_ID = 137  # mainnet
 CONFIDENCE_THRESHOLD = 0.50
 
 
 DATAFEED_LOOKUP = {
     "000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
-    # will be in next release:
-    # "0x35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
+    "35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
-    # "	0xd913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,
-    # "": feeds.diva_protocol_feed.assemble_diva_datafeed,
+    "d913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,
+    # "": feeds.diva_protocol_feed.assemble_diva_datafeed, # has another variable input
     "000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
-    # "": feeds.idle_usd_feed.idle_usd_median_feed,
-    # "": feeds.matic_usd_feed.matic_usd_median_feed,
-    # "": feeds.mkr_usd_feed.mkr_usd_median_feed,
+    "7239909c0aa5d3e89efb2dce06c80811e93ab18413110b8c0435ee32c52cc4fb": feeds.idle_usd_feed.idle_usd_median_feed,
+    "40aa71e5205fdc7bdb7d65f7ae41daca3820c5d3a8f62357a99eda3aa27244a3": feeds.matic_usd_feed.matic_usd_median_feed,
+    "d913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.mkr_usd_feed.mkr_usd_median_feed,
     "ee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
-    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed
-    # "": feeds.vesq.vsq_usd_median_feed #not yet supported here for some reason
+    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed,
+    "a9b17c33422e2e576fb664d1d11d38c377b614d62f92653d006eca7bb2af1656": feeds.vesq.vsq_usd_median_feed
 }
 
 
