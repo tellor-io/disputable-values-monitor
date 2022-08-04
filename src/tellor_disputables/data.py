@@ -1,5 +1,6 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
+from asyncio.log import logger
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -82,8 +83,15 @@ async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]
 async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     num = web3.eth.get_block_number()
-    events = web3.eth.get_logs({"fromBlock": num, "toBlock": num + 100, "address": addr})  # type: ignore
-
+    try:
+        events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
+    except ValueError as e:
+        if "unknown block" in e:
+            logger.log("waiting for new blocks")
+        elif "request failed or timed out" in e:
+            logger.log("request for eth event logs failed")
+        else:
+            logger.log("unknown RPC error gathering eth event logs \n" + e)
     unique_events = {}
     unique_events_lis = []
 

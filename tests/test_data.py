@@ -1,8 +1,9 @@
 """Tests for getting & parsing NewReport events."""
+from unittest.mock import patch
 import pytest
 from telliot_core.api import SpotPrice
 
-from tellor_disputables.data import get_infura_node_url
+from tellor_disputables.data import get_infura_node_url, get_web3, log_loop
 from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import is_disputable
@@ -75,6 +76,19 @@ def test_get_query_from_data():
     assert q.asset == "ohm"
     assert q.currency == "eth"
 
+@pytest.mark.asyncio
+async def test_rpc_value_errors(caplog):
+
+    def raise_():
+        raise ValueError()
+
+    with patch("web3.eth.Eth.get_logs", side_effect=raise_):
+
+        w3 = get_web3(chain_id=1)
+
+        await log_loop(web3=w3, addr="0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0")
+
+        assert "waiting for new blocks" in caplog.text
 
 def blah():
     pass
