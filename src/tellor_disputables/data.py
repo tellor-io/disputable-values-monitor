@@ -1,6 +1,5 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
-from asyncio.log import logger
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -85,24 +84,29 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     num = web3.eth.get_block_number()
     try:
         events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
+
+        unique_events = {}
+        unique_events_list = []
+
+        for event in events:
+            txhash = event["transactionHash"]
+
+            if txhash not in unique_events:
+                unique_events[txhash] = event
+                unique_events_list.append((web3.eth.chain_id, event))
+
+        return unique_events_list
+
     except ValueError as e:
-        if "unknown block" in e:
-            logger.log("waiting for new blocks")
-        elif "request failed or timed out" in e:
-            logger.log("request for eth event logs failed")
+        msg = str(e)
+        if "unknown block" in msg:
+            print("waiting for new blocks")
+        elif "request failed or timed out" in msg:
+            print("request for eth event logs failed")
         else:
-            logger.log("unknown RPC error gathering eth event logs \n" + e)
-    unique_events = {}
-    unique_events_lis = []
+            print("unknown RPC error gathering eth event logs \n" + msg)
 
-    for event in events:
-        txhash = event["transactionHash"]
-
-        if txhash not in unique_events:
-            unique_events[txhash] = event
-            unique_events_lis.append((web3.eth.chain_id, event))
-
-    return unique_events_lis
+        return []
 
 
 def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
