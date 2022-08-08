@@ -9,6 +9,7 @@ from typing import Union
 
 from dateutil import tz
 from telliot_core.api import SpotPrice
+from telliot_core.datafeed import DataFeed
 from telliot_core.directory import contract_directory
 from telliot_core.queries.abi_query import AbiQuery
 from telliot_core.queries.json_query import JsonQuery
@@ -97,17 +98,20 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     return unique_events_lis
 
 
-def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
+async def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if query_id not in DATAFEED_LOOKUP:
         print(f"new report for unsupported query ID: {query_id}")
         return None
 
-    current_feed = DATAFEED_LOOKUP[query_id]
-    trusted_val = asyncio.run(current_feed.source.fetch_new_datapoint())[0]
-    percent_diff = (reported_val - trusted_val) / trusted_val
-
-    return bool(abs(percent_diff) > conf_threshold)
+    current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
+    trusted_val: Optional[float] = (await current_feed.source.fetch_new_datapoint())[0]
+    if trusted_val is not None:
+        percent_diff = (reported_val - trusted_val) / trusted_val
+        return abs(percent_diff) > conf_threshold
+    else:
+        print("unable to fetch new datapoint from telliot source")
+        return None
 
 
 @dataclass
@@ -186,7 +190,7 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract: Contract) -> Optional[NewReport]:
+async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract: Contract) -> Optional[NewReport]:
     """Parse a NewReport event."""
     tx_hash = event["transactionHash"]
     try:
@@ -212,7 +216,7 @@ def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract:
     val = q.value_type.decode(args["_value"])
     link = get_tx_explorer_url(tx_hash=tx_hash.hex(), chain_id=web3.eth.chain_id)
     query_id = str(q.query_id.hex())
-    disputable = is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
+    disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
     status_str = disputable_str(disputable, query_id)
 
     return NewReport(

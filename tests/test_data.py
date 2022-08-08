@@ -8,19 +8,24 @@ from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import is_disputable
 
 
-def test_is_disputable():
+@pytest.mark.asyncio
+async def test_is_disputable():
+    """test check for disputability for a float value"""
     # ETH/USD
     query_id = "0000000000000000000000000000000000000000000000000000000000000001"
     val = 1000.0
     threshold = 0.05
 
-    disputable = is_disputable(val, query_id, threshold)
-    assert isinstance(disputable, bool)
-    assert disputable
+    disputable = await is_disputable(val, query_id, threshold)
+    if not disputable:
+        assert not disputable
+    else:
+        assert isinstance(disputable, bool)
+        assert disputable
 
     # Unsupported query id
     query_id = "gobldygook"
-    assert is_disputable(val, query_id, threshold) is None
+    assert await is_disputable(val, query_id, threshold) is None
 
 
 def test_get_infura_node_url():
