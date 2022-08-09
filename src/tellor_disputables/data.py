@@ -83,19 +83,29 @@ async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]
 async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     num = web3.eth.get_block_number()
-    events = web3.eth.get_logs({"fromBlock": num, "toBlock": num + 100, "address": addr})  # type: ignore
+    try:
+        events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
+    except ValueError as e:
+        msg = str(e)
+        if "unknown block" in msg:
+            print("waiting for new blocks")
+        elif "request failed or timed out" in msg:
+            print("request for eth event logs failed")
+        else:
+            print("unknown RPC error gathering eth event logs \n" + msg)
 
+        return []
     unique_events = {}
-    unique_events_lis = []
+    unique_events_list = []
 
     for event in events:
         txhash = event["transactionHash"]
 
         if txhash not in unique_events:
             unique_events[txhash] = event
-            unique_events_lis.append((web3.eth.chain_id, event))
+            unique_events_list.append((web3.eth.chain_id, event))
 
-    return unique_events_lis
+    return unique_events_list
 
 
 async def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:

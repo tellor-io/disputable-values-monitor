@@ -136,3 +136,4 @@ vars.sh
 .DS_Store
 
 Pipfile
+.vscode/
