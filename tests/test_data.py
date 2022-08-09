@@ -1,11 +1,15 @@
 """Tests for getting & parsing NewReport events."""
+from unittest.mock import patch
+
 import pytest
 from telliot_core.api import SpotPrice
 
 from tellor_disputables.data import get_infura_node_url
 from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_query_from_data
+from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
+from tellor_disputables.data import log_loop
 
 
 def test_is_disputable():
@@ -74,6 +78,29 @@ def test_get_query_from_data():
     assert isinstance(q, SpotPrice)
     assert q.asset == "ohm"
     assert q.currency == "eth"
+
+
+@pytest.mark.asyncio
+async def test_rpc_value_errors(capsys):
+
+    error_msgs = {
+        "{'code': -32000, 'message': 'unknown block'}": "waiting for new blocks",
+        "{'code': -32603, 'message': 'request failed or timed out'}": "request for eth event logs failed",
+        "something else...": "unknown RPC error gathering eth event logs",
+    }
+
+    for i in error_msgs.keys():
+
+        def raise_(*args, **kwargs):
+            raise ValueError(i)  # noqa: B023
+
+        with patch("web3.eth.Eth.get_logs", side_effect=raise_):
+
+            w3 = get_web3(chain_id=1)
+
+            await log_loop(web3=w3, addr="0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0")
+
+            assert error_msgs[i] in capsys.readouterr()[0]
 
 
 def blah():
