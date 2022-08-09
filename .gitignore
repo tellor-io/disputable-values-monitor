@@ -135,4 +135,5 @@ vars.sh
 # Mac specific files
 .DS_Store
 
+Pipfile
 .vscode/

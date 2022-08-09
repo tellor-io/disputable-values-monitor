@@ -30,7 +30,7 @@ def print_title_info() -> None:
     # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
 
-def cli() -> None:
+async def cli() -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     print_title_info()
 
@@ -72,9 +72,9 @@ def cli() -> None:
 
                 chain_id, event = event_info
                 if chain_id == eth_chain_id:
-                    new_report = parse_new_report_event(event, eth_web3, eth_contract)
+                    new_report = await parse_new_report_event(event, eth_web3, eth_contract)
                 elif chain_id == poly_chain_id:
-                    new_report = parse_new_report_event(event, poly_web3, poly_contract)
+                    new_report = await parse_new_report_event(event, poly_web3, poly_contract)
                 else:
                     print("unsupported chain!")
                     continue
