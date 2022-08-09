@@ -217,21 +217,25 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
     link = get_tx_explorer_url(tx_hash=tx_hash.hex(), chain_id=web3.eth.chain_id)
     query_id = str(q.query_id.hex())
     disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
-    status_str = disputable_str(disputable, query_id)
+    if disputable is None:
+        print("unable to check disputability")
+        return None
+    else:
+        status_str = disputable_str(disputable, query_id)
 
-    return NewReport(
-        chain_id=web3.eth.chain_id,
-        eastern_time=args["_time"],
-        tx_hash=tx_hash.hex(),
-        link=link,
-        query_type=type(q).__name__,
-        value=val,
-        asset=asset,
-        currency=currency,
-        query_id=query_id,
-        disputable=disputable,
-        status_str=status_str,
-    )
+        return NewReport(
+            chain_id=web3.eth.chain_id,
+            eastern_time=args["_time"],
+            tx_hash=tx_hash.hex(),
+            link=link,
+            query_type=type(q).__name__,
+            value=val,
+            asset=asset,
+            currency=currency,
+            query_id=query_id,
+            disputable=disputable,
+            status_str=status_str,
+        )
 
 
 def main() -> None:
