@@ -9,6 +9,8 @@ from typing import Union
 
 from dateutil import tz
 from telliot_feeds.queries import SpotPrice
+from telliot_core.api import SpotPrice
+from telliot_feeds.datafeed import DataFeed
 from telliot_core.directory import contract_directory
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
@@ -82,32 +84,45 @@ async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]
 async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     num = web3.eth.get_block_number()
-    events = web3.eth.get_logs({"fromBlock": num, "toBlock": num + 100, "address": addr})  # type: ignore
+    try:
+        events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
+    except ValueError as e:
+        msg = str(e)
+        if "unknown block" in msg:
+            print("waiting for new blocks")
+        elif "request failed or timed out" in msg:
+            print("request for eth event logs failed")
+        else:
+            print("unknown RPC error gathering eth event logs \n" + msg)
 
+        return []
     unique_events = {}
-    unique_events_lis = []
+    unique_events_list = []
 
     for event in events:
         txhash = event["transactionHash"]
 
         if txhash not in unique_events:
             unique_events[txhash] = event
-            unique_events_lis.append((web3.eth.chain_id, event))
+            unique_events_list.append((web3.eth.chain_id, event))
 
-    return unique_events_lis
+    return unique_events_list
 
 
-def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
+async def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if query_id not in DATAFEED_LOOKUP:
         print(f"new report for unsupported query ID: {query_id}")
         return None
 
-    current_feed = DATAFEED_LOOKUP[query_id]
-    trusted_val = asyncio.run(current_feed.source.fetch_new_datapoint())[0]
-    percent_diff = (reported_val - trusted_val) / trusted_val
-
-    return bool(abs(percent_diff) > conf_threshold)
+    current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
+    trusted_val: Optional[float] = (await current_feed.source.fetch_new_datapoint())[0]
+    if trusted_val is not None:
+        percent_diff = (reported_val - trusted_val) / trusted_val
+        return abs(percent_diff) > conf_threshold
+    else:
+        print("unable to fetch new datapoint from telliot source")
+        return None
 
 
 @dataclass
@@ -186,7 +201,7 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract: Contract) -> Optional[NewReport]:
+async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract: Contract) -> Optional[NewReport]:
     """Parse a NewReport event."""
     tx_hash = event["transactionHash"]
     try:
@@ -212,22 +227,26 @@ def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract:
     val = q.value_type.decode(args["_value"])
     link = get_tx_explorer_url(tx_hash=tx_hash.hex(), chain_id=web3.eth.chain_id)
     query_id = str(q.query_id.hex())
-    disputable = is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
-    status_str = disputable_str(disputable, query_id)
+    disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
+    if disputable is None:
+        print("unable to check disputability")
+        return None
+    else:
+        status_str = disputable_str(disputable, query_id)
 
-    return NewReport(
-        chain_id=web3.eth.chain_id,
-        eastern_time=args["_time"],
-        tx_hash=tx_hash.hex(),
-        link=link,
-        query_type=type(q).__name__,
-        value=val,
-        asset=asset,
-        currency=currency,
-        query_id=query_id,
-        disputable=disputable,
-        status_str=status_str,
-    )
+        return NewReport(
+            chain_id=web3.eth.chain_id,
+            eastern_time=args["_time"],
+            tx_hash=tx_hash.hex(),
+            link=link,
+            query_type=type(q).__name__,
+            value=val,
+            asset=asset,
+            currency=currency,
+            query_id=query_id,
+            disputable=disputable,
+            status_str=status_str,
+        )
 
 
 def main() -> None:
