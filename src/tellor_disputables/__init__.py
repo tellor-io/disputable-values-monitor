@@ -12,21 +12,23 @@ CONFIDENCE_THRESHOLD = 0.50
 
 DATAFEED_LOOKUP = {
     "000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
-    # will be in next release:
-    # "0x35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
+    "35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
-    # "	0xd913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,
-    # "": feeds.diva_protocol_feed.assemble_diva_datafeed,
+    "d913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,
     "000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
-    # "": feeds.idle_usd_feed.idle_usd_median_feed,
-    # "": feeds.matic_usd_feed.matic_usd_median_feed,
-    # "": feeds.mkr_usd_feed.mkr_usd_median_feed,
+    "7239909C0AA5D3E89EFB2DCE06C80811E93AB18413110B8C0435EE32C52CC4FB": feeds.idle_usd_feed.idle_usd_median_feed,
+    "40AA71E5205FDC7BDB7D65F7AE41DACA3820C5D3A8F62357A99EDA3AA27244A3": feeds.matic_usd_feed.matic_usd_median_feed,
+    "B9D5E25DABD5F0A48F45F5B6B524BAC100DF05EAF5311F3E5339AC7C3DD0A37E": feeds.mkr_usd_feed.mkr_usd_median_feed,
     "ee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed,
-    "2e0aa9e19f5c3e1d3e086b34fe90072b43889382f563e484e8e1e3588b19ef14": feeds.eur_usd_feed.eur_usd_median_feed
-    # "": feeds.vesq.vsq_usd_median_feed #not yet supported here for some reason
+    "2e0aa9e19f5c3e1d3e086b34fe90072b43889382f563e484e8e1e3588b19ef14": feeds.eur_usd_feed.eur_usd_median_feed,
+    "8EE44CD434ED5B0E007EEE581FBE0855336F3F84484E8D9989A620A4A49AA0F7": feeds.usdc_usd_feed.usdc_usd_median_feed,
+    "A9B17C33422E2E576FB664D1D11D38C377B614D62F92653D006ECA7BB2AF1656": feeds.vesq.vsq_usd_median_feed,
+    "6E5122118CE52CC9B97C359C1F174A3C21C71D810F7ADDCE3484CC28E0BE0F29": feeds.ric_usd_feed.ric_usd_median_feed,
+    "3F640BF607FEB4455C3EB10629385D823341CD18FEF6F9F87B8BCFBEAFC44EEB": feeds.sushi_usd_feed.sushi_usd_median_feed
+    # "": feeds.diva_protocol_feed.assemble_diva_datafeed
 }
 
 
