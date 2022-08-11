@@ -8,12 +8,13 @@ from typing import Optional
 from typing import Union
 
 from dateutil import tz
+from telliot_feeds.queries import SpotPrice
 from telliot_core.api import SpotPrice
-from telliot_core.datafeed import DataFeed
+from telliot_feeds.datafeed import DataFeed
 from telliot_core.directory import contract_directory
-from telliot_core.queries.abi_query import AbiQuery
-from telliot_core.queries.json_query import JsonQuery
-from telliot_core.queries.legacy_query import LegacyRequest
+from telliot_feeds.queries.abi_query import AbiQuery
+from telliot_feeds.queries.json_query import JsonQuery
+from telliot_feeds.queries.legacy_query import LegacyRequest
 from web3 import Web3
 from web3.contract import Contract
 from web3.datastructures import AttributeDict

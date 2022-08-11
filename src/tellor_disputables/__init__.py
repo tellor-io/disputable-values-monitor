@@ -1,7 +1,7 @@
 """Tellor Disputables - CLI dashboard & alerts for potential
 bad values reported to Tellor oracles."""
 from hexbytes import HexBytes
-from telliot_feed_examples import feeds
+from telliot_feeds import feeds
 from web3.datastructures import AttributeDict
 
 
@@ -24,7 +24,8 @@ DATAFEED_LOOKUP = {
     # "": feeds.mkr_usd_feed.mkr_usd_median_feed,
     "ee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
     "0000000000000000000000000000000000000000000000000000000000000032": feeds.trb_usd_feed.trb_usd_median_feed,
-    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed
+    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed,
+    "2e0aa9e19f5c3e1d3e086b34fe90072b43889382f563e484e8e1e3588b19ef14": feeds.eur_usd_feed.eur_usd_median_feed
     # "": feeds.vesq.vsq_usd_median_feed #not yet supported here for some reason
 }
 
