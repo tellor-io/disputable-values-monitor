@@ -137,3 +137,6 @@ vars.sh
 
 Pipfile
 .vscode/
+
+log.txt
+table.csv

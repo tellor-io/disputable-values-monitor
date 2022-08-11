@@ -1,5 +1,6 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,10 +9,9 @@ from typing import Optional
 from typing import Union
 
 from dateutil import tz
-from telliot_feeds.queries import SpotPrice
-from telliot_core.api import SpotPrice
-from telliot_feeds.datafeed import DataFeed
 from telliot_core.directory import contract_directory
+from telliot_feeds.datafeed import DataFeed
+from telliot_feeds.queries import SpotPrice
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.legacy_query import LegacyRequest
@@ -89,11 +89,11 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     except ValueError as e:
         msg = str(e)
         if "unknown block" in msg:
-            print("waiting for new blocks")
+            logging.error("waiting for new blocks")
         elif "request failed or timed out" in msg:
-            print("request for eth event logs failed")
+            logging.error("request for eth event logs failed")
         else:
-            print("unknown RPC error gathering eth event logs \n" + msg)
+            logging.error("unknown RPC error gathering eth event logs \n" + msg)
 
         return []
     unique_events = {}
@@ -112,7 +112,7 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
 async def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if query_id not in DATAFEED_LOOKUP:
-        print(f"new report for unsupported query ID: {query_id}")
+        logging.info(f"new report for unsupported query ID: {query_id}")
         return None
 
     current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
@@ -121,7 +121,7 @@ async def is_disputable(reported_val: float, query_id: str, conf_threshold: floa
         percent_diff = (reported_val - trusted_val) / trusted_val
         return abs(percent_diff) > conf_threshold
     else:
-        print("unable to fetch new datapoint from telliot source")
+        logging.error("unable to fetch new datapoint from telliot source")
         return None
 
 
@@ -207,7 +207,7 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
     try:
         receipt = get_tx_receipt(tx_hash, web3, contract)
     except TransactionNotFound:
-        print("transaction not found")
+        logging.error("transaction not found")
         return None
 
     if receipt["event"] != "NewReport":
@@ -221,7 +221,7 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
     elif isinstance(q, LegacyRequest):
         asset, currency = get_legacy_request_pair_info(q.legacy_id)
     else:
-        print("unsupported query type")
+        logging.error("unsupported query type")
         return None
 
     val = q.value_type.decode(args["_value"])
@@ -229,7 +229,7 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
     query_id = str(q.query_id.hex())
     disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
     if disputable is None:
-        print("unable to check disputability")
+        logging.info("unable to check disputability")
         return None
     else:
         status_str = disputable_str(disputable, query_id)
@@ -257,7 +257,7 @@ def main() -> None:
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
     new_report = parse_new_report_event(EXAMPLE_NEW_REPORT_EVENT, poly_web3, poly_contract)
-    print(new_report)
+    logging.info(new_report)
 
 
 if __name__ == "__main__":

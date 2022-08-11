@@ -1,5 +1,6 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
 import asyncio
+import logging
 import warnings
 from time import sleep
 
@@ -25,7 +26,8 @@ warnings.simplefilter("ignore", UserWarning)
 
 def print_title_info() -> None:
     """Prints the title info."""
-    print("Disputable Values Monitor 📒🔎📲")
+    logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
+    logging.info("Disputable Values Monitor 📒🔎📲")
     # print("get text alerts when potentially bad data is reported to Tellor oracles")
     # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
@@ -37,7 +39,7 @@ async def cli() -> None:
     recipients = get_phone_numbers()
     from_number = get_from_number()
     if recipients is None or from_number is None:
-        print("Missing phone numbers. See README for required environment variables. Exiting.")
+        logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
     twilio_client = get_twilio_client()
 
@@ -56,14 +58,12 @@ async def cli() -> None:
 
     while True:
         # Fetch NewReport events
-        event_lists = asyncio.run(
-            get_events(
-                eth_web3,
-                eth_addr,
-                eth_abi,
-                poly_web3,
-                poly_addr,
-            )
+        event_lists = await get_events(
+            eth_web3,
+            eth_addr,
+            eth_abi,
+            poly_web3,
+            poly_addr,
         )
 
         for event_list in event_lists:
@@ -76,7 +76,7 @@ async def cli() -> None:
                 elif chain_id == poly_chain_id:
                     new_report = await parse_new_report_event(event, poly_web3, poly_contract)
                 else:
-                    print("unsupported chain!")
+                    logging.error("unsupported chain!")
                     continue
 
                 # Skip duplicate & missing events
@@ -125,13 +125,13 @@ async def cli() -> None:
                     Disputable=disputable_strs,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
-                print(df.to_markdown(), end="\r")
+                df.to_csv("table.csv")
 
         sleep(1)
 
 
 def main() -> None:
-    cli()
+    asyncio.run(cli())
 
 
 if __name__ == "__main__":

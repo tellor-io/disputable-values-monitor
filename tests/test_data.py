@@ -2,7 +2,7 @@
 from unittest.mock import patch
 
 import pytest
-from telliot_core.api import SpotPrice
+from telliot_feeds.queries import SpotPrice
 
 from tellor_disputables.data import get_infura_node_url
 from tellor_disputables.data import get_legacy_request_pair_info
@@ -86,7 +86,7 @@ def test_get_query_from_data():
 
 
 @pytest.mark.asyncio
-async def test_rpc_value_errors(capsys):
+async def test_rpc_value_errors(caplog):
 
     error_msgs = {
         "{'code': -32000, 'message': 'unknown block'}": "waiting for new blocks",
@@ -105,7 +105,7 @@ async def test_rpc_value_errors(capsys):
 
             await log_loop(web3=w3, addr="0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0")
 
-            assert error_msgs[i] in capsys.readouterr()[0]
+            assert error_msgs[i] in caplog.text
 
 
 def blah():
