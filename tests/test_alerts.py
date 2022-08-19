@@ -27,7 +27,7 @@ def test_get_from_number():
     assert num == "+19035029327"
 
 
-def test_get_twilio_client():
+def test_get_twilio_client(check_twilio_configured):
     client = get_twilio_client()
 
     assert isinstance(client, Client)
