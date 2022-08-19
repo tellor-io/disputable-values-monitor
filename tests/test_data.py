@@ -10,6 +10,7 @@ from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import log_loop
+from tellor_disputables.data import get_tx_receipt
 
 
 @pytest.mark.asyncio
@@ -108,5 +109,10 @@ async def test_rpc_value_errors(check_web3_configured, caplog):
             assert error_msgs[i] in caplog.text
 
 
-def blah():
-    pass
+def test_get_tx_receipt(check_web3_configured, caplog):
+    w3 = get_web3(chain_id=1)
+    tx_hash = "0x12345"
+    tx_receipt = get_tx_receipt(w3, tx_hash)
+
+    assert tx_receipt is None
+    assert "Unable to process receipt" in caplog.text
