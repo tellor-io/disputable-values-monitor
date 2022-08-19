@@ -185,7 +185,7 @@ def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
     try:
         receipt = contract.events.NewReport().processReceipt(receipt)[0]
     except IndexError:
-        logging.warning(f"Unable to process receipt {str(receipt)}")
+        logging.warning(f"Unable to process receipt for transaction {tx_hash}")
         return None
     return receipt
 

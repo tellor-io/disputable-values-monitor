@@ -115,4 +115,4 @@ def test_get_tx_receipt(check_web3_configured, caplog):
     tx_receipt = get_tx_receipt(w3, tx_hash)
 
     assert tx_receipt is None
-    assert "Unable to process receipt" in caplog.text
+    assert "Unable to process receipt for transaction 0x12345" in caplog.text
