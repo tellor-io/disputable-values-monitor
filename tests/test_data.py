@@ -86,7 +86,7 @@ def test_get_query_from_data():
 
 
 @pytest.mark.asyncio
-async def test_rpc_value_errors(caplog):
+async def test_rpc_value_errors(check_web3_configured, caplog):
 
     error_msgs = {
         "{'code': -32000, 'message': 'unknown block'}": "waiting for new blocks",
