@@ -179,9 +179,14 @@ def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
     try:
         receipt = web3.eth.getTransactionReceipt(tx_hash)
     except TimeoutError:
+        logging.warning(f"timeout getting transaction receipt for {tx_hash}")
         return None
 
-    receipt = contract.events.NewReport().processReceipt(receipt)[0]
+    try:
+        receipt = contract.events.NewReport().processReceipt(receipt)[0]
+    except IndexError:
+        logging.warning(f"Unable to process receipt {str(receipt)}")
+        return None
     return receipt
 
 
