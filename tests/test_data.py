@@ -14,19 +14,23 @@ from tellor_disputables.data import get_tx_receipt
 
 
 @pytest.mark.asyncio
-async def test_is_disputable():
+async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
     # ETH/USD
     query_id = "0000000000000000000000000000000000000000000000000000000000000001"
     val = 1000.0
     threshold = 0.05
 
+    # Is disputable
     disputable = await is_disputable(val, query_id, threshold)
-    if not disputable:
-        assert not disputable
-    else:
-        assert isinstance(disputable, bool)
-        assert disputable
+    assert isinstance(disputable, bool)
+    assert disputable
+
+    # Unable to fetch price
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
+        disputable = await is_disputable(val, query_id, threshold)
+        assert disputable is None
+        assert "Unable to fetch new datapoint from feed" in caplog.text
 
     # Unsupported query id
     query_id = "gobldygook"
