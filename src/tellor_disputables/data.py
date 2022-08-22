@@ -116,6 +116,10 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
 
 async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = .05) -> Optional[bool]:
     """Check if the reported value is disputable."""
+    if reported_val is None:
+        logging.error("Need reported value to check disputability")
+        return None
+
     if query_id not in DATAFEED_LOOKUP:
         logging.info(f"new report for unsupported query ID: {query_id}")
         return None

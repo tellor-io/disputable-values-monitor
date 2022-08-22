@@ -1,4 +1,5 @@
 """Tests for getting & parsing NewReport events."""
+from dis import dis
 from unittest.mock import patch
 
 import pytest
@@ -25,6 +26,14 @@ async def test_is_disputable(caplog):
     disputable = await is_disputable(val, query_id, threshold)
     assert isinstance(disputable, bool)
     assert disputable
+
+    # No reported value
+    disputable = await is_disputable(
+        reported_val=None,
+        query_id=query_id,
+        conf_threshold=threshold)
+    assert disputable is None
+    assert "Need reported value to check disputability" in caplog.text
 
     # Unable to fetch price
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
