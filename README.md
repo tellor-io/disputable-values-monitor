@@ -14,7 +14,7 @@ poetry install
 In `vars.example.sh`:
 - List phone numbers you want alerts sent to (`ALERT_RECIPIENTS`).
 - From [twilio](https://www.twilio.com/docs/sms/quickstart/python), specify the phone number that will send messages (`TWILIO_FROM`), your `TWILIO_ACCOUNT_SID`, and access key (`TWILIO_AUTH_TOKEN`).
-- Add an [infura key](https://infura.io) (`INFURA_API_KEY`).
+- Add an [infura key](https://infura.io) (`INFURA_API_KEY`). **note** the Infura key must have polygon support enabled!
 - Export environment variables:
 ```
 source vars.example.sh
