@@ -7,6 +7,7 @@ A CLI dashboard & text alerts app for disputable values reported to Tellor oracl
 - Python >= 3.10
 - Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
 ```
+poetry env use 3.10
 poetry install
 ```
 ### Update environment variables:
