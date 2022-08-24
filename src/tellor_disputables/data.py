@@ -109,19 +109,28 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     return unique_events_list
 
 
-async def is_disputable(reported_val: float, query_id: str, conf_threshold: float) -> Optional[bool]:
+async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
+    """Fetch a new datapoint from a datafeed."""
+    return await feed.source.fetch_new_datapoint()
+
+
+async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = .05) -> Optional[bool]:
     """Check if the reported value is disputable."""
+    if reported_val is None:
+        logging.error("Need reported value to check disputability")
+        return None
+
     if query_id not in DATAFEED_LOOKUP:
         logging.info(f"new report for unsupported query ID: {query_id}")
         return None
 
     current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
-    trusted_val: Optional[float] = (await current_feed.source.fetch_new_datapoint())[0]
+    trusted_val, _ = await general_fetch_new_datapoint(current_feed)
     if trusted_val is not None:
         percent_diff = (reported_val - trusted_val) / trusted_val
         return abs(percent_diff) > conf_threshold
     else:
-        logging.error("unable to fetch new datapoint from telliot source")
+        logging.error("Unable to fetch new datapoint from feed")
         return None
 
 
