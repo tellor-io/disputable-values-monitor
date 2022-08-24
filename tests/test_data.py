@@ -1,5 +1,4 @@
 """Tests for getting & parsing NewReport events."""
-from dis import dis
 from unittest.mock import patch
 
 import pytest
