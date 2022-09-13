@@ -3,9 +3,15 @@ A CLI dashboard & text alerts app for disputable values reported to Tellor oracl
 
 ![](demo.gif)
 
-## Requirements:
+## Prerequisites:
 - Python >= 3.10
+- [Poetry](https://github.com/python-poetry/poetry)
+
+## Requirements
+- Clone repo
 - Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
+
+
 ```
 poetry env use 3.10
 poetry install
