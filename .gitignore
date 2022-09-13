@@ -140,3 +140,4 @@ Pipfile
 
 log.txt
 table.csv
+poetry.lock
