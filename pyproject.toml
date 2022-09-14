@@ -7,7 +7,7 @@ license = "MIT"
 packages = [{ include = "tellor_disputables", from = "src" }]
 
 [tool.poetry.dependencies]
-python = "3.10.2"
+python = "^3.10.2"
 twilio = "^7.7.0"
 web3 = "5.27.0"
 pandas = "^1.4.1"
