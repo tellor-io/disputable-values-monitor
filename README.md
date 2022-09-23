@@ -28,19 +28,23 @@ source vars.example.sh
 ```
 
 ## Edit the chains you want to monitor
-Update the list of chains you want to monitor and the confidence threshold for disputable values in `/src/tellor_disputables/__init__.py`:
+
+To edit the chains you want to monitor:
+1. Add/remove chains to the list of chains you want to monitor and the confidence threshold for disputable values in `/src/tellor_disputables/__init__.py`
 ```
 ETHEREUM_CHAIN_ID = 4
 POLYGON_CHAIN_ID = 80001
 CONFIDENCE_THRESHOLD = 0.50
 ```
+2. Add/remove urls to the list of RPC urls in `src/tellor_disputables/data.py`.
 
-The monitor currently supports these networks:
+...The monitor currently supports these networks...
 * Ethereum mainnet:         ETHEREUM_CHAIN_ID = 1
 * Ethereum Rinkeby testnet: ETHEREUM_CHAIN_ID = 4
 * Polygon mainnet: POLYGON_CHAIN_ID = 137
 * Polygon testnet Mumbai: POLYGON_CHAIN_ID = 80001
 
+3. Import new Chain IDs into `src/tellor_disputables/cli.py`. If deleting a chain ID, remove the import.
 
 
 ## Usage:
