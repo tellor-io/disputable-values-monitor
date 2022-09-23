@@ -44,7 +44,7 @@ CONFIDENCE_THRESHOLD = 0.50
 * Polygon mainnet: POLYGON_CHAIN_ID = 137
 * Polygon testnet Mumbai: POLYGON_CHAIN_ID = 80001
 
-
+3. Import new Chain IDs into `src/tellor_disputables/cli.py`. If deleting a chain ID, remove the import.
 
 
 ## Usage:
