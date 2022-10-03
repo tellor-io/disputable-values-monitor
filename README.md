@@ -4,7 +4,7 @@ A CLI dashboard & text alerts app for disputable values reported to Tellor oracl
 ![](demo.gif)
 
 ## Prerequisites:
-- Install Python >= 3.10
+- Install Python 3.9
 - Install [Poetry](https://github.com/python-poetry/poetry)
 - Create an account on [twilio](https://www.twilio.com/docs/sms/quickstart/python)
 
@@ -13,7 +13,7 @@ A CLI dashboard & text alerts app for disputable values reported to Tellor oracl
 - Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
 
 ```
-poetry env use 3.10
+poetry env use 3.9
 poetry install
 ```
 
