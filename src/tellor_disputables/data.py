@@ -29,15 +29,9 @@ from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
 
 
-def get_infura_node_url(chain_id: int) -> str:
+def get_node_url() -> str:
     """Get the node URL for the given chain ID."""
-    urls = {
-        1: "https://mainnet.infura.io/v3/",
-        4: "https://rinkeby.infura.io/v3/",
-        137: "https://polygon-mainnet.infura.io/v3/",
-        80001: "https://polygon-mumbai.infura.io/v3/",
-    }
-    return f'{urls[chain_id]}{os.environ.get("INFURA_API_KEY")}'
+    return os.environ.get("NODE_URL", None)
 
 
 def get_contract_info(chain_id: int) -> tuple[str, str]:
@@ -49,11 +43,11 @@ def get_contract_info(chain_id: int) -> tuple[str, str]:
     return addr, abi
 
 
-def get_web3(chain_id: int) -> Web3:
+def get_web3() -> Web3:
     """Get a Web3 instance for the given chain ID."""
-    node_url = get_infura_node_url(chain_id)
-    if "None" in node_url:
-        raise ValueError("No API key found. Please set the environment variable INFURA_API_KEY.")
+    node_url = get_node_url()
+    if not node_url:
+        raise ValueError("No node url found. Please set the environment variable NODE_URL.")
     return Web3(Web3.HTTPProvider(node_url))
 
 
