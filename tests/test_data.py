@@ -7,10 +7,10 @@ from telliot_feeds.queries import SpotPrice
 from tellor_disputables.data import get_infura_node_url
 from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_query_from_data
+from tellor_disputables.data import get_tx_receipt
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import log_loop
-from tellor_disputables.data import get_tx_receipt
 
 
 @pytest.mark.asyncio
@@ -27,10 +27,7 @@ async def test_is_disputable(caplog):
     assert disputable
 
     # No reported value
-    disputable = await is_disputable(
-        reported_val=None,
-        query_id=query_id,
-        conf_threshold=threshold)
+    disputable = await is_disputable(reported_val=None, query_id=query_id, conf_threshold=threshold)
     assert disputable is None
     assert "Need reported value to check disputability" in caplog.text
 

@@ -33,7 +33,6 @@ def get_infura_node_url(chain_id: int) -> str:
     """Get the node URL for the given chain ID."""
     urls = {
         1: "https://mainnet.infura.io/v3/",
-        4: "https://rinkeby.infura.io/v3/",
         137: "https://polygon-mainnet.infura.io/v3/",
         80001: "https://polygon-mumbai.infura.io/v3/",
     }
@@ -114,7 +113,7 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
     return await feed.source.fetch_new_datapoint()
 
 
-async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = .05) -> Optional[bool]:
+async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = 0.05) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if reported_val is None:
         logging.error("Need reported value to check disputability")
@@ -128,7 +127,7 @@ async def is_disputable(reported_val: float, query_id: str, conf_threshold: floa
     trusted_val, _ = await general_fetch_new_datapoint(current_feed)
     if trusted_val is not None:
         percent_diff = (reported_val - trusted_val) / trusted_val
-        return abs(percent_diff) > conf_threshold
+        return float(abs(percent_diff)) > conf_threshold
     else:
         logging.error("Unable to fetch new datapoint from feed")
         return None

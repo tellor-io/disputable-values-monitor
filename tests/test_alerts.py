@@ -1,12 +1,16 @@
 """Tests for generating alert messages."""
 import os
+import time
+from unittest import mock
 
 from twilio.rest import Client
 
+from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_twilio_client
+from tellor_disputables.data import NewReport
 
 
 def test_generate_alert_msg():
@@ -39,3 +43,35 @@ def test_get_phone_numbers():
 
     assert isinstance(numbers, list)
     assert numbers == ["+17897894567", "+17897894567", "+17897894567"]
+
+
+def test_notify_non_disputable(capsys):
+    """test sending an alert on any new value event if all_values flag is True"""
+
+    def first_alert():
+        print("alert sent")
+
+    def second_alert():
+        yield print("second alert sent")
+
+    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert(), second_alert()])):
+        r = NewReport(
+            "0xabc123",
+            time.time(),
+            1,
+            "etherscan.io/abc",
+            "query type",
+            15.5,
+            "trb",
+            "usd",
+            "query id",
+            None,
+            "status ",
+        )
+        alert(True, r, "", "")
+
+        assert "alert sent" in capsys.readouterr().out
+
+        alert(False, r, "", "")
+
+        assert "second alert sent" not in capsys.readouterr().out

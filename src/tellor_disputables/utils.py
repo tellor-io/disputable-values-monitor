@@ -7,7 +7,6 @@ def get_tx_explorer_url(tx_hash: str, chain_id: int) -> str:
     """Get transaction explorer URL."""
     explorers = {
         1: "https://etherscan.io/",
-        4: "https://rinkeby.etherscan.io/",
         137: "https://polygonscan.com/",
         80001: "https://mumbai.polygonscan.com/",
     }

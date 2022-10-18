@@ -1,18 +1,17 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
-import asyncio
 import logging
 import warnings
 from time import sleep
 
+import click
 import pandas as pd
+from telliot_core.cli.utils import async_run
 
 from tellor_disputables import ETHEREUM_CHAIN_ID
 from tellor_disputables import POLYGON_CHAIN_ID
-from tellor_disputables.alerts import generate_alert_msg
+from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
-from tellor_disputables.alerts import get_twilio_client
-from tellor_disputables.alerts import send_text_msg
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
@@ -27,13 +26,20 @@ warnings.simplefilter("ignore", UserWarning)
 def print_title_info() -> None:
     """Prints the title info."""
     logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
-    logging.info("Disputable Values Monitor 📒🔎📲")
+    click.echo("Disputable Values Monitor 📒🔎📲")
     # print("get text alerts when potentially bad data is reported to Tellor oracles")
     # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
 
-async def cli() -> None:
+@click.command()
+@click.option("-a", "--all-values", is_flag=True, show_default=True)
+@async_run
+async def main(all_values: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
+    await start(all_values=all_values)
+
+
+async def start(all_values: bool) -> None:
     print_title_info()
 
     recipients = get_phone_numbers()
@@ -41,7 +47,6 @@ async def cli() -> None:
     if recipients is None or from_number is None:
         logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
-    twilio_client = get_twilio_client()
 
     display_rows = []
     displayed_events = set()
@@ -88,12 +93,7 @@ async def cli() -> None:
                 clear_console()
                 print_title_info()
 
-                # Account for unsupported queryIDs
-                if new_report.disputable is not None:
-                    # Alert via text msg
-                    msg = generate_alert_msg(new_report.link)
-                    if new_report.disputable:
-                        send_text_msg(twilio_client, recipients, from_number, msg)
+                alert(all_values, new_report, recipients, from_number)
 
                 display_rows.append(
                     (
@@ -128,10 +128,6 @@ async def cli() -> None:
                 df.to_csv("table.csv")
 
         sleep(1)
-
-
-def main() -> None:
-    asyncio.run(cli())
 
 
 if __name__ == "__main__":
