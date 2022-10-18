@@ -15,7 +15,7 @@ from tellor_disputables.data import NewReport
 
 def test_generate_alert_msg():
     link = "example transaction link"
-    msg = generate_alert_msg(link)
+    msg = generate_alert_msg(True, link)
 
     assert isinstance(msg, str)
     assert "example transaction link" in msg

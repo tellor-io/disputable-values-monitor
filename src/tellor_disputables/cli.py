@@ -10,6 +10,7 @@ from telliot_core.cli.utils import async_run
 from tellor_disputables import ETHEREUM_CHAIN_ID
 from tellor_disputables import POLYGON_CHAIN_ID
 from tellor_disputables.alerts import alert
+from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.data import get_contract
@@ -33,13 +34,16 @@ def print_title_info() -> None:
 
 @click.command()
 @click.option("-a", "--all-values", is_flag=True, show_default=True)
+@click.option("-w", "--wait", help="how long to wait between checks", type=int)
 @async_run
-async def main(all_values: bool) -> None:
+async def main(all_values: bool, wait: int) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values)
+    await start(all_values=all_values, wait=wait)
 
 
-async def start(all_values: bool) -> None:
+async def start(all_values: bool, wait: int) -> None:
+    # Fetch optional wait period
+    wait_period = wait if wait else WAIT_PERIOD
     print_title_info()
 
     recipients = get_phone_numbers()
@@ -53,11 +57,11 @@ async def start(all_values: bool) -> None:
 
     # Get contract addresses & web3 instances
     eth_chain_id = ETHEREUM_CHAIN_ID
-    eth_web3 = get_web3(eth_chain_id)
+    eth_web3 = get_web3()
     eth_addr, eth_abi = get_contract_info(eth_chain_id)
     eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
     poly_chain_id = POLYGON_CHAIN_ID
-    poly_web3 = get_web3(poly_chain_id)
+    poly_web3 = get_web3()
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
 
@@ -127,7 +131,7 @@ async def start(all_values: bool) -> None:
                 df = pd.DataFrame.from_dict(dataframe_state)
                 df.to_csv("table.csv")
 
-        sleep(1)
+        sleep(wait_period)
 
 
 if __name__ == "__main__":

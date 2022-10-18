@@ -51,6 +51,19 @@ CONFIDENCE_THRESHOLD = 0.50
 ```
 poetry run cli
 ```
+### Reducing RPC calls
+You can update the wait time between event checks to reduce calls to the RPC endpoint. The default is seven seconds.
+Use the `--wait` flag to specify a different wait time in seconds.
+```
+poetry run cli --wait 120
+```
+
+### Viewing all NewReport events
+You can configure the disputable-values-monitor to alert you on ALL NewReport events. This is useful for monitoring uncommon but important data types.
+Use the `-a` or `--all-values` flag to specify that you want to see all values.
+```
+poetry run cli -a
+```
 
 
 

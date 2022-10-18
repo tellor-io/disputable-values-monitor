@@ -1,6 +1,7 @@
 """Helper functions."""
 import os
 from typing import Optional
+import argparse
 
 
 def get_tx_explorer_url(tx_hash: str, chain_id: int) -> str:
@@ -29,3 +30,5 @@ def clear_console() -> None:
     # mac, linux (name=="posix")
     else:
         _ = os.system("clear")
+
+

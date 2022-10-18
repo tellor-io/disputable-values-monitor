@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from telliot_feeds.queries import SpotPrice
 
-from tellor_disputables.data import get_infura_node_url
+from tellor_disputables.data import get_contract, get_contract_info, get_node_url
 from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import get_tx_receipt
@@ -43,13 +43,10 @@ async def test_is_disputable(caplog):
 
 
 def test_get_infura_node_url():
-    url = get_infura_node_url(137)
+    url = get_node_url()
 
     assert isinstance(url, str)
-    assert "https://polygon-mainnet.infura.io/v3/" in url
-
-    with pytest.raises(KeyError):
-        _ = get_infura_node_url(12341234)
+    assert url.startswith("http")
 
 
 def test_get_legacy_request_pair_info():
@@ -111,7 +108,7 @@ async def test_rpc_value_errors(check_web3_configured, caplog):
 
         with patch("web3.eth.Eth.get_logs", side_effect=raise_):
 
-            w3 = get_web3(chain_id=1)
+            w3 = get_web3()
 
             await log_loop(web3=w3, addr="0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0")
 
@@ -119,9 +116,15 @@ async def test_rpc_value_errors(check_web3_configured, caplog):
 
 
 def test_get_tx_receipt(check_web3_configured, caplog):
-    w3 = get_web3(chain_id=1)
+    w3 = get_web3()
+    address, abi = get_contract_info(1)
+    contract = get_contract(w3, address, abi)
     tx_hash = "0x12345"
-    tx_receipt = get_tx_receipt(w3, tx_hash)
+    tx_receipt = get_tx_receipt(tx_hash=tx_hash, web3=w3, contract=contract)
 
     assert tx_receipt is None
-    assert "Unable to process receipt for transaction 0x12345" in caplog.text
+    assert (
+        "Unable to process receipt for transaction 0x12345" in caplog.text
+        or 
+        "not found" in caplog.text
+    )

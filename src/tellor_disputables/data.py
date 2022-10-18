@@ -29,14 +29,9 @@ from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
 
 
-def get_infura_node_url(chain_id: int) -> str:
+def get_node_url() -> Optional[str]:
     """Get the node URL for the given chain ID."""
-    urls = {
-        1: "https://mainnet.infura.io/v3/",
-        137: "https://polygon-mainnet.infura.io/v3/",
-        80001: "https://polygon-mumbai.infura.io/v3/",
-    }
-    return f'{urls[chain_id]}{os.environ.get("INFURA_API_KEY")}'
+    return os.environ.get("NODE_URL", None)
 
 
 def get_contract_info(chain_id: int) -> tuple[str, str]:
@@ -48,11 +43,11 @@ def get_contract_info(chain_id: int) -> tuple[str, str]:
     return addr, abi
 
 
-def get_web3(chain_id: int) -> Web3:
+def get_web3() -> Web3:
     """Get a Web3 instance for the given chain ID."""
-    node_url = get_infura_node_url(chain_id)
-    if "None" in node_url:
-        raise ValueError("No API key found. Please set the environment variable INFURA_API_KEY.")
+    node_url = get_node_url()
+    if not node_url:
+        raise ValueError("No node url found. Please set the environment variable NODE_URL.")
     return Web3(Web3.HTTPProvider(node_url))
 
 
@@ -189,6 +184,9 @@ def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
     except TimeoutError:
         logging.warning(f"timeout getting transaction receipt for {tx_hash}")
         return None
+    except TransactionNotFound:
+        logging.warning(f"transcation hash {tx_hash} not found")
+        return None
 
     try:
         receipt = contract.events.NewReport().processReceipt(receipt)[0]
@@ -266,7 +264,7 @@ def main() -> None:
     """Main function."""
     # _ = asyncio.run(get_events())
     poly_chain_id = 80001
-    poly_web3 = get_web3(poly_chain_id)
+    poly_web3 = get_web3()
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
     new_report = parse_new_report_event(EXAMPLE_NEW_REPORT_EVENT, poly_web3, poly_contract)
