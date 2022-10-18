@@ -9,8 +9,8 @@ from telliot_core.cli.utils import async_run
 
 from tellor_disputables import ETHEREUM_CHAIN_ID
 from tellor_disputables import POLYGON_CHAIN_ID
-from tellor_disputables.alerts import alert
 from tellor_disputables import WAIT_PERIOD
+from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.data import get_contract
