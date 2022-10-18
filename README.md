@@ -51,6 +51,11 @@ CONFIDENCE_THRESHOLD = 0.50
 ```
 poetry run cli
 ```
+You can also update the wait time between event checks to reduce calls to the RPC endpoint. The default is seven seconds.
+Use the `--wait` flag to specify a different wait time in seconds.
+```
+poetry run cli --wait 120
+```
 
 
 

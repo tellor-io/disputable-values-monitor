@@ -8,6 +8,7 @@ import pandas as pd
 
 from tellor_disputables import ETHEREUM_CHAIN_ID
 from tellor_disputables import POLYGON_CHAIN_ID
+from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
@@ -18,7 +19,7 @@ from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.utils import clear_console
+from tellor_disputables.utils import clear_console, get_wait_period
 
 
 warnings.simplefilter("ignore", UserWarning)
@@ -34,6 +35,9 @@ def print_title_info() -> None:
 
 async def cli() -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
+    # Fetch optional wait period
+    user_given_wait_period = get_wait_period()
+    wait_period = user_given_wait_period if user_given_wait_period else WAIT_PERIOD
     print_title_info()
 
     recipients = get_phone_numbers()
@@ -127,7 +131,7 @@ async def cli() -> None:
                 df = pd.DataFrame.from_dict(dataframe_state)
                 df.to_csv("table.csv")
 
-        sleep(1)
+        sleep(wait_period)
 
 
 def main() -> None:
