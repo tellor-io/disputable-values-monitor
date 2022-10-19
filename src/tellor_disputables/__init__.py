@@ -4,12 +4,11 @@ from hexbytes import HexBytes
 from telliot_feeds import feeds
 from web3.datastructures import AttributeDict
 
-
-ETHEREUM_CHAIN_ID = 4  # Testnet
+ETHEREUM_CHAIN_ID = 1  # Testnet
 POLYGON_CHAIN_ID = 80001  # Testnet
 CONFIDENCE_THRESHOLD = 0.50
 
-WAIT_PERIOD = 7 # seconds between checks for new events
+WAIT_PERIOD = 7  # seconds between checks for new events
 
 
 DATAFEED_LOOKUP = {

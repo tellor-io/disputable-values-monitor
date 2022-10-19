@@ -29,7 +29,7 @@ from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
 
 
-def get_node_url() -> str:
+def get_node_url() -> Optional[str]:
     """Get the node URL for the given chain ID."""
     return os.environ.get("NODE_URL", None)
 
@@ -108,7 +108,7 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
     return await feed.source.fetch_new_datapoint()
 
 
-async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = .05) -> Optional[bool]:
+async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = 0.05) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if reported_val is None:
         logging.error("Need reported value to check disputability")
@@ -122,7 +122,7 @@ async def is_disputable(reported_val: float, query_id: str, conf_threshold: floa
     trusted_val, _ = await general_fetch_new_datapoint(current_feed)
     if trusted_val is not None:
         percent_diff = (reported_val - trusted_val) / trusted_val
-        return abs(percent_diff) > conf_threshold
+        return float(abs(percent_diff)) > conf_threshold
     else:
         logging.error("Unable to fetch new datapoint from feed")
         return None
@@ -183,6 +183,9 @@ def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
         receipt = web3.eth.getTransactionReceipt(tx_hash)
     except TimeoutError:
         logging.warning(f"timeout getting transaction receipt for {tx_hash}")
+        return None
+    except TransactionNotFound:
+        logging.warning(f"transcation hash {tx_hash} not found")
         return None
 
     try:
@@ -261,7 +264,7 @@ def main() -> None:
     """Main function."""
     # _ = asyncio.run(get_events())
     poly_chain_id = 80001
-    poly_web3 = get_web3(poly_chain_id)
+    poly_web3 = get_web3()
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
     new_report = parse_new_report_event(EXAMPLE_NEW_REPORT_EVENT, poly_web3, poly_contract)

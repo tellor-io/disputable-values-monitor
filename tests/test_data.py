@@ -4,13 +4,15 @@ from unittest.mock import patch
 import pytest
 from telliot_feeds.queries import SpotPrice
 
-from tellor_disputables.data import get_node_url
+from tellor_disputables.data import get_contract
+from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_legacy_request_pair_info
+from tellor_disputables.data import get_node_url
 from tellor_disputables.data import get_query_from_data
+from tellor_disputables.data import get_tx_receipt
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import log_loop
-from tellor_disputables.data import get_tx_receipt
 
 
 @pytest.mark.asyncio
@@ -27,10 +29,7 @@ async def test_is_disputable(caplog):
     assert disputable
 
     # No reported value
-    disputable = await is_disputable(
-        reported_val=None,
-        query_id=query_id,
-        conf_threshold=threshold)
+    disputable = await is_disputable(reported_val=None, query_id=query_id, conf_threshold=threshold)
     assert disputable is None
     assert "Need reported value to check disputability" in caplog.text
 
@@ -120,8 +119,10 @@ async def test_rpc_value_errors(check_web3_configured, caplog):
 
 def test_get_tx_receipt(check_web3_configured, caplog):
     w3 = get_web3()
+    address, abi = get_contract_info(1)
+    contract = get_contract(w3, address, abi)
     tx_hash = "0x12345"
-    tx_receipt = get_tx_receipt(w3, tx_hash)
+    tx_receipt = get_tx_receipt(tx_hash=tx_hash, web3=w3, contract=contract)
 
     assert tx_receipt is None
-    assert "Unable to process receipt for transaction 0x12345" in caplog.text
+    assert "Unable to process receipt for transaction 0x12345" in caplog.text or "not found" in caplog.text

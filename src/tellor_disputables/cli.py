@@ -1,25 +1,24 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
-import asyncio
 import logging
 import warnings
 from time import sleep
 
+import click
 import pandas as pd
+from telliot_core.cli.utils import async_run
 
 from tellor_disputables import ETHEREUM_CHAIN_ID
 from tellor_disputables import POLYGON_CHAIN_ID
 from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.alerts import generate_alert_msg
+from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
-from tellor_disputables.alerts import get_twilio_client
-from tellor_disputables.alerts import send_text_msg
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.utils import clear_console, get_wait_period
+from tellor_disputables.utils import clear_console
 
 
 warnings.simplefilter("ignore", UserWarning)
@@ -28,16 +27,23 @@ warnings.simplefilter("ignore", UserWarning)
 def print_title_info() -> None:
     """Prints the title info."""
     logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
-    logging.info("Disputable Values Monitor 📒🔎📲")
+    click.echo("Disputable Values Monitor 📒🔎📲")
     # print("get text alerts when potentially bad data is reported to Tellor oracles")
     # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
 
-async def cli() -> None:
+@click.command()
+@click.option("-a", "--all-values", is_flag=True, show_default=True)
+@click.option("-w", "--wait", help="how long to wait between checks", type=int)
+@async_run
+async def main(all_values: bool, wait: int) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
+    await start(all_values=all_values, wait=wait)
+
+
+async def start(all_values: bool, wait: int) -> None:
     # Fetch optional wait period
-    user_given_wait_period = get_wait_period()
-    wait_period = user_given_wait_period if user_given_wait_period else WAIT_PERIOD
+    wait_period = wait if wait else WAIT_PERIOD
     print_title_info()
 
     recipients = get_phone_numbers()
@@ -45,18 +51,17 @@ async def cli() -> None:
     if recipients is None or from_number is None:
         logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
-    twilio_client = get_twilio_client()
 
     display_rows = []
     displayed_events = set()
 
     # Get contract addresses & web3 instances
     eth_chain_id = ETHEREUM_CHAIN_ID
-    eth_web3 = get_web3(eth_chain_id)
+    eth_web3 = get_web3()
     eth_addr, eth_abi = get_contract_info(eth_chain_id)
     eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
     poly_chain_id = POLYGON_CHAIN_ID
-    poly_web3 = get_web3(poly_chain_id)
+    poly_web3 = get_web3()
     poly_addr, poly_abi = get_contract_info(poly_chain_id)
     poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
 
@@ -92,12 +97,7 @@ async def cli() -> None:
                 clear_console()
                 print_title_info()
 
-                # Account for unsupported queryIDs
-                if new_report.disputable is not None:
-                    # Alert via text msg
-                    msg = generate_alert_msg(new_report.link)
-                    if new_report.disputable:
-                        send_text_msg(twilio_client, recipients, from_number, msg)
+                alert(all_values, new_report, recipients, from_number)
 
                 display_rows.append(
                     (
@@ -132,10 +132,6 @@ async def cli() -> None:
                 df.to_csv("table.csv")
 
         sleep(wait_period)
-
-
-def main() -> None:
-    asyncio.run(cli())
 
 
 if __name__ == "__main__":
