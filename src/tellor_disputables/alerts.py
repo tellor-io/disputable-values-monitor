@@ -15,26 +15,19 @@ def alert(all_values: bool, new_report: NewReport, recipients: List[str], from_n
 
     twilio_client = get_twilio_client()
 
+    # Account for unsupported queryIDs
+    if new_report.disputable is not None:
+        if new_report.disputable:
+            msg = generate_alert_msg(True, new_report.link)
+
     # If user wants ALL NewReports
     if all_values:
-        # Account for unsupported queryIDs
-        if new_report.disputable is not None:
-            if new_report.disputable:
-                msg = generate_alert_msg(True, new_report.link)
-            else:
-                msg = generate_alert_msg(False, new_report.link)
-        else:
-            msg = generate_alert_msg(False, new_report.link)
-
+        msg = generate_alert_msg(False, new_report.link)
         send_text_msg(twilio_client, recipients, from_number, msg)
 
     else:
-        # Account for unsupported queryIDs
-        if new_report.disputable is not None:
-            # Alert via text msg
-            msg = generate_alert_msg(True, new_report.link)
-            if new_report.disputable:
-                send_text_msg(twilio_client, recipients, from_number, msg)
+        if new_report.disputable:
+            send_text_msg(twilio_client, recipients, from_number, msg)
 
 
 def generate_alert_msg(disputable: bool, link: str) -> str:

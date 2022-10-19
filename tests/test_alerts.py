@@ -52,7 +52,7 @@ def test_notify_non_disputable(capsys):
         print("alert sent")
 
     def second_alert():
-        yield print("second alert sent")
+        print("second alert sent")
 
     with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert(), second_alert()])):
         r = NewReport(
