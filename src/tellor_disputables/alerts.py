@@ -5,8 +5,8 @@ from typing import Optional
 
 import click
 from twilio.rest import Client
-from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 
+from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables.data import NewReport
 
 # import json

@@ -76,6 +76,7 @@ def test_notify_non_disputable(capsys):
 
         assert "second alert sent" not in capsys.readouterr().out
 
+
 def test_notify_always_alertable_value(capsys):
     """test sending an alert for a NewReport event
     if the query type is always alertable"""
