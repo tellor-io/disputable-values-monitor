@@ -75,3 +75,35 @@ def test_notify_non_disputable(capsys):
         alert(False, r, "", "")
 
         assert "second alert sent" not in capsys.readouterr().out
+
+def test_notify_always_alertable_value(capsys):
+    """test sending an alert for a NewReport event
+    if the query type is always alertable"""
+
+    def first_alert():
+        print("alert sent")
+
+    def second_alert():
+        print("second alert sent")
+
+    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert(), second_alert()])):
+        r = NewReport(
+            "0xabc123",
+            time.time(),
+            1,
+            "etherscan.io/abc",
+            "TellorOracleAddress",
+            15.5,
+            "trb",
+            "usd",
+            "query id",
+            None,
+            "status ",
+        )
+        alert(True, r, "", "")
+
+        assert "alert sent" in capsys.readouterr().out
+
+        alert(False, r, "", "")
+
+        assert "second alert sent" not in capsys.readouterr().out
