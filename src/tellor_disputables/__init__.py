@@ -10,6 +10,7 @@ CONFIDENCE_THRESHOLD = 0.50
 
 WAIT_PERIOD = 7  # seconds between checks for new events
 
+ALWAYS_ALERT_QUERY_TYPES = ("AutopayAddresses", "TellorOracleAddress")
 
 DATAFEED_LOOKUP = {
     "000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,

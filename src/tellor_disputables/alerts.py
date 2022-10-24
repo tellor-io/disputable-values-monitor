@@ -6,6 +6,7 @@ from typing import Optional
 import click
 from twilio.rest import Client
 
+from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables.data import NewReport
 
 # import json
@@ -14,6 +15,12 @@ from tellor_disputables.data import NewReport
 def alert(all_values: bool, new_report: NewReport, recipients: List[str], from_number: str) -> None:
 
     twilio_client = get_twilio_client()
+
+    if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
+        msg = generate_alert_msg(False, new_report.link)
+        send_text_msg(twilio_client, recipients, from_number, msg)
+
+        return
 
     # Account for unsupported queryIDs
     if new_report.disputable is not None:
