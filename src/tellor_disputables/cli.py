@@ -5,18 +5,14 @@ from time import sleep
 
 import click
 import pandas as pd
+from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 
-from tellor_disputables import ETHEREUM_CHAIN_ID
-from tellor_disputables import POLYGON_CHAIN_ID
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import get_from_number
 from tellor_disputables.alerts import get_phone_numbers
-from tellor_disputables.data import get_contract
-from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
-from tellor_disputables.data import get_web3
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.utils import clear_console
 
@@ -56,36 +52,32 @@ async def start(all_values: bool, wait: int) -> None:
     displayed_events = set()
 
     # Get contract addresses & web3 instances
-    eth_chain_id = ETHEREUM_CHAIN_ID
-    eth_web3 = get_web3()
-    eth_addr, eth_abi = get_contract_info(eth_chain_id)
-    eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
-    poly_chain_id = POLYGON_CHAIN_ID
-    poly_web3 = get_web3()
-    poly_addr, poly_abi = get_contract_info(poly_chain_id)
-    poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
+    # eth_chain_id = ETHEREUM_CHAIN_ID
+    # eth_web3 = get_web3()
+    # eth_addr, eth_abi = get_contract_info(eth_chain_id)
+    # eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
+    # poly_chain_id = POLYGON_CHAIN_ID
+    # poly_web3 = get_web3()
+    # poly_addr, poly_abi = get_contract_info(poly_chain_id)
+    # poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
 
     while True:
+
+        cfg = TelliotConfig()
         # Fetch NewReport events
-        event_lists = await get_events(
-            eth_web3,
-            eth_addr,
-            eth_abi,
-            poly_web3,
-            poly_addr,
-        )
+        event_lists = await get_events(cfg=cfg)
 
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             for event_info in event_list:
 
                 chain_id, event = event_info
-                if chain_id == eth_chain_id:
-                    new_report = await parse_new_report_event(event, eth_web3, eth_contract)
-                elif chain_id == poly_chain_id:
-                    new_report = await parse_new_report_event(event, poly_web3, poly_contract)
-                else:
-                    logging.error("unsupported chain!")
+                cfg.main.chain_id = chain_id
+
+                try:
+                    new_report = await parse_new_report_event(cfg, event["txHash"])
+                except Exception as e:
+                    logging.error("unsupported chain! " + str(e))
                     continue
 
                 # Skip duplicate & missing events

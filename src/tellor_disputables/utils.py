@@ -2,16 +2,16 @@
 import os
 from typing import Optional
 
+from telliot_core.apps.telliot_config import TelliotConfig
 
-def get_tx_explorer_url(tx_hash: str, chain_id: int) -> str:
+
+def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:
     """Get transaction explorer URL."""
-    explorers = {
-        1: "https://etherscan.io/",
-        137: "https://polygonscan.com/",
-        80001: "https://mumbai.polygonscan.com/",
-    }
-    base_url = explorers[chain_id]
-    return f"{base_url}tx/{tx_hash}"
+    explorer: str = cfg.get_endpoint().explorer
+    if explorer is not None:
+        return explorer + "/tx/" + tx_hash
+    else:
+        return ""
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
