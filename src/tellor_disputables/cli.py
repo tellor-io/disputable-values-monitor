@@ -121,7 +121,8 @@ async def start(all_values: bool, wait: int) -> None:
                     Disputable=disputable_strs,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
-                df.to_csv("table.csv")
+                print(df.to_markdown(), end="\r")
+                df.to_csv("table.csv", mode="a", header=False)
 
         sleep(wait_period)
 
