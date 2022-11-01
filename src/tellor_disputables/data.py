@@ -9,6 +9,7 @@ from typing import Optional
 from typing import Union
 
 from dateutil import tz
+from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.directory import contract_directory
 from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries import SpotPrice
@@ -17,12 +18,10 @@ from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.legacy_query import LegacyRequest
 from web3 import Web3
 from web3.contract import Contract
-from web3.datastructures import AttributeDict
 from web3.exceptions import TransactionNotFound
 
 from tellor_disputables import CONFIDENCE_THRESHOLD
 from tellor_disputables import DATAFEED_LOOKUP
-from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from tellor_disputables import LEGACY_ASSETS
 from tellor_disputables import LEGACY_CURRENCIES
 from tellor_disputables.utils import disputable_str
@@ -36,7 +35,7 @@ def get_node_url() -> Optional[str]:
 
 def get_contract_info(chain_id: int) -> tuple[str, str]:
     """Get the contract address and ABI for the given chain ID."""
-    name = "tellorx-oracle" if chain_id in (1, 4) else "tellorflex-oracle"
+    name = "tellor360-oracle"
     contract_info = contract_directory.find(chain_id=chain_id, name=name)[0]
     addr = contract_info.address[chain_id]
     abi = contract_info.get_abi(chain_id=chain_id)
@@ -159,21 +158,19 @@ def create_eth_event_filter(web3: Web3, addr: str, abi: str) -> Any:
     return contract.events.NewReport.createFilter(fromBlock="latest")
 
 
-async def get_events(
-    eth_web3: Web3,
-    eth_oracle_addr: str,
-    eth_abi: str,
-    poly_web3: Web3,
-    poly_oracle_addr: str,
-) -> tuple[list[tuple[int, Any]], list[tuple[int, Any]]]:
-    """Get all events from the Ethereum and Polygon chains."""
-    # eth_filter = create_eth_event_filter(eth_web3, eth_oracle_addr, eth_abi)
+async def get_events(cfg: TelliotConfig) -> tuple[list[tuple[int, Any]], list[tuple[int, Any]]]:
+    """Get all events from all live Tellor networks"""
 
-    events_lists = await asyncio.gather(
-        # eth_log_loop(eth_filter, 1),  # this is broken
-        log_loop(eth_web3, eth_oracle_addr),
-        log_loop(poly_web3, poly_oracle_addr),
-    )
+    log_loops = []
+
+    for endpoint in cfg.endpoints.endpoints:
+        w3 = endpoint.web3
+        addr, _ = get_contract_info(endpoint.chain_id)
+
+        log_loops.append(log_loop(w3, addr))
+
+    events_lists: tuple[list[tuple[int, Any]], list[tuple[int, Any]]] = await asyncio.gather(*log_loops)
+
     return events_lists
 
 
@@ -190,7 +187,7 @@ def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
 
     try:
         receipt = contract.events.NewReport().processReceipt(receipt)[0]
-    except IndexError:
+    except (IndexError, OverflowError):
         logging.warning(f"Unable to process receipt for transaction {tx_hash}")
         return None
     return receipt
@@ -212,13 +209,34 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, contract: Contract) -> Optional[NewReport]:
+async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[NewReport]:
     """Parse a NewReport event."""
-    tx_hash = event["transactionHash"]
+
+    chain_id = cfg.main.chain_id
+    endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
+
+    if not endpoint:
+        logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
+        return None
+    else:
+
+        try:
+            endpoint.connect()
+            endpoint = endpoint.web3
+        except ValueError as e:
+            logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+            return None
+
+        addr, abi = get_contract_info(chain_id)
+        contract = get_contract(endpoint, addr, abi)
+
     try:
-        receipt = get_tx_receipt(tx_hash, web3, contract)
+        receipt = get_tx_receipt(tx_hash, endpoint, contract)
     except TransactionNotFound:
         logging.error("transaction not found")
+        return None
+
+    if receipt is None:
         return None
 
     if receipt["event"] != "NewReport":
@@ -236,7 +254,7 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
         return None
 
     val = q.value_type.decode(args["_value"])
-    link = get_tx_explorer_url(tx_hash=tx_hash.hex(), chain_id=web3.eth.chain_id)
+    link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
     query_id = str(q.query_id.hex())
     disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
     if disputable is None:
@@ -246,9 +264,9 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
         status_str = disputable_str(disputable, query_id)
 
         return NewReport(
-            chain_id=web3.eth.chain_id,
+            chain_id=endpoint.eth.chain_id,
             eastern_time=args["_time"],
-            tx_hash=tx_hash.hex(),
+            tx_hash=tx_hash,
             link=link,
             query_type=type(q).__name__,
             value=val,
@@ -258,18 +276,3 @@ async def parse_new_report_event(event: AttributeDict[str, Any], web3: Web3, con
             disputable=disputable,
             status_str=status_str,
         )
-
-
-def main() -> None:
-    """Main function."""
-    # _ = asyncio.run(get_events())
-    poly_chain_id = 80001
-    poly_web3 = get_web3()
-    poly_addr, poly_abi = get_contract_info(poly_chain_id)
-    poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
-    new_report = parse_new_report_event(EXAMPLE_NEW_REPORT_EVENT, poly_web3, poly_contract)
-    logging.info(new_report)
-
-
-if __name__ == "__main__":
-    main()

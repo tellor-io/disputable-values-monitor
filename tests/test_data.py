@@ -2,6 +2,7 @@
 from unittest.mock import patch
 
 import pytest
+from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_feeds.queries import SpotPrice
 
 from tellor_disputables.data import get_contract
@@ -13,6 +14,7 @@ from tellor_disputables.data import get_tx_receipt
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import log_loop
+from tellor_disputables.data import parse_new_report_event
 
 
 @pytest.mark.asyncio
@@ -126,3 +128,19 @@ def test_get_tx_receipt(check_web3_configured, caplog):
 
     assert tx_receipt is None
     assert "Unable to process receipt for transaction 0x12345" in caplog.text or "not found" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_parse_new_report_event():
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 5
+    tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
+
+    new_report = await parse_new_report_event(cfg, tx_hash)
+
+    assert new_report
+
+    assert new_report.chain_id == 5
+    assert new_report.tx_hash == tx_hash
+    assert "etherscan" in new_report.link
