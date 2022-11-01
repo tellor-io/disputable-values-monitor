@@ -11,7 +11,7 @@ def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:
     if explorer is not None:
         return explorer + "/tx/" + tx_hash
     else:
-        return ""
+        return f"Explorer not defined for chain_id {cfg.main.chain_id}"
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:

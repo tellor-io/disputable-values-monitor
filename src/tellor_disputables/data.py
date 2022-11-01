@@ -163,9 +163,9 @@ async def get_events(cfg: TelliotConfig) -> tuple[list[tuple[int, Any]], list[tu
 
     log_loops = []
 
-    for i in cfg.endpoints.endpoints:
-        w3 = i.web3
-        addr, _ = get_contract_info(i.chain_id)
+    for endpoint in cfg.endpoints.endpoints:
+        w3 = endpoint.web3
+        addr, _ = get_contract_info(endpoint.chain_id)
 
         log_loops.append(log_loop(w3, addr))
 
