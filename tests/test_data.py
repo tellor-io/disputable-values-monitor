@@ -5,8 +5,9 @@ import pytest
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_feeds.queries import SpotPrice
 
-from tellor_disputables.data import get_contract, get_events
+from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
+from tellor_disputables.data import get_events
 from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_node_url
 from tellor_disputables.data import get_query_from_data
@@ -145,6 +146,7 @@ async def test_parse_new_report_event():
     assert new_report.tx_hash == tx_hash
     assert "etherscan" in new_report.link
 
+
 @pytest.mark.asyncio
 async def test_get_events():
 
@@ -155,16 +157,14 @@ async def test_get_events():
     assert len(events) > 0
 
 
-
 def test_get_contract_iofo():
 
     addr, abi = get_contract_info(5)
 
     assert addr
-    assert addr == "0xB3B662644F8d3138df63D2F43068ea621e2981f9" # tellor 360 address
+    assert addr == "0xB3B662644F8d3138df63D2F43068ea621e2981f9"  # tellor 360 address
     assert abi
 
     addr, abi = get_contract_info(1234567)
     assert not addr
     assert not abi
-

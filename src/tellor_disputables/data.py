@@ -4,8 +4,9 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Tuple
+from typing import Any
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 from dateutil import tz
@@ -19,7 +20,6 @@ from telliot_feeds.queries.legacy_query import LegacyRequest
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
-import websockets
 
 from tellor_disputables import CONFIDENCE_THRESHOLD
 from tellor_disputables import DATAFEED_LOOKUP
@@ -44,7 +44,7 @@ def get_contract_info(chain_id: int) -> Tuple[Optional[str], Optional[str]]:
         addr = contract_info.address[chain_id]
         abi = contract_info.get_abi(chain_id=chain_id)
         return addr, abi
-    
+
     else:
         logging.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
@@ -88,10 +88,7 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
         num = web3.eth.get_block_number()
     except Exception as e:
         if "server rejected" in str(e):
-            logging.info(
-                "Attempted to connect to deprecated infura network."
-                "Please check configs!" + str(e)
-            )
+            logging.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
         else:
             logging.warning("unable to retrieve latest block number:" + str(e))
         return []
@@ -259,6 +256,10 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[N
             return None
 
         addr, abi = get_contract_info(chain_id)
+
+        if not addr or not abi:
+            logging.error("Cannot parse event, missing contract info!")
+            return None
         contract = get_contract(endpoint, addr, abi)
 
     try:
