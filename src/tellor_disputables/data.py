@@ -4,7 +4,7 @@ import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Tuple
 from typing import Optional
 from typing import Union
 
@@ -19,6 +19,7 @@ from telliot_feeds.queries.legacy_query import LegacyRequest
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
+import websockets
 
 from tellor_disputables import CONFIDENCE_THRESHOLD
 from tellor_disputables import DATAFEED_LOOKUP
@@ -33,13 +34,20 @@ def get_node_url() -> Optional[str]:
     return os.environ.get("NODE_URL", None)
 
 
-def get_contract_info(chain_id: int) -> tuple[str, str]:
+def get_contract_info(chain_id: int) -> Tuple[Optional[str], Optional[str]]:
     """Get the contract address and ABI for the given chain ID."""
     name = "tellor360-oracle"
-    contract_info = contract_directory.find(chain_id=chain_id, name=name)[0]
-    addr = contract_info.address[chain_id]
-    abi = contract_info.get_abi(chain_id=chain_id)
-    return addr, abi
+    contracts = contract_directory.find(chain_id=chain_id, name=name)
+
+    if len(contracts) > 0:
+        contract_info = contracts[0]
+        addr = contract_info.address[chain_id]
+        abi = contract_info.get_abi(chain_id=chain_id)
+        return addr, abi
+    
+    else:
+        logging.info(f"Could not find contract info for chain_id {chain_id}")
+        return None, None
 
 
 def get_web3() -> Web3:
@@ -76,7 +84,17 @@ async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]
 
 async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
-    num = web3.eth.get_block_number()
+    try:
+        num = web3.eth.get_block_number()
+    except Exception as e:
+        if "server rejected" in str(e):
+            logging.info(
+                "Attempted to connect to deprecated infura network."
+                "Please check configs!" + str(e)
+            )
+        else:
+            logging.warning("unable to retrieve latest block number:" + str(e))
+        return []
     try:
         events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
     except ValueError as e:
@@ -164,8 +182,21 @@ async def get_events(cfg: TelliotConfig) -> tuple[list[tuple[int, Any]], list[tu
     log_loops = []
 
     for endpoint in cfg.endpoints.endpoints:
+
+        try:
+            endpoint.connect()
+        except Exception as e:
+            logging.warning("unable to connect to endpoint: " + str(e))
+
         w3 = endpoint.web3
+
+        if not w3:
+            continue
+
         addr, _ = get_contract_info(endpoint.chain_id)
+
+        if not addr:
+            continue
 
         log_loops.append(log_loop(w3, addr))
 
