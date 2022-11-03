@@ -51,16 +51,6 @@ async def start(all_values: bool, wait: int) -> None:
     display_rows = []
     displayed_events = set()
 
-    # Get contract addresses & web3 instances
-    # eth_chain_id = ETHEREUM_CHAIN_ID
-    # eth_web3 = get_web3()
-    # eth_addr, eth_abi = get_contract_info(eth_chain_id)
-    # eth_contract = get_contract(eth_web3, eth_addr, eth_abi)
-    # poly_chain_id = POLYGON_CHAIN_ID
-    # poly_web3 = get_web3()
-    # poly_addr, poly_abi = get_contract_info(poly_chain_id)
-    # poly_contract = get_contract(poly_web3, poly_addr, poly_abi)
-
     while True:
 
         cfg = TelliotConfig()
@@ -75,9 +65,9 @@ async def start(all_values: bool, wait: int) -> None:
                 cfg.main.chain_id = chain_id
 
                 try:
-                    new_report = await parse_new_report_event(cfg, event["txHash"])
+                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex())
                 except Exception as e:
-                    logging.error("unsupported chain! " + str(e))
+                    logging.error("unable to parse new report event! " + str(e))
                     continue
 
                 # Skip duplicate & missing events
