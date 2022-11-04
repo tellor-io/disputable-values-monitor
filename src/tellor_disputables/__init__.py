@@ -13,18 +13,18 @@ WAIT_PERIOD = 7  # seconds between checks for new events
 ALWAYS_ALERT_QUERY_TYPES = ("AutopayAddresses", "TellorOracleAddress")
 
 DATAFEED_LOOKUP = {
-    "000000000000000000000000000000000000000000000000000000000000000a": feeds.ampl_usd_vwap_feed,
+    "0d12ad49193163bbbeff4e6db8294ced23ff8605359fd666799d4e25a3aa0e3a": feeds.ampl_usd_vwap_feed,
     "35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
-    "0000000000000000000000000000000000000000000000000000000000000002": feeds.btc_usd_feed.btc_usd_median_feed,
+    "a6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac": feeds.btc_usd_feed.btc_usd_median_feed,
     "d913406746edf7891a09ffb9b26a12553bbf4d25ecf8e530ec359969fe6a7a9c": feeds.dai_usd_feed.dai_usd_median_feed,
-    "000000000000000000000000000000000000000000000000000000000000003b": feeds.eth_jpy_feed.eth_jpy_median_feed,
-    "0000000000000000000000000000000000000000000000000000000000000001": feeds.eth_usd_feed.eth_usd_median_feed,
+    "ba3452d8acca69e530308515f4a0cb01da604dd077801db619800e7d3a7b5f8c": feeds.eth_jpy_feed.eth_jpy_median_feed,
+    "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992": feeds.eth_usd_feed.eth_usd_median_feed,
     "7239909c0aa5d3e89efb2dce06c80811e93ab18413110b8c0435ee32c52cc4fb": feeds.idle_usd_feed.idle_usd_median_feed,
     "40aa71e5205fdc7bdb7d65f7ae41daca3820c5d3a8f62357a99eda3aa27244a3": feeds.matic_usd_feed.matic_usd_median_feed,
     "b9d5e25dabd5f0a48f45f5b6b524bac100df05eaf5311f3e5339ac7c3dd0a37e": feeds.mkr_usd_feed.mkr_usd_median_feed,
     "ee4fcdeed773931af0bcd16cfcea5b366682ffbd4994cf78b4f0a6a40b570340": feeds.olympus.ohm_eth_median_feed,
     "5c13cd9c97dbb98f2429c101a2a8150e6c7a0ddaff6124ee176a3a411067ded0": feeds.trb_usd_feed.trb_usd_median_feed,
-    "0000000000000000000000000000000000000000000000000000000000000029": feeds.uspce_feed,
+    "612ec1d9cee860bb87deb6370ed0ae43345c9302c085c1dfc4c207cbec2970d7": feeds.uspce_feed,
     "2e0aa9e19f5c3e1d3e086b34fe90072b43889382f563e484e8e1e3588b19ef14": feeds.eur_usd_feed.eur_usd_median_feed,
     "8ee44cd434ed5b0e007eee581fbe0855336f3f84484e8d9989a620a4a49aa0f7": feeds.usdc_usd_feed.usdc_usd_median_feed,
     "a9b17c33422e2e576fb664d1d11d38c377b614d62f92653d006eca7bb2af1656": feeds.vesq.vsq_usd_median_feed,
