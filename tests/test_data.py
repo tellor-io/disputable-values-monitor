@@ -169,6 +169,7 @@ def test_get_contract_iofo():
     assert not addr
     assert not abi
 
+
 @pytest.mark.asyncio
 async def test_different_conf_thresholds():
     """test if a value is dispuable under different confindence thresholds"""

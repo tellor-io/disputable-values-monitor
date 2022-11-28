@@ -5,8 +5,6 @@ from unittest import mock
 
 from twilio.rest import Client
 
-from tellor_disputables import CONFIDENCE_THRESHOLD
-
 from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import generate_alert_msg
 from tellor_disputables.alerts import get_from_number
