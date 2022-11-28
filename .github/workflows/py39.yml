@@ -34,11 +34,11 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
-      - name: "Run poetry pytest for ${{ matrix.python-version }}"
-        run:
-          poetry run pytest
       - name: "Install dependencies"
         run:
           poetry env use 3.9 && poetry install
+      - name: "Run poetry pytest for ${{ matrix.python-version }}"
+        run:
+          poetry run pytest
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
