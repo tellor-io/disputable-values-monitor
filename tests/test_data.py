@@ -22,8 +22,8 @@ from tellor_disputables.data import parse_new_report_event
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
     # ETH/USD
-    query_id = "0000000000000000000000000000000000000000000000000000000000000001"
-    val = 1000.0
+    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
+    val = 666
     threshold = 0.05
 
     # Is disputable
@@ -168,3 +168,23 @@ def test_get_contract_iofo():
     addr, abi = get_contract_info(1234567)
     assert not addr
     assert not abi
+
+@pytest.mark.asyncio
+async def test_different_conf_thresholds():
+    """test if a value is dispuable under different confindence thresholds"""
+
+    # ETH/USD
+    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
+    val = 666
+    threshold = 0.05
+
+    # Is disputable
+    disputable = await is_disputable(val, query_id, threshold)
+    assert isinstance(disputable, bool)
+    assert disputable
+
+    threshold = 0.50
+    # Is now not disputable
+    disputable = await is_disputable(val, query_id, threshold)
+    assert isinstance(disputable, bool)
+    assert not disputable
