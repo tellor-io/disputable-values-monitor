@@ -27,6 +27,9 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
+      - name: "Install dependencies"
+        run:
+          poetry env use 3.9 && poetry install
       - name: "Run poetry typing on ${{ matrix.python-version }}"
         run:
           poetry run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
