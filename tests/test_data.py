@@ -140,7 +140,6 @@ async def test_parse_new_report_event():
     cfg.main.chain_id = 5
     tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
 
-
     for endpoint in cfg.endpoints.find(chain_id=5):
         cfg.endpoints.endpoints.remove(endpoint)
 
