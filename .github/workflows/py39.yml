@@ -1,0 +1,44 @@
+---
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: "ubuntu-latest"
+    env:
+      USING_COVERAGE: '3.9'
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }} 
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+      ALERT_RECIPIENTS: ${{ secrets.ALERT_RECIPIENTS }}
+      NODE_URL: ${{ secrets.NODE_URL }}
+
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+        poetry-version: ["1.1.14"]
+
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install dependencies
+        run:
+          poetry env use 3.9 && poetry install
+      - name: "Run poetry pytest for ${{ matrix.python-version }}"
+        run:
+          poetry run pytest
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2

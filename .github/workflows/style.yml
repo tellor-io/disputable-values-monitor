@@ -1,0 +1,35 @@
+---
+name: style
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  docs:
+    name: "Style enforcement on Python ${{ matrix.python-version }}"
+    runs-on: "ubuntu-latest"
+
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+        poetry-version: ["1.1.14"]
+
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"      
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+      - name: "Install dependencies"
+        run:
+          poetry env use 3.9 && poetry install
+      - name: "Run poetry style on ${{ matrix.python-version }}"
+        run:
+          poetry run pre-commit run --all-files 

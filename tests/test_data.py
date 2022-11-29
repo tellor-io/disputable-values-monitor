@@ -1,8 +1,10 @@
 """Tests for getting & parsing NewReport events."""
+import os
 from unittest.mock import patch
 
 import pytest
 from telliot_core.apps.telliot_config import TelliotConfig
+from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.queries import SpotPrice
 
 from tellor_disputables.data import get_contract
@@ -22,7 +24,7 @@ from tellor_disputables.data import parse_new_report_event
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
     # ETH/USD
-    query_id = "0000000000000000000000000000000000000000000000000000000000000001"
+    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
     val = 1000.0
     threshold = 0.05
 
@@ -138,6 +140,13 @@ async def test_parse_new_report_event():
     cfg.main.chain_id = 5
     tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
 
+    for endpoint in cfg.endpoints.find(chain_id=5):
+        cfg.endpoints.endpoints.remove(endpoint)
+
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
+    cfg.endpoints.endpoints.append(endpoint)
+    cfg.endpoints.find(chain_id=5)
+
     new_report = await parse_new_report_event(cfg, tx_hash)
 
     assert new_report
@@ -145,6 +154,8 @@ async def test_parse_new_report_event():
     assert new_report.chain_id == 5
     assert new_report.tx_hash == tx_hash
     assert "etherscan" in new_report.link
+
+    cfg.endpoints.endpoints.remove(endpoint)
 
 
 @pytest.mark.asyncio
