@@ -1,8 +1,10 @@
 """Tests for getting & parsing NewReport events."""
+import os
 from unittest.mock import patch
 
 import pytest
 from telliot_core.apps.telliot_config import TelliotConfig
+from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.queries import SpotPrice
 
 from tellor_disputables.data import get_contract
@@ -138,6 +140,9 @@ async def test_parse_new_report_event():
     cfg.main.chain_id = 5
     tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
 
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), None)
+    cfg.endpoints.endpoints.append(endpoint)
+
     new_report = await parse_new_report_event(cfg, tx_hash)
 
     assert new_report
@@ -145,6 +150,8 @@ async def test_parse_new_report_event():
     assert new_report.chain_id == 5
     assert new_report.tx_hash == tx_hash
     assert "etherscan" in new_report.link
+
+    cfg.endpoints.endpoints.remove(endpoint)
 
 
 @pytest.mark.asyncio

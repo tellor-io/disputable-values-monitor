@@ -34,7 +34,7 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ matrix.poetry-version }}
-      - name: "Install dependencies"
+      - name: Install dependencies
         run:
           poetry env use 3.9 && poetry install
       - name: "Run poetry pytest for ${{ matrix.python-version }}"
