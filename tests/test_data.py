@@ -22,7 +22,7 @@ from tellor_disputables.data import parse_new_report_event
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
     # ETH/USD
-    query_id = "0000000000000000000000000000000000000000000000000000000000000001"
+    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
     val = 1000.0
     threshold = 0.05
 
