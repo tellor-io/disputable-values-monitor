@@ -140,8 +140,13 @@ async def test_parse_new_report_event():
     cfg.main.chain_id = 5
     tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
 
-    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), None)
+
+    for endpoint in cfg.endpoints.find(chain_id=5):
+        cfg.endpoints.endpoints.remove(endpoint)
+
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
+    cfg.endpoints.find(chain_id=5)
 
     new_report = await parse_new_report_event(cfg, tx_hash)
 
