@@ -243,6 +243,8 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[N
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
 
+    print(endpoint)
+
     if not endpoint:
         logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
         return None
