@@ -237,13 +237,11 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[NewReport]:
+async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str, filter:str) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
-
-    print(endpoint)
 
     if not endpoint:
         logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
@@ -277,6 +275,9 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[N
         return None
 
     args = receipt["args"]
+    if args["_queryId"] != filter:
+        logging.info("skipping NewReport event (unmonitored queryId by request)")
+        return None
     q = get_query_from_data(args["_queryData"])
     if isinstance(q, SpotPrice):
         asset = q.asset.upper()

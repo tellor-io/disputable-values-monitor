@@ -29,15 +29,16 @@ def print_title_info() -> None:
 
 
 @click.command()
-@click.option("-a", "--all-values", is_flag=True, show_default=True)
+@click.option("-a", "--all-values", is_flag=True, show_default=True, help="if set, get alerts for all values")
 @click.option("-w", "--wait", help="how long to wait between checks", type=int)
+@click.option("-f", "--filter", help="get alerts for one feed only", type=str)
 @async_run
-async def main(all_values: bool, wait: int) -> None:
+async def main(all_values: bool, wait: int, filter:str) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait)
+    await start(all_values=all_values, wait=wait, filter=filter)
 
 
-async def start(all_values: bool, wait: int) -> None:
+async def start(all_values: bool, wait: int, filter:str) -> None:
     # Fetch optional wait period
     wait_period = wait if wait else WAIT_PERIOD
     print_title_info()
@@ -65,7 +66,7 @@ async def start(all_values: bool, wait: int) -> None:
                 cfg.main.chain_id = chain_id
 
                 try:
-                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex())
+                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex(), filter=filter)
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
                     continue
