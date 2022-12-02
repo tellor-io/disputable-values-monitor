@@ -7,6 +7,7 @@ import click
 import pandas as pd
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
+from telliot_feeds.cli.utils import build_query
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -31,14 +32,14 @@ def print_title_info() -> None:
 @click.command()
 @click.option("-a", "--all-values", is_flag=True, show_default=True, help="if set, get alerts for all values")
 @click.option("-w", "--wait", help="how long to wait between checks", type=int)
-@click.option("-f", "--filter", help="get alerts for one feed only", type=str)
+@click.option("-f", "--filter", help="get alerts for one feed only", is_flag=True)
 @async_run
-async def main(all_values: bool, wait: int, filter:str) -> None:
+async def main(all_values: bool, wait: int, filter: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     await start(all_values=all_values, wait=wait, filter=filter)
 
 
-async def start(all_values: bool, wait: int, filter:str) -> None:
+async def start(all_values: bool, wait: int, filter: bool) -> None:
     # Fetch optional wait period
     wait_period = wait if wait else WAIT_PERIOD
     print_title_info()
@@ -51,6 +52,10 @@ async def start(all_values: bool, wait: int, filter:str) -> None:
 
     display_rows = []
     displayed_events = set()
+
+    if filter:
+        q = build_query()
+        query_id = q.query_id.hex()
 
     while True:
 
@@ -66,7 +71,7 @@ async def start(all_values: bool, wait: int, filter:str) -> None:
                 cfg.main.chain_id = chain_id
 
                 try:
-                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex(), filter=filter)
+                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex(), query_id=query_id)
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
                     continue

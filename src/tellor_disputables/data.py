@@ -237,7 +237,7 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str, filter:str) -> Optional[NewReport]:
+async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str, query_id: Optional[str]) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
     chain_id = cfg.main.chain_id
@@ -268,16 +268,20 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str, filter:str) -
         logging.error("transaction not found")
         return None
 
-    if receipt is None:
+    if not receipt:
+        logging.error("transaction not found")
         return None
 
     if receipt["event"] != "NewReport":
         return None
 
     args = receipt["args"]
-    if args["_queryId"] != filter:
-        logging.info("skipping NewReport event (unmonitored queryId by request)")
-        return None
+
+    if query_id:
+        if args["_queryId"] != query_id:
+            logging.info("skipping undesired NewReport event")
+            return None
+
     q = get_query_from_data(args["_queryData"])
     if isinstance(q, SpotPrice):
         asset = q.asset.upper()

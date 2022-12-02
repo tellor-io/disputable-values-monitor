@@ -1,4 +1,5 @@
 """Tests for getting & parsing NewReport events."""
+import logging
 import os
 from unittest.mock import patch
 
@@ -200,3 +201,24 @@ async def test_different_conf_thresholds():
     disputable = await is_disputable(val, query_id, threshold)
     assert isinstance(disputable, bool)
     assert not disputable
+
+
+@pytest.mark.asyncio
+async def test_query_id_filter(caplog):
+
+    caplog.set_level(logging.INFO)
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 1
+
+    tx_hash = "0xbf71154020b6e96c6c5db54ab97c40db3b73cf80ddda235b5204cf6d63ef5da7"
+
+    # set up a report with an incorrect but plausible query id
+    btc_usd_query_id = "a6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
+
+    # try to parse it
+    res = await parse_new_report_event(cfg, tx_hash, btc_usd_query_id)
+
+    # parser should return None
+    assert not res
+    assert "skipping undesired NewReport event" in caplog.text
