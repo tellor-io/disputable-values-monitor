@@ -32,14 +32,20 @@ def print_title_info() -> None:
 @click.command()
 @click.option("-a", "--all-values", is_flag=True, show_default=True, help="if set, get alerts for all values")
 @click.option("-w", "--wait", help="how long to wait between checks", type=int)
-@click.option("-f", "--filter", help="get alerts for one feed only", is_flag=True)
+@click.option("-f", "--filter", help="build a feed and get alerts for that feed only", is_flag=True)
+@click.option(
+    "-c",
+    "--confidence-threshold",
+    help="percent difference threshold for notifications (a float between 0 and 1)",
+    type=float,
+)
 @async_run
-async def main(all_values: bool, wait: int, filter: bool) -> None:
+async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, filter=filter)
+    await start(all_values=all_values, wait=wait, filter=filter, confidence_threshold=confidence_threshold)
 
 
-async def start(all_values: bool, wait: int, filter: bool) -> None:
+async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
     # Fetch optional wait period
     wait_period = wait if wait else WAIT_PERIOD
     print_title_info()
@@ -71,7 +77,9 @@ async def start(all_values: bool, wait: int, filter: bool) -> None:
                 cfg.main.chain_id = chain_id
 
                 try:
-                    new_report = await parse_new_report_event(cfg, event["transactionHash"].hex(), query_id=query_id)
+                    new_report = await parse_new_report_event(
+                        cfg, event["transactionHash"].hex(), confidence_threshold, query_id=query_id
+                    )
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
                     continue

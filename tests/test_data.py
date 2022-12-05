@@ -1,12 +1,11 @@
 """Tests for getting & parsing NewReport events."""
 import logging
-import os
 from unittest.mock import patch
 
 import pytest
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
-from telliot_feeds.queries import SpotPrice
+from telliot_feeds.queries.price.spot_price import SpotPrice
 
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
@@ -139,16 +138,17 @@ async def test_parse_new_report_event():
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
-    tx_hash = "0xf7fb66b0c3961692cd9658ce4a8c5e73ba8fbc954676d417e815456337604797"
+    tx_hash = "0xb3e4fb09e3dcc7abc0f30181c5dc9ba7253d694de17d88c37c2bd4069f0eebdc"
 
     for endpoint in cfg.endpoints.find(chain_id=5):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
+    endpoint = RPCEndpoint(
+        5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
+    )
     cfg.endpoints.endpoints.append(endpoint)
-    cfg.endpoints.find(chain_id=5)
 
-    new_report = await parse_new_report_event(cfg, tx_hash)
+    new_report = await parse_new_report_event(cfg, tx_hash, 0.50)
 
     assert new_report
 
@@ -211,14 +211,26 @@ async def test_query_id_filter(caplog):
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
 
+    for endpoint in cfg.endpoints.find(chain_id=1):
+        cfg.endpoints.endpoints.remove(endpoint)
+
+    endpoint = RPCEndpoint(
+        1, "Mainnet", "Infura", "https://mainnet.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
+    )
+    cfg.endpoints.endpoints.append(endpoint)
+
     tx_hash = "0xbf71154020b6e96c6c5db54ab97c40db3b73cf80ddda235b5204cf6d63ef5da7"
 
     # set up a report with an incorrect but plausible query id
     btc_usd_query_id = "a6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
 
+    confidence_threshold = 0.50
+
     # try to parse it
-    res = await parse_new_report_event(cfg, tx_hash, btc_usd_query_id)
+    res = await parse_new_report_event(cfg, tx_hash, confidence_threshold, btc_usd_query_id)
 
     # parser should return None
     assert not res
     assert "skipping undesired NewReport event" in caplog.text
+
+    cfg.endpoints.endpoints.remove(endpoint)
