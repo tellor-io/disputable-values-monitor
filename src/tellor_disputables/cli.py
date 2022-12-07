@@ -30,9 +30,11 @@ def print_title_info() -> None:
 
 
 @click.command()
-@click.option("-a", "--all-values", is_flag=True, show_default=True, help="if set, get alerts for all values")
+@click.option(
+    "-a", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
+)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int)
-@click.option("-f", "--filter", help="build a feed and get alerts for that feed only", is_flag=True)
+@click.option("-f", "--filter", help="build a queryId and get alerts for that queryId only", is_flag=True)
 @click.option(
     "-c",
     "--confidence-threshold",
