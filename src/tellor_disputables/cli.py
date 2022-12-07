@@ -64,6 +64,8 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     if filter:
         q = build_query()
         query_id = q.query_id.hex()
+    else:
+        query_id = None
 
     while True:
 
