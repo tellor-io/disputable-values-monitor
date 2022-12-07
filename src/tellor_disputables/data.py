@@ -13,15 +13,14 @@ from dateutil import tz
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.directory import contract_directory
 from telliot_feeds.datafeed import DataFeed
-from telliot_feeds.queries import SpotPrice
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.legacy_query import LegacyRequest
+from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
 
-from tellor_disputables import CONFIDENCE_THRESHOLD
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import LEGACY_ASSETS
 from tellor_disputables import LEGACY_CURRENCIES
@@ -237,13 +236,13 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
     return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
 
 
-async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[NewReport]:
+async def parse_new_report_event(
+    cfg: TelliotConfig, tx_hash: str, confidence_threshold: float, query_id: Optional[str] = None
+) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
-
-    print(endpoint)
 
     if not endpoint:
         logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
@@ -270,13 +269,19 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[N
         logging.error("transaction not found")
         return None
 
-    if receipt is None:
+    if not receipt:
+        logging.error("transaction not found")
         return None
 
     if receipt["event"] != "NewReport":
         return None
 
     args = receipt["args"]
+    if query_id is not None:
+        if args["_queryId"] != query_id:
+            logging.info("skipping undesired NewReport event")
+            return None
+
     q = get_query_from_data(args["_queryData"])
     if isinstance(q, SpotPrice):
         asset = q.asset.upper()
@@ -289,8 +294,9 @@ async def parse_new_report_event(cfg: TelliotConfig, tx_hash: str) -> Optional[N
 
     val = q.value_type.decode(args["_value"])
     link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
-    query_id = str(q.query_id.hex())
-    disputable = await is_disputable(val, query_id, CONFIDENCE_THRESHOLD)
+    if not query_id:
+        query_id = str(q.query_id.hex())
+    disputable = await is_disputable(val, query_id, confidence_threshold)
     if disputable is None:
         logging.info("unable to check disputability")
         return None
