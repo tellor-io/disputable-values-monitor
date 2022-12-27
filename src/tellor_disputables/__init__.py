@@ -27,6 +27,7 @@ DATAFEED_LOOKUP = {
     "6e5122118ce52cc9b97c359c1f174a3c21c71d810f7addce3484cc28e0be0f29": feeds.ric_usd_feed.ric_usd_median_feed,
     "3f640bf607feb4455c3eb10629385d823341cd18fef6f9f87b8bcfbeafc44eeb": feeds.sushi_usd_feed.sushi_usd_median_feed,
     "83245f6a6a2f6458558a706270fbcc35ac3a81917602c1313d3bfa998dcc2d4b": feeds.pls_usd_feed,
+    "12906c5e9178631dba86f1f750f7ab7451c61e6357160eb890029b9eac1fb235": feeds.albt_usd_median_feed
     # "": feeds.diva_protocol_feed.assemble_diva_datafeed
 }
 
