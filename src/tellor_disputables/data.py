@@ -278,7 +278,7 @@ async def parse_new_report_event(
 
     args = receipt["args"]
     if query_id is not None:
-        if args["_queryId"] != query_id:
+        if args["_queryId"].hex() != query_id:
             logging.info("skipping undesired NewReport event")
             return None
 
