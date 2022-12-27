@@ -66,6 +66,11 @@ Use the `-a` or `--all-values` flag to specify that you want to see all values.
 poetry run cli -a
 ```
 
+### Monitoring a single queryId
+You can set the disputable-values-monitor to alert you on a single queryId. Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor.
+
+### Setting the confidence threshold
+You can set the confidence threshold of the disputable-values-monitor to a floal between 0 and 1. The confidence thresholds represents the percent difference between the reported value and the expected value required to send an alert to dispute.
 
 
 ## Dev setup/help:
