@@ -61,7 +61,7 @@ poetry run cli --wait 120
 
 ### Viewing all NewReport events
 You can configure the disputable-values-monitor to alert you on ALL NewReport events. This is useful for monitoring uncommon but important data types.
-Use the `-a` or `--all-values` flag to specify that you want to see all values.
+Use the `-a` or `--all-values` flag to specify that you want to monitor and receive alerts for all values.
 ```
 poetry run cli -a
 ```
@@ -70,7 +70,7 @@ poetry run cli -a
 You can set the disputable-values-monitor to alert you on a single queryId. Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor.
 
 ### Setting the confidence threshold
-You can set the confidence threshold of the disputable-values-monitor to a float between 0 and 1. The confidence thresholds represents the percent difference between the reported value and the expected value required to send an alert to dispute. For setting the confidence treshold, use the `-c` flag.
+You can set the confidence threshold of the disputable-values-monitor to a float between 0 and 1. The confidence thresholds represents the percent difference between the reported value and the expected value required to send an alert to dispute. For setting the confidence treshold, use the `-c` flag. For example, run `poetry run cli -c 0.25` to receive alerts if there's a 25% difference between the reported value and the expected value.
 
 
 ## Dev setup/help:
