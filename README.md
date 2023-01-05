@@ -41,7 +41,7 @@ source vars.sh
 To edit the chains you want to monitor:
 1. Initialize telliot configuration
 Run `poetry run telliot config init`
-** Note **: You may see an error with this command, such as `Could not connect to RPC endpoint...`. This is expected, and you can ignore it.
+You may see an error with this command, such as `Could not connect to RPC endpoint...`. This is expected, and you can ignore it.
 
 This will create a file called `~/telliot/endpoints.yaml`, where you can list and configure the chains and endpoints you want to monitor.
 You will need a chain_id, network name, provider name, and a url for an endpoint. You must at least enter a mainnet endpoint, along with any other chains you want to monitor. You also must delete any chains you do not want to monitor.
@@ -62,28 +62,32 @@ After editing `endpoints.yaml`, you are ready to begin monitoring!
 ```
 poetry run cli
 ```
-### Reducing RPC calls
-You can update the wait time between event checks to reduce calls to the RPC endpoint. The default is seven seconds.
-Use the `--wait` flag to specify a different wait time in seconds.
-```
-poetry run cli --wait 120
-```
 
-### Viewing all NewReport events
-You can configure the disputable-values-monitor to alert you on ALL NewReport events. This is useful for monitoring uncommon but important data types.
-Use the `-a` or `--all-values` flag to specify that you want to monitor and receive alerts for all values.
-```
+## Options
+The available cli options are `-a`, `-f`, `-c`, and `-wait`. You can use these options in any combination. 
+
+Use `-a` to get an alert for ALL `NewReport` events (regardless of whether they are disputable or not). 
+```bash
 poetry run cli -a
 ```
 
-### Monitoring a single queryId
-You can set the disputable-values-monitor to alert you on a single queryId. Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor.
+Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor. 
+```bash
+poetry run cli -f
+```
 
-### Setting the confidence threshold
-You can set the confidence threshold of the disputable-values-monitor to a float between 0 and 1. The confidence thresholds represents the percent difference between the reported value and the expected value required to send an alert to dispute. For setting the confidence threshold, use the `-c` flag. For example, run `poetry run cli -c 0.25` to receive alerts if there's a 25% difference between the reported value and the expected value.
+Use `-c` to set the confidence threshold. The default confidence threshold is 75%. The confidence threshold represents the percent difference between the reported value and the expected value required to send an alert to dispute. For example to receive alerts if there's a 25% difference between the reported value and the expected value, run the following command.
+```bash
+poetry run cli -c 0.25
+```
+
+Use `-wait` to set the wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds.
+```bash
+poetry run cli --wait 120
+```
 
 
-## Dev setup/help:
+## Dev setup for contributing:
 Run tests:
 ```
 poetry run pytest
@@ -96,7 +100,7 @@ Check type hinting:
 ```
 poetry run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
 ```
-Generate requirements.txt:
+Generate requirements.txt in case you have installed new dependencies:
 ```
 poetry export -f requirements.txt --output requirements.txt --without-hashes
 ```
