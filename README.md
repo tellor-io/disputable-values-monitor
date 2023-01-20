@@ -20,7 +20,7 @@ cd disputable-values-monitor
 - Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
 
 ```
-poetry env use 3.9
+poetry use 3.9
 poetry install
 ```
 
