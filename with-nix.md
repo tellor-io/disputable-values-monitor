@@ -17,5 +17,7 @@ fill in variables with appropriate values see [README](./README.md)
 
 `source vars.sh`
 
+`poetry run telliot config init`
+
 Add project id to ~/telliot/endpoints.yaml
 
