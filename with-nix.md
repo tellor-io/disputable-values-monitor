@@ -1,23 +1,39 @@
 # Use disputable monitor via NIX-SHELL
 
 ##### Install Nix
-- Ubuntu 22.04: `sh <(curl -L https://nixos.org/nix/install) --daemon`
+- Ubuntu 22.04: 
+```sh 
+sh <(curl -L https://nixos.org/nix/install) --daemon 
+````
 <!-- - MacOS: sh <(curl -L https://nixos.org/nix/install) -->
 
 ##### Then:
-`nix-shell`
+```sh
+nix-shell
+```
 
 `poetry config virtualenvs.in-project true` (optional)
 
-`poetry install`
+```sh
+poetry install
+```
 
-`mv vars.example.sh vars.sh`
+```sh
+mv vars.example.sh vars.sh
+```
 
 fill in variables with appropriate values see [README](./README.md)
 
-`source vars.sh`
+```sh
+source vars.sh
+```
 
-`poetry run telliot config init`
+```sh
+poetry run telliot config init
+```
 
 Add project id to ~/telliot/endpoints.yaml
 
+```sh
+poetry run cli
+```
