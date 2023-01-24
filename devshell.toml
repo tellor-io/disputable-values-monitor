@@ -1,0 +1,9 @@
+# https://numtide.github.io/devshell
+[[env]]
+name="LD_LIBRARY_PATH"
+eval="$(find /nix/store -name libstdc++.so.6 -path '*gcc-11.3.0-lib*' -printf '%h\n' -quit)"
+
+[devshell]
+name = "DVM"
+packages = [ "python39Packages.poetry" ]
+motd = "{202}{bold}🔨Disputable Values Monitor\n"
