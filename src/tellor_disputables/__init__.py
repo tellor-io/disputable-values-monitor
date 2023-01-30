@@ -113,3 +113,17 @@ LEGACY_CURRENCIES = {
     50: "USD",
     59: "JPY",
 }
+
+NEW_REPORT_ABI = {
+    "anonymous": False,
+    "inputs": [
+        {"indexed": True, "internalType": "bytes32", "name": "_queryId", "type": "bytes32"},
+        {"indexed": True, "internalType": "uint256", "name": "_time", "type": "uint256"},
+        {"indexed": False, "internalType": "bytes", "name": "_value", "type": "bytes"},
+        {"indexed": False, "internalType": "uint256", "name": "_nonce", "type": "uint256"},
+        {"indexed": False, "internalType": "bytes", "name": "_queryData", "type": "bytes"},
+        {"indexed": True, "internalType": "address", "name": "_reporter", "type": "address"},
+    ],
+    "name": "NewReport",
+    "type": "event",
+}

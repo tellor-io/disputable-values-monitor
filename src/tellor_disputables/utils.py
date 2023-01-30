@@ -1,5 +1,6 @@
 """Helper functions."""
 import os
+from dataclasses import dataclass
 from typing import Optional
 
 from telliot_core.apps.telliot_config import TelliotConfig
@@ -12,6 +13,39 @@ def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:
         return explorer + "/tx/" + tx_hash
     else:
         return f"Explorer not defined for chain_id {cfg.main.chain_id}"
+
+
+@dataclass
+class Topics:
+    """Topics for Tellor events."""
+
+    # sha3("NewReport(bytes32,uint256,uint256,uint256,uint256)")
+    NEW_REPORT: str = "0x48e9e2c732ba278de6ac88a3a57a5c5ba13d3d8370e709b3b98333a57876ca95"  # oracle.NewReport
+    # sha3("NewOracleAddress(address,uint256)")
+    NEW_ORACLE_ADDRESS: str = (
+        "0x31f30a38b53d085dbe09f68f490447e9032b29de8deb5aae4ccd3577a09ff284"  # oracle.NewOracleAddress
+    )
+    # sha3("NewProposedOracleAddress(address,uint256)")
+    NEW_PROPOSED_ORACLE_ADDRESS: str = (
+        "0x8fe6b09081e9ffdaf91e337aba6769019098771106b34b194f1781b7db1bf42b"  # oracle.NewProposedOracleAddress
+    )
+
+
+@dataclass
+class NewReport:
+    """NewReport event."""
+
+    tx_hash: str
+    eastern_time: str
+    chain_id: int
+    link: str
+    query_type: str
+    value: float
+    asset: str
+    currency: str
+    query_id: str
+    disputable: Optional[bool]
+    status_str: str
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
