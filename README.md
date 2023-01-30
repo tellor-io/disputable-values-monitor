@@ -64,14 +64,14 @@ poetry run cli
 ```
 
 ## Options
-The available cli options are `-a`, `-f`, `-c`, and `-wait`. You can use these options in any combination. 
+The available cli options are `-a`, `-f`, `-c`, and `-wait`. You can use these options in any combination.
 
-Use `-a` to get an alert for ALL `NewReport` events (regardless of whether they are disputable or not). 
+Use `-a` to get an alert for ALL `NewReport` events (regardless of whether they are disputable or not).
 ```bash
 poetry run cli -a
 ```
 
-Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor. 
+Use `-f` to enter `filter` mode, where you can select a Query Type and enter the Query Parameters to build a queryId to monitor.
 ```bash
 poetry run cli -f
 ```

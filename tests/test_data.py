@@ -5,55 +5,47 @@ from unittest.mock import patch
 import pytest
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
+from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
+from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 from telliot_feeds.queries.price.spot_price import SpotPrice
 
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_legacy_request_pair_info
-from tellor_disputables.data import get_node_url
 from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import get_tx_receipt
 from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import log_loop
+from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
 
 
 @pytest.mark.asyncio
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
-    # ETH/USD
-    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
     val = 1000.0
     threshold = 0.05
 
+    # ETH/USD
+    current_feed = eth_usd_median_feed
+
     # Is disputable
-    disputable = await is_disputable(val, query_id, threshold)
+    disputable = await is_disputable(val, current_feed, threshold)
     assert isinstance(disputable, bool)
     assert disputable
 
     # No reported value
-    disputable = await is_disputable(reported_val=None, query_id=query_id, conf_threshold=threshold)
+    disputable = await is_disputable(reported_val=None, current_feed=current_feed, conf_threshold=threshold)
     assert disputable is None
     assert "Need reported value to check disputability" in caplog.text
 
     # Unable to fetch price
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
-        disputable = await is_disputable(val, query_id, threshold)
+        disputable = await is_disputable(val, current_feed, threshold)
         assert disputable is None
         assert "Unable to fetch new datapoint from feed" in caplog.text
-
-    # Unsupported query id
-    query_id = "gobldygook"
-    assert await is_disputable(val, query_id, threshold) is None
-
-
-def test_get_infura_node_url():
-    url = get_node_url()
-
-    assert isinstance(url, str)
-    assert url.startswith("http")
 
 
 def test_get_legacy_request_pair_info():
@@ -136,9 +128,10 @@ def test_get_tx_receipt(check_web3_configured, caplog):
 @pytest.mark.asyncio
 async def test_parse_new_report_event():
 
+    tx_hash = "0xb3e4fb09e3dcc7abc0f30181c5dc9ba7253d694de17d88c37c2bd4069f0eebdc"
+
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
-    tx_hash = "0xb3e4fb09e3dcc7abc0f30181c5dc9ba7253d694de17d88c37c2bd4069f0eebdc"
 
     for endpoint in cfg.endpoints.find(chain_id=5):
         cfg.endpoints.endpoints.remove(endpoint)
@@ -150,13 +143,13 @@ async def test_parse_new_report_event():
 
     new_report = await parse_new_report_event(cfg, tx_hash, 0.50)
 
+    cfg.endpoints.endpoints.remove(endpoint)
+
     assert new_report
 
     assert new_report.chain_id == 5
     assert new_report.tx_hash == tx_hash
     assert "etherscan" in new_report.link
-
-    cfg.endpoints.endpoints.remove(endpoint)
 
 
 @pytest.mark.asyncio
@@ -169,7 +162,7 @@ async def test_get_events():
     assert len(events) > 0
 
 
-def test_get_contract_iofo():
+def test_get_contract_info():
 
     addr, abi = get_contract_info(5)
 
@@ -187,24 +180,25 @@ async def test_different_conf_thresholds():
     """test if a value is dispuable under different confindence thresholds"""
 
     # ETH/USD
-    query_id = "83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
+    feed = eth_usd_median_feed
     val = 666
     threshold = 0.05
 
     # Is disputable
-    disputable = await is_disputable(val, query_id, threshold)
+    disputable = await is_disputable(val, feed, threshold)
     assert isinstance(disputable, bool)
     assert disputable
 
-    threshold = 0.50
+    threshold = 0.99
     # Is now not disputable
-    disputable = await is_disputable(val, query_id, threshold)
+    disputable = await is_disputable(val, feed, threshold)
     assert isinstance(disputable, bool)
     assert not disputable
 
 
 @pytest.mark.asyncio
-async def test_query_id_filter(caplog):
+async def test_feed_filter(caplog):
+    """test that, if the user wants to monitor only one feed, all other feeds are ignored and skipped"""
 
     caplog.set_level(logging.INFO)
 
@@ -221,16 +215,67 @@ async def test_query_id_filter(caplog):
 
     tx_hash = "0xbf71154020b6e96c6c5db54ab97c40db3b73cf80ddda235b5204cf6d63ef5da7"
 
-    # set up a report with an incorrect but plausible query id
-    btc_usd_query_id = "a6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
+    # we are monitoring a different feed
+    feed = btc_usd_median_feed
 
     confidence_threshold = 0.50
 
     # try to parse it
-    res = await parse_new_report_event(cfg, tx_hash, confidence_threshold, btc_usd_query_id)
+    res = await parse_new_report_event(cfg, tx_hash, confidence_threshold, feed)
 
     # parser should return None
     assert not res
     assert "skipping undesired NewReport event" in caplog.text
 
     cfg.endpoints.endpoints.remove(endpoint)
+
+
+@pytest.mark.asyncio
+async def test_parse_oracle_address_submission():
+
+    update_oracle_address_query_id = "0xcf0c5863be1cf3b948a9ff43290f931399765d051a60c3b23a4e098148b1f707"
+
+    class TellorOracleAddress:
+
+        query_id: str = update_oracle_address_query_id
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 1
+
+    for endpoint in cfg.endpoints.find(chain_id=1):
+        cfg.endpoints.endpoints.remove(endpoint)
+
+    endpoint = RPCEndpoint(
+        1, "Mainnet", "Infura", "https://mainnet.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
+    )
+    cfg.endpoints.endpoints.append(endpoint)
+
+    tx_hash = "0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
+    etherscan_link = "etherscan.io/tx/0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
+    feed = None
+    see_all_values = False
+
+    with (
+        patch("tellor_disputables.data.get_query_from_data", return_value=TellorOracleAddress()),
+        patch("tellor_disputables.data.get_query_type", return_value="TellorOracleAddress"),
+        patch("tellor_disputables.data.get_query_id", return_value=update_oracle_address_query_id),
+        patch(
+            "tellor_disputables.data.decode_reported_value", return_value="0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+        ),
+    ):
+        new_report: NewReport = await parse_new_report_event(
+            cfg=cfg, tx_hash=tx_hash, confidence_threshold=0.05, feed=feed, see_all_values=see_all_values
+        )  # threshold is ignored
+
+    cfg.endpoints.endpoints.remove(endpoint)
+
+    assert new_report.asset is None
+    assert new_report.chain_id == 1
+    assert new_report.currency is None
+    assert new_report.disputable is None
+    assert new_report.link == etherscan_link
+    assert new_report.query_id == update_oracle_address_query_id
+    assert new_report.tx_hash == tx_hash
+    assert new_report.query_type == "TellorOracleAddress"
+    assert new_report.value == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    assert "VERY IMPORTANT DATA SUBMISSION" in new_report.status_str

@@ -7,7 +7,7 @@ import click
 import pandas as pd
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
-from telliot_feeds.cli.utils import build_query
+from telliot_feeds.cli.utils import build_feed_from_input
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -62,11 +62,9 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     displayed_events = set()
 
     if filter:
-        q = build_query()
-        query_id = q.query_id.hex()
+        feed = build_feed_from_input()
     else:
-        query_id = None
-
+        feed = None
     while True:
 
         cfg = TelliotConfig()
@@ -82,7 +80,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
 
                 try:
                     new_report = await parse_new_report_event(
-                        cfg, event["transactionHash"].hex(), confidence_threshold, query_id=query_id
+                        cfg, event["transactionHash"].hex(), confidence_threshold, feed=feed, see_all_values=all_values
                     )
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))

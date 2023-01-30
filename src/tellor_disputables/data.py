@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from typing import Dict
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -17,10 +18,12 @@ from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.legacy_query import LegacyRequest
 from telliot_feeds.queries.price.spot_price import SpotPrice
+from telliot_feeds.queries.query import OracleQuery
 from web3 import Web3
 from web3.contract import Contract
 from web3.exceptions import TransactionNotFound
 
+from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import LEGACY_ASSETS
 from tellor_disputables import LEGACY_CURRENCIES
@@ -47,6 +50,20 @@ def get_contract_info(chain_id: int) -> Tuple[Optional[str], Optional[str]]:
     else:
         logging.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
+
+
+def get_query_type(q: OracleQuery) -> str:
+    """Get query type from class name"""
+    return type(q).__name__
+
+
+def get_query_id(q: OracleQuery) -> str:
+    """Get query id from OracleQuery"""
+    return str(q.query_id.hex())
+
+
+def decode_reported_value(q: OracleQuery, args: Dict[str, Any]) -> Any:
+    return q.value_type.decode(args["_value"])
 
 
 def get_web3() -> Web3:
@@ -121,21 +138,25 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
     return await feed.source.fetch_new_datapoint()
 
 
-async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = 0.05) -> Optional[bool]:
+async def is_disputable(
+    reported_val: Union[str, bytes, float, int], current_feed: DataFeed[Any], conf_threshold: float = 0.05
+) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if reported_val is None:
         logging.error("Need reported value to check disputability")
         return None
 
-    if query_id not in DATAFEED_LOOKUP:
-        logging.info(f"new report for unsupported query ID: {query_id}")
-        return None
-
-    current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
     trusted_val, _ = await general_fetch_new_datapoint(current_feed)
     if trusted_val is not None:
-        percent_diff = (reported_val - trusted_val) / trusted_val
-        return float(abs(percent_diff)) > conf_threshold
+
+        if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
+            percent_diff: float = (reported_val - trusted_val) / trusted_val
+            return float(abs(percent_diff)) > conf_threshold
+        elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
+            return trusted_val == reported_val
+        else:
+            logging.error("Reported value is an unsupported data type")
+            return None
     else:
         logging.error("Unable to fetch new datapoint from feed")
         return None
@@ -150,9 +171,9 @@ class NewReport:
     chain_id: int
     link: str
     query_type: str
-    value: float
-    asset: str
-    currency: str
+    value: Any
+    asset: Optional[str]
+    currency: Optional[str]
     query_id: str
     disputable: Optional[bool]
     status_str: str
@@ -237,7 +258,11 @@ def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
 
 
 async def parse_new_report_event(
-    cfg: TelliotConfig, tx_hash: str, confidence_threshold: float, query_id: Optional[str] = None
+    cfg: TelliotConfig,
+    tx_hash: str,
+    confidence_threshold: float,
+    feed: Optional[DataFeed] = None,
+    see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
@@ -277,29 +302,67 @@ async def parse_new_report_event(
         return None
 
     args = receipt["args"]
-    if query_id is not None:
-        if args["_queryId"].hex() != query_id:
+    if feed is not None:
+        if args["_queryId"].hex() != feed.query.query_id.hex():
             logging.info("skipping undesired NewReport event")
             return None
 
     q = get_query_from_data(args["_queryData"])
+    query_type = get_query_type(q)
+    query_id = get_query_id(q)
+    val = decode_reported_value(q, args)
+
+    link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
+
     if isinstance(q, SpotPrice):
         asset = q.asset.upper()
         currency = q.currency.upper()
     elif isinstance(q, LegacyRequest):
         asset, currency = get_legacy_request_pair_info(q.legacy_id)
+    elif query_type in ALWAYS_ALERT_QUERY_TYPES:
+        return NewReport(
+            chain_id=endpoint.eth.chain_id,
+            eastern_time=args["_time"],
+            tx_hash=tx_hash,
+            link=link,
+            query_type=query_type,
+            value=val,
+            asset=None,
+            currency=None,
+            query_id=query_id,
+            disputable=None,
+            status_str="❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗",
+        )
     else:
         logging.error("unsupported query type")
         return None
 
-    val = q.value_type.decode(args["_value"])
-    link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
-    if not query_id:
-        query_id = str(q.query_id.hex())
-    disputable = await is_disputable(val, query_id, confidence_threshold)
+    if feed is None:
+        feed = DATAFEED_LOOKUP[query_id]
+
+    disputable = await is_disputable(val, feed, confidence_threshold)
     if disputable is None:
-        logging.info("unable to check disputability")
-        return None
+
+        if see_all_values:
+
+            status_str = disputable_str(disputable, query_id)
+
+            return NewReport(
+                chain_id=endpoint.eth.chain_id,
+                eastern_time=args["_time"],
+                tx_hash=tx_hash,
+                link=link,
+                query_type=query_type,
+                value=val,
+                asset=asset,
+                currency=currency,
+                query_id=query_id,
+                disputable=disputable,
+                status_str=status_str,
+            )
+        else:
+            logging.info("unable to check disputability")
+            return None
     else:
         status_str = disputable_str(disputable, query_id)
 
@@ -308,7 +371,7 @@ async def parse_new_report_event(
             eastern_time=args["_time"],
             tx_hash=tx_hash,
             link=link,
-            query_type=type(q).__name__,
+            query_type=query_type,
             value=val,
             asset=asset,
             currency=currency,
