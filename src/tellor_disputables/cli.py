@@ -11,35 +11,38 @@ from telliot_feeds.cli.utils import build_query
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
-from tellor_disputables.alerts import get_from_number
-from tellor_disputables.alerts import get_phone_numbers
+from tellor_disputables.alerts import generic_alert
+from tellor_disputables.alerts import get_twilio_info
+from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.utils import clear_console
-
+from tellor_disputables.utils import get_tx_explorer_url
+from tellor_disputables.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
+logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
+logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
+logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
 
 
 def print_title_info() -> None:
     """Prints the title info."""
-    logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
     click.echo("Disputable Values Monitor 📒🔎📲")
-    # print("get text alerts when potentially bad data is reported to Tellor oracles")
-    # print("(only checks disputability of SpotPrice and LegacyRequest query types)")
 
 
 @click.command()
 @click.option(
     "-a", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
 )
-@click.option("-w", "--wait", help="how long to wait between checks", type=int)
+@click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-f", "--filter", help="build a queryId and get alerts for that queryId only", is_flag=True)
 @click.option(
     "-c",
     "--confidence-threshold",
     help="percent difference threshold for notifications (a float between 0 and 1)",
     type=float,
+    default=0.05,
 )
 @async_run
 async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
@@ -48,41 +51,55 @@ async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: 
 
 
 async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
-    # Fetch optional wait period
-    wait_period = wait if wait else WAIT_PERIOD
+    """Start the CLI dashboard."""
     print_title_info()
-
-    recipients = get_phone_numbers()
-    from_number = get_from_number()
-    if recipients is None or from_number is None:
+    from_number, recipients = get_twilio_info()
+    if from_number is None or recipients is None:
         logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
 
     display_rows = []
     displayed_events = set()
 
-    if filter:
-        q = build_query()
-        query_id = q.query_id.hex()
-    else:
-        query_id = None
+    # Build query if filter is set
+    query_id = build_query().query_id.hex() if filter else None
 
     while True:
 
         cfg = TelliotConfig()
         # Fetch NewReport events
-        event_lists = await get_events(cfg=cfg)
-
+        event_lists = await get_events(
+            cfg=cfg,
+            contract_name="tellor360-oracle",
+            topics=[Topics.NEW_REPORT] + [f"0x{query_id}"] if query_id is not None else [],
+            wait=wait,
+        )
+        tellor360_events = await chain_events(
+            cfg=cfg,
+            chain_addy={
+                1: "0xD3b9A1DCAbd16c482785Fd4265cB4580B84cdeD7",
+                5: "0xD3b9A1DCAbd16c482785Fd4265cB4580B84cdeD7",
+            },
+            topics=[Topics.NEW_ORACLE_ADDRESS, Topics.NEW_PROPOSED_ORACLE_ADDRESS],
+            wait=wait,
+        )
+        event_lists += tellor360_events
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
-            for event_info in event_list:
+            if not event_list:
+                continue
+            for chain_id, event in event_list:
 
-                chain_id, event = event_info
                 cfg.main.chain_id = chain_id
+                if Topics.NEW_ORACLE_ADDRESS in event.topics or Topics.NEW_PROPOSED_ORACLE_ADDRESS in event.topics:
+                    link = get_tx_explorer_url(cfg=cfg, tx_hash=event.transactionHash.hex())
+                    msg = f"\n❗NEW ORACLE ADDRESS ALERT❗\n{link}"
+                    generic_alert(from_number=from_number, recipients=recipients, msg=msg)
+                    continue
 
                 try:
                     new_report = await parse_new_report_event(
-                        cfg, event["transactionHash"].hex(), confidence_threshold, query_id=query_id
+                        cfg=cfg, confidence_threshold=confidence_threshold, log=event
                     )
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
@@ -132,7 +149,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
                 print(df.to_markdown(), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
 
-        sleep(wait_period)
+        sleep(wait)
 
 
 if __name__ == "__main__":
