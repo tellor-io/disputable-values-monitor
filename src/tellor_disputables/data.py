@@ -116,21 +116,22 @@ async def is_disputable(reported_val: float, query_id: str, conf_threshold: floa
 
 
 async def chain_events(
-    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[str], wait: int
+    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], wait: int
 ) -> List[List[tuple[int, Any]]]:
     """"""
     events_loop = []
-    for chain_id, address in chain_addy.items():
-        try:
-            endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
-            if endpoint.url.endswith("{INFURA_API_KEY}"):
+    for topic in topics:
+        for chain_id, address in chain_addy.items():
+            try:
+                endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
+                if endpoint.url.endswith("{INFURA_API_KEY}"):
+                    continue
+                endpoint.connect()
+                w3 = endpoint.web3
+            except (IndexError, ValueError) as e:
+                logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
                 continue
-            endpoint.connect()
-            w3 = endpoint.web3
-        except (IndexError, ValueError) as e:
-            logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
-            continue
-        events_loop.append(log_loop(w3, address, topics, wait))
+            events_loop.append(log_loop(w3, address, topic, wait))
     events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
 
     return events

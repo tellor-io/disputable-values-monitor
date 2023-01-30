@@ -5,6 +5,7 @@ from time import sleep
 
 import click
 import pandas as pd
+from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 from telliot_feeds.cli.utils import build_query
@@ -76,11 +77,12 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
         )
         tellor360_events = await chain_events(
             cfg=cfg,
+            # addresses are for token contract
             chain_addy={
-                1: "0xD3b9A1DCAbd16c482785Fd4265cB4580B84cdeD7",
-                5: "0xD3b9A1DCAbd16c482785Fd4265cB4580B84cdeD7",
+                1: "0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0",
+                5: "0x51c59c6cAd28ce3693977F2feB4CfAebec30d8a2",
             },
-            topics=[Topics.NEW_ORACLE_ADDRESS, Topics.NEW_PROPOSED_ORACLE_ADDRESS],
+            topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
             wait=wait,
         )
         event_lists += tellor360_events
@@ -91,7 +93,10 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
             for chain_id, event in event_list:
 
                 cfg.main.chain_id = chain_id
-                if Topics.NEW_ORACLE_ADDRESS in event.topics or Topics.NEW_PROPOSED_ORACLE_ADDRESS in event.topics:
+                if (
+                    HexBytes(Topics.NEW_ORACLE_ADDRESS) in event.topics
+                    or HexBytes(Topics.NEW_PROPOSED_ORACLE_ADDRESS) in event.topics
+                ):
                     link = get_tx_explorer_url(cfg=cfg, tx_hash=event.transactionHash.hex())
                     msg = f"\n❗NEW ORACLE ADDRESS ALERT❗\n{link}"
                     generic_alert(from_number=from_number, recipients=recipients, msg=msg)
