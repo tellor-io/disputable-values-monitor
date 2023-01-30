@@ -1,9 +1,9 @@
 # Use disputable monitor via NIX-SHELL
 
 ##### Install Nix
-- Ubuntu 22.04: 
-```sh 
-sh <(curl -L https://nixos.org/nix/install) --daemon 
+- Ubuntu 22.04:
+```sh
+sh <(curl -L https://nixos.org/nix/install) --daemon
 ````
 <!-- - MacOS: sh <(curl -L https://nixos.org/nix/install) -->
 
