@@ -59,7 +59,7 @@ def get_query_type(q: OracleQuery) -> str:
 
 def get_query_id(q: OracleQuery) -> str:
     """Get query id from OracleQuery"""
-    return str(q.query_id.hex())
+    return q.query_id.hex()
 
 
 def decode_reported_value(q: OracleQuery, args: Dict[str, Any]) -> Any:
