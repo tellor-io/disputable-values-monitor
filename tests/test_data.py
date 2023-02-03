@@ -3,7 +3,6 @@ import logging
 from unittest.mock import patch
 
 import pytest
-from telliot_feeds.datafeed import DataFeed
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
@@ -11,6 +10,7 @@ from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 from telliot_feeds.dtypes.value_type import ValueType
 from telliot_feeds.queries.price.spot_price import SpotPrice
+from web3 import Web3
 from web3.datastructures import AttributeDict
 from telliot_feeds.queries.abi_query import AbiQuery
 
@@ -272,5 +272,5 @@ async def test_parse_oracle_address_submission():
     assert new_report.query_id == update_oracle_address_query_id
     assert new_report.tx_hash == tx_hash
     assert new_report.query_type == "TellorOracleAddress"
-    assert new_report.value == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    assert Web3.toChecksumAddress(new_report.value) == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     assert "VERY IMPORTANT DATA SUBMISSION" in new_report.status_str
