@@ -1,7 +1,8 @@
 """Helper functions."""
 import os
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional
+from typing import Union
 
 from telliot_core.apps.telliot_config import TelliotConfig
 

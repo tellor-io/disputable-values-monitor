@@ -6,13 +6,13 @@ import pytest
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
+from telliot_feeds.dtypes.value_type import ValueType
 from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
-from telliot_feeds.dtypes.value_type import ValueType
+from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 from web3.datastructures import AttributeDict
-from telliot_feeds.queries.abi_query import AbiQuery
 
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
@@ -20,6 +20,7 @@ from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
+
 
 @pytest.fixture
 def log():

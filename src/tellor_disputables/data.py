@@ -2,7 +2,6 @@
 import asyncio
 import logging
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -50,12 +49,14 @@ def get_query_type(q: OracleQuery) -> str:
     """Get query type from class name"""
     return type(q).__name__
 
+
 def get_contract(web3: Web3, addr: str, abi: str) -> Contract:
     """Get a contract instance for the given address and ABI."""
     return web3.eth.contract(  # type: ignore
         address=addr,
         abi=abi,
     )
+
 
 def mk_filter(
     from_block: int, to_block: Union[str, int], addr: str, topics: list[str]
@@ -202,7 +203,7 @@ async def parse_new_report_event(
     confidence_threshold: float,
     log: LogReceipt,
     feed: DataFeed = None,
-    see_all_values: bool = False
+    see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
@@ -255,7 +256,7 @@ async def parse_new_report_event(
     else:
         logging.error("unsupported query type")
         return None
-    
+
     disputable = await is_disputable(new_report.value, feed, confidence_threshold)
     if disputable is None:
 
