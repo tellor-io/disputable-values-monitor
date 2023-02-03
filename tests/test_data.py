@@ -3,23 +3,44 @@ import logging
 from unittest.mock import patch
 
 import pytest
+from telliot_feeds.datafeed import DataFeed
+from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
+from telliot_feeds.dtypes.value_type import ValueType
 from telliot_feeds.queries.price.spot_price import SpotPrice
+from web3.datastructures import AttributeDict
+from telliot_feeds.queries.abi_query import AbiQuery
 
-from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
-from tellor_disputables.data import get_legacy_request_pair_info
 from tellor_disputables.data import get_query_from_data
-from tellor_disputables.data import get_tx_receipt
-from tellor_disputables.data import get_web3
 from tellor_disputables.data import is_disputable
-from tellor_disputables.data import log_loop
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
+
+@pytest.fixture
+def log():
+    return AttributeDict(
+        {
+            "address": "0xB3B662644F8d3138df63D2F43068ea621e2981f9",
+            "topics": [
+                HexBytes("0x48e9e2c732ba278de6ac88a3a57a5c5ba13d3d8370e709b3b98333a57876ca95"),
+                HexBytes("0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"),
+                HexBytes("0x000000000000000000000000000000000000000000000000000000006387ddcf"),
+                HexBytes("0x0000000000000000000000000021053b73a20cb418d0458f543ac3e46d24137e"),
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000009e800000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000461f0eabb0b7870000000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000953706f745072696365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003657468000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000037573640000000000000000000000000000000000000000000000000000000000",  # noqa: E501
+            "blockNumber": 16085880,
+            "transactionHash": HexBytes("0xbf71154020b6e96c6c5db54ab97c40db3b73cf80ddda235b5204cf6d63ef5da7"),
+            "transactionIndex": 16,
+            "blockHash": HexBytes("0xcf720f24b1793eb4d58c6137535e6512b7e62794d1ef4db61eff9dc7c67ef03b"),
+            "logIndex": 63,
+            "removed": False,
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -46,18 +67,6 @@ async def test_is_disputable(caplog):
         disputable = await is_disputable(val, current_feed, threshold)
         assert disputable is None
         assert "Unable to fetch new datapoint from feed" in caplog.text
-
-
-def test_get_legacy_request_pair_info():
-    asset, currency = get_legacy_request_pair_info(59)
-
-    assert isinstance(asset, str)
-    assert isinstance(currency, str)
-    assert asset == "ETH"
-    assert currency == "JPY"
-
-    with pytest.raises(KeyError):
-        _, _ = get_legacy_request_pair_info(101)
 
 
 def test_get_query_from_data():
@@ -92,43 +101,7 @@ def test_get_query_from_data():
 
 
 @pytest.mark.asyncio
-async def test_rpc_value_errors(check_web3_configured, caplog):
-
-    error_msgs = {
-        "{'code': -32000, 'message': 'unknown block'}": "waiting for new blocks",
-        "{'code': -32603, 'message': 'request failed or timed out'}": "request for eth event logs failed",
-        "something else...": "unknown RPC error gathering eth event logs",
-    }
-
-    for i in error_msgs.keys():
-
-        def raise_(*args, **kwargs):
-            raise ValueError(i)  # noqa: B023
-
-        with patch("web3.eth.Eth.get_logs", side_effect=raise_):
-
-            w3 = get_web3()
-
-            await log_loop(web3=w3, addr="0x88df592f8eb5d7bd38bfef7deb0fbc02cf3778a0")
-
-            assert error_msgs[i] in caplog.text
-
-
-def test_get_tx_receipt(check_web3_configured, caplog):
-    w3 = get_web3()
-    address, abi = get_contract_info(1)
-    contract = get_contract(w3, address, abi)
-    tx_hash = "0x12345"
-    tx_receipt = get_tx_receipt(tx_hash=tx_hash, web3=w3, contract=contract)
-
-    assert tx_receipt is None
-    assert "Unable to process receipt for transaction 0x12345" in caplog.text or "not found" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_parse_new_report_event():
-
-    tx_hash = "0xb3e4fb09e3dcc7abc0f30181c5dc9ba7253d694de17d88c37c2bd4069f0eebdc"
+async def test_parse_new_report_event(log):
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
@@ -140,15 +113,14 @@ async def test_parse_new_report_event():
         5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
     )
     cfg.endpoints.endpoints.append(endpoint)
-
-    new_report = await parse_new_report_event(cfg, tx_hash, 0.50)
+    new_report = await parse_new_report_event(cfg, 0.50, log)
 
     cfg.endpoints.endpoints.remove(endpoint)
 
     assert new_report
 
     assert new_report.chain_id == 5
-    assert new_report.tx_hash == tx_hash
+    assert new_report.tx_hash == log.transactionHash.hex()
     assert "etherscan" in new_report.link
 
 
@@ -157,20 +129,20 @@ async def test_get_events():
 
     cfg = TelliotConfig()
 
-    events = await get_events(cfg)
+    events = await get_events(cfg, "tellor360-oracle", [], 7)
 
     assert len(events) > 0
 
 
 def test_get_contract_info():
 
-    addr, abi = get_contract_info(5)
+    addr, abi = get_contract_info(5, "tellor360")
 
     assert addr
     assert addr == "0xB3B662644F8d3138df63D2F43068ea621e2981f9"  # tellor 360 address
     assert abi
 
-    addr, abi = get_contract_info(1234567)
+    addr, abi = get_contract_info(1234567, "tellor")
     assert not addr
     assert not abi
 
@@ -197,7 +169,7 @@ async def test_different_conf_thresholds():
 
 
 @pytest.mark.asyncio
-async def test_feed_filter(caplog):
+async def test_feed_filter(caplog, log):
     """test that, if the user wants to monitor only one feed, all other feeds are ignored and skipped"""
 
     caplog.set_level(logging.INFO)
@@ -213,15 +185,13 @@ async def test_feed_filter(caplog):
     )
     cfg.endpoints.endpoints.append(endpoint)
 
-    tx_hash = "0xbf71154020b6e96c6c5db54ab97c40db3b73cf80ddda235b5204cf6d63ef5da7"
-
     # we are monitoring a different feed
     feed = btc_usd_median_feed
 
     confidence_threshold = 0.50
 
     # try to parse it
-    res = await parse_new_report_event(cfg, tx_hash, confidence_threshold, feed)
+    res = await parse_new_report_event(cfg, confidence_threshold, feed=feed, log=log)
 
     # parser should return None
     assert not res
@@ -235,9 +205,38 @@ async def test_parse_oracle_address_submission():
 
     update_oracle_address_query_id = "0xcf0c5863be1cf3b948a9ff43290f931399765d051a60c3b23a4e098148b1f707"
 
-    class TellorOracleAddress:
+    log = AttributeDict(
+        {
+            "address": "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0",
+            "topics": [
+                HexBytes("0x48e9e2c732ba278de6ac88a3a57a5c5ba13d3d8370e709b3b98333a57876ca95"),
+                HexBytes(update_oracle_address_query_id),
+                HexBytes("0x0000000000000000000000000000000000000000000000000000000063caf0f7"),
+                HexBytes("0x00000000000000000000000050a86759d495ecfa7c301071d6b0bdd4bd664ab0"),
+            ],
+            "data": "0x0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000d9157453e2668b2fc45b7a803d3fef3642430cc000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000001354656c6c6f724f7261636c654164647265737300000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",  # noqa: E501
+            "blockNumber": 16450223,
+            "transactionHash": HexBytes("0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"),
+            "transactionIndex": 16,
+            "blockHash": HexBytes("0xcf720f24b1793eb4d58c6137535e6512b7e62794d1ef4db61eff9dc7c67ef03b"),
+            "logIndex": 63,
+            "removed": False,
+        }
+    )
+
+    class TellorOracleAddress(AbiQuery):
 
         query_id: str = update_oracle_address_query_id
+
+        @property
+        def value_type(self) -> ValueType:
+            """Data type returned for a TellorOracleAddress query.
+
+            - `address`: the address of the Tellor oracle
+            - `packed`: false
+            """
+
+            return ValueType(abi_type="address", packed=False)
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
@@ -258,20 +257,16 @@ async def test_parse_oracle_address_submission():
     with (
         patch("tellor_disputables.data.get_query_from_data", return_value=TellorOracleAddress()),
         patch("tellor_disputables.data.get_query_type", return_value="TellorOracleAddress"),
-        patch("tellor_disputables.data.get_query_id", return_value=update_oracle_address_query_id),
-        patch(
-            "tellor_disputables.data.decode_reported_value", return_value="0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
-        ),
     ):
         new_report: NewReport = await parse_new_report_event(
-            cfg=cfg, tx_hash=tx_hash, confidence_threshold=0.05, feed=feed, see_all_values=see_all_values
+            cfg=cfg, log=log, confidence_threshold=0.05, feed=feed, see_all_values=see_all_values
         )  # threshold is ignored
 
     cfg.endpoints.endpoints.remove(endpoint)
 
-    assert new_report.asset is None
+    assert not new_report.asset
     assert new_report.chain_id == 1
-    assert new_report.currency is None
+    assert not new_report.currency
     assert new_report.disputable is None
     assert new_report.link == etherscan_link
     assert new_report.query_id == update_oracle_address_query_id

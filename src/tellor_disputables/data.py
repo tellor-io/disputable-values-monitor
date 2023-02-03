@@ -1,44 +1,38 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
 import logging
-import os
-from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from dateutil import tz
 from telliot_core.apps.telliot_config import TelliotConfig
+from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
 from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
-from telliot_feeds.queries.legacy_query import LegacyRequest
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from telliot_feeds.queries.query import OracleQuery
+from urllib3.exceptions import MaxRetryError
+from urllib3.exceptions import NewConnectionError
 from web3 import Web3
-from web3.contract import Contract
-from web3.exceptions import TransactionNotFound
+from web3._utils.events import get_event_data
+from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
-from tellor_disputables import LEGACY_ASSETS
-from tellor_disputables import LEGACY_CURRENCIES
+from tellor_disputables import NEW_REPORT_ABI
+from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
+from tellor_disputables.utils import NewReport
 
 
-def get_node_url() -> Optional[str]:
-    """Get the node URL for the given chain ID."""
-    return os.environ.get("NODE_URL", None)
-
-
-def get_contract_info(chain_id: int) -> Tuple[Optional[str], Optional[str]]:
+def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional[str]]:
     """Get the contract address and ABI for the given chain ID."""
-    name = "tellor360-oracle"
     contracts = contract_directory.find(chain_id=chain_id, name=name)
 
     if len(contracts) > 0:
@@ -56,24 +50,6 @@ def get_query_type(q: OracleQuery) -> str:
     """Get query type from class name"""
     return type(q).__name__
 
-
-def get_query_id(q: OracleQuery) -> str:
-    """Get query id from OracleQuery"""
-    return q.query_id.hex()
-
-
-def decode_reported_value(q: OracleQuery, args: Dict[str, Any]) -> Any:
-    return q.value_type.decode(args["_value"])
-
-
-def get_web3() -> Web3:
-    """Get a Web3 instance for the given chain ID."""
-    node_url = get_node_url()
-    if not node_url:
-        raise ValueError("No node url found. Please set the environment variable NODE_URL.")
-    return Web3(Web3.HTTPProvider(node_url))
-
-
 def get_contract(web3: Web3, addr: str, abi: str) -> Contract:
     """Get a contract instance for the given address and ABI."""
     return web3.eth.contract(  # type: ignore
@@ -81,36 +57,37 @@ def get_contract(web3: Web3, addr: str, abi: str) -> Contract:
         abi=abi,
     )
 
-
-async def eth_log_loop(event_filter: Any, chain_id: int) -> list[tuple[int, Any]]:
-    """Generate a list of NewReport events given a
-    polling interval and an event filter."""
-    unique_events = {}
-    unique_events_lis = []
-
-    for event in event_filter.get_new_entries():
-        txhash = event["transactionHash"]
-
-        if txhash not in unique_events:
-            unique_events[txhash] = event
-            unique_events_lis.append((chain_id, event))
-
-    return unique_events_lis
+def mk_filter(
+    from_block: int, to_block: Union[str, int], addr: str, topics: list[str]
+) -> dict[str, Union[int, str, list[str]]]:
+    """Create a dict with the given parameters."""
+    return {
+        "fromBlock": from_block,
+        "toBlock": to_block,
+        "address": addr,
+        "topics": topics,
+    }
 
 
-async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
+async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
+    # go back 20 blocks; 10 for possible reorgs, the other 10 should cover for even the fastest chains. block/sec
+    # 1000 is the max number of blocks that can be queried at once
+    blocks = min(20 * (wait / WAIT_PERIOD), 1000)
     try:
-        num = web3.eth.get_block_number()
+        block_number = web3.eth.get_block_number()
     except Exception as e:
         if "server rejected" in str(e):
             logging.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
         else:
             logging.warning("unable to retrieve latest block number:" + str(e))
         return []
+
+    event_filter = mk_filter(block_number - int(blocks), "latest", addr, topics)
+
     try:
-        events = web3.eth.get_logs({"fromBlock": num - 100, "toBlock": "latest", "address": addr})  # type: ignore
-    except ValueError as e:
+        events = web3.eth.get_logs(event_filter)  # type: ignore
+    except (MaxRetryError, NewConnectionError, ValueError) as e:
         msg = str(e)
         if "unknown block" in msg:
             logging.error("waiting for new blocks")
@@ -118,16 +95,11 @@ async def log_loop(web3: Web3, addr: str) -> list[tuple[int, Any]]:
             logging.error("request for eth event logs failed")
         else:
             logging.error("unknown RPC error gathering eth event logs \n" + msg)
-
         return []
-    unique_events = {}
+
     unique_events_list = []
-
     for event in events:
-        txhash = event["transactionHash"]
-
-        if txhash not in unique_events:
-            unique_events[txhash] = event
+        if (web3.eth.chain_id, event) not in unique_events_list:
             unique_events_list.append((web3.eth.chain_id, event))
 
     return unique_events_list
@@ -162,44 +134,38 @@ async def is_disputable(
         return None
 
 
-@dataclass
-class NewReport:
-    """NewReport event."""
+async def chain_events(
+    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], wait: int
+) -> List[List[tuple[int, Any]]]:
+    """"""
+    events_loop = []
+    for topic in topics:
+        for chain_id, address in chain_addy.items():
+            try:
+                endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
+                if endpoint.url.endswith("{INFURA_API_KEY}"):
+                    continue
+                endpoint.connect()
+                w3 = endpoint.web3
+            except (IndexError, ValueError) as e:
+                logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+                continue
+            events_loop.append(log_loop(w3, address, topic, wait))
+    events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
 
-    tx_hash: str
-    eastern_time: str
-    chain_id: int
-    link: str
-    query_type: str
-    value: Any
-    asset: Optional[str]
-    currency: Optional[str]
-    query_id: str
-    disputable: Optional[bool]
-    status_str: str
-
-
-def timestamp_to_eastern(timestamp: int) -> str:
-    """Convert a timestamp to Eastern Standard time."""
-    est = tz.gettz("EST")
-    dt = datetime.fromtimestamp(timestamp).astimezone(est)
-
-    return str(dt)
+    return events
 
 
-def create_eth_event_filter(web3: Web3, addr: str, abi: str) -> Any:
-    """Create an event filter for the given address and ABI."""
-    contract = get_contract(web3, addr, abi)
-    return contract.events.NewReport.createFilter(fromBlock="latest")
-
-
-async def get_events(cfg: TelliotConfig) -> tuple[list[tuple[int, Any]], list[tuple[int, Any]]]:
+async def get_events(
+    cfg: TelliotConfig, contract_name: str, topics: list[str], wait: int
+) -> List[List[tuple[int, Any]]]:
     """Get all events from all live Tellor networks"""
 
     log_loops = []
 
     for endpoint in cfg.endpoints.endpoints:
-
+        if endpoint.url.endswith("{INFURA_API_KEY}"):
+            continue
         try:
             endpoint.connect()
         except Exception as e:
@@ -210,64 +176,40 @@ async def get_events(cfg: TelliotConfig) -> tuple[list[tuple[int, Any]], list[tu
         if not w3:
             continue
 
-        addr, _ = get_contract_info(endpoint.chain_id)
+        addr, _ = get_contract_info(endpoint.chain_id, contract_name)
 
         if not addr:
             continue
 
-        log_loops.append(log_loop(w3, addr))
+        log_loops.append(log_loop(w3, addr, topics, wait))
 
-    events_lists: tuple[list[tuple[int, Any]], list[tuple[int, Any]]] = await asyncio.gather(*log_loops)
+    events_lists: List[List[tuple[int, Any]]] = await asyncio.gather(*log_loops)
 
     return events_lists
 
 
-def get_tx_receipt(tx_hash: str, web3: Web3, contract: Contract) -> Any:
-    """Get the transaction receipt for the given transaction hash."""
-    try:
-        receipt = web3.eth.getTransactionReceipt(tx_hash)
-    except TimeoutError:
-        logging.warning(f"timeout getting transaction receipt for {tx_hash}")
-        return None
-    except TransactionNotFound:
-        logging.warning(f"transcation hash {tx_hash} not found")
-        return None
-
-    try:
-        receipt = contract.events.NewReport().processReceipt(receipt)[0]
-    except (IndexError, OverflowError):
-        logging.warning(f"Unable to process receipt for transaction {tx_hash}")
-        return None
-    return receipt
-
-
 def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery]]:
-    """Generate query from query data."""
-    q = None
-    for q_type in (AbiQuery, JsonQuery):
+    for q_type in (JsonQuery, AbiQuery):
         try:
-            q = q_type.get_query_from_data(query_data)
-        except:  # noqa: E722 B001
-            continue
-    return q
-
-
-def get_legacy_request_pair_info(legacy_id: int) -> Optional[tuple[str, str]]:
-    """Retrieve asset and currency from legacy request ID."""
-    return LEGACY_ASSETS[legacy_id], LEGACY_CURRENCIES[legacy_id]
+            return q_type.get_query_from_data(query_data)
+        except ValueError:
+            pass
+    return None
 
 
 async def parse_new_report_event(
     cfg: TelliotConfig,
-    tx_hash: str,
     confidence_threshold: float,
-    feed: Optional[DataFeed] = None,
-    see_all_values: bool = False,
+    log: LogReceipt,
+    feed: DataFeed = None,
+    see_all_values: bool = False
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
+
+    new_report = NewReport()
 
     if not endpoint:
         logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
@@ -276,106 +218,57 @@ async def parse_new_report_event(
 
         try:
             endpoint.connect()
-            endpoint = endpoint.web3
+            w3 = endpoint.web3
         except ValueError as e:
             logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
             return None
 
-        addr, abi = get_contract_info(chain_id)
+        codec = w3.codec
+        event_data = get_event_data(codec, NEW_REPORT_ABI, log)
 
-        if not addr or not abi:
-            logging.error("Cannot parse event, missing contract info!")
-            return None
-        contract = get_contract(endpoint, addr, abi)
+    q = get_query_from_data(event_data.args._queryData)
 
-    try:
-        receipt = get_tx_receipt(tx_hash, endpoint, contract)
-    except TransactionNotFound:
-        logging.error("transaction not found")
+    if q is None:
+        logging.error("Unable to form query from query data")
         return None
 
-    if not receipt:
-        logging.error("transaction not found")
-        return None
+    new_report.tx_hash = event_data.transactionHash.hex()
+    new_report.chain_id = endpoint.web3.eth.chain_id
+    new_report.query_id = "0x" + event_data.args._queryId.hex()
+    new_report.query_type = get_query_type(q)
+    new_report.value = q.value_type.decode(event_data.args._value)
+    new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
 
-    if receipt["event"] != "NewReport":
-        return None
-
-    args = receipt["args"]
-    if feed is not None:
-        if args["_queryId"].hex() != feed.query.query_id.hex():
+    if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
+        new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
+        return new_report
+    if feed is None:
+        feed = DATAFEED_LOOKUP[new_report.query_id[2:]]  # strip "0x"
+    else:
+        if new_report.query_id != feed.query.query_id.hex():
             logging.info("skipping undesired NewReport event")
             return None
 
-    q = get_query_from_data(args["_queryData"])
-    query_type = get_query_type(q)
-    query_id = get_query_id(q)
-    val = decode_reported_value(q, args)
-
-    link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
-
     if isinstance(q, SpotPrice):
-        asset = q.asset.upper()
-        currency = q.currency.upper()
-    elif isinstance(q, LegacyRequest):
-        asset, currency = get_legacy_request_pair_info(q.legacy_id)
-    elif query_type in ALWAYS_ALERT_QUERY_TYPES:
-        return NewReport(
-            chain_id=endpoint.eth.chain_id,
-            eastern_time=args["_time"],
-            tx_hash=tx_hash,
-            link=link,
-            query_type=query_type,
-            value=val,
-            asset=None,
-            currency=None,
-            query_id=query_id,
-            disputable=None,
-            status_str="❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗",
-        )
+        new_report.asset = q.asset.upper()
+        new_report.currency = q.currency.upper()
     else:
         logging.error("unsupported query type")
         return None
-
-    if feed is None:
-        feed = DATAFEED_LOOKUP[query_id]
-
-    disputable = await is_disputable(val, feed, confidence_threshold)
+    
+    disputable = await is_disputable(new_report.value, feed, confidence_threshold)
     if disputable is None:
 
         if see_all_values:
 
-            status_str = disputable_str(disputable, query_id)
+            new_report.status_str = disputable_str(disputable, new_report.query_id)
+            new_report.disputable = disputable
 
-            return NewReport(
-                chain_id=endpoint.eth.chain_id,
-                eastern_time=args["_time"],
-                tx_hash=tx_hash,
-                link=link,
-                query_type=query_type,
-                value=val,
-                asset=asset,
-                currency=currency,
-                query_id=query_id,
-                disputable=disputable,
-                status_str=status_str,
-            )
+            return new_report
         else:
             logging.info("unable to check disputability")
             return None
     else:
-        status_str = disputable_str(disputable, query_id)
+        new_report.status_str = disputable_str(disputable, new_report.query_id)
 
-        return NewReport(
-            chain_id=endpoint.eth.chain_id,
-            eastern_time=args["_time"],
-            tx_hash=tx_hash,
-            link=link,
-            query_type=query_type,
-            value=val,
-            asset=asset,
-            currency=currency,
-            query_id=query_id,
-            disputable=disputable,
-            status_str=status_str,
-        )
+        return new_report

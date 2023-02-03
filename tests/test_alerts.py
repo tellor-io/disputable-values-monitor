@@ -7,9 +7,8 @@ from twilio.rest import Client
 
 from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import generate_alert_msg
-from tellor_disputables.alerts import get_from_number
-from tellor_disputables.alerts import get_phone_numbers
 from tellor_disputables.alerts import get_twilio_client
+from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.data import NewReport
 
 
@@ -22,27 +21,22 @@ def test_generate_alert_msg():
     assert "DISPUTABLE VALUE" in msg
 
 
-def test_get_from_number():
+def test_get_phone_numbers():
+    os.environ["ALERT_RECIPIENTS"] = "+17897894567,+17897894567,+17897894567"
     os.environ["TWILIO_FROM"] = "+19035029327"
-    num = get_from_number()
+    from_num, recipients = get_twilio_info()
 
-    assert num is not None
-    assert isinstance(num, str)
-    assert num == "+19035029327"
+    assert from_num is not None
+    assert isinstance(from_num, str)
+    assert from_num == "+19035029327"
+    assert isinstance(recipients, list)
+    assert recipients == ["+17897894567", "+17897894567", "+17897894567"]
 
 
 def test_get_twilio_client(check_twilio_configured):
     client = get_twilio_client()
 
     assert isinstance(client, Client)
-
-
-def test_get_phone_numbers():
-    os.environ["ALERT_RECIPIENTS"] = "+17897894567,+17897894567,+17897894567"
-    numbers = get_phone_numbers()
-
-    assert isinstance(numbers, list)
-    assert numbers == ["+17897894567", "+17897894567", "+17897894567"]
 
 
 def test_notify_non_disputable(capsys):

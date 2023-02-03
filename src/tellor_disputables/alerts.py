@@ -2,6 +2,7 @@
 import os
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import click
 from twilio.rest import Client
@@ -9,7 +10,17 @@ from twilio.rest import Client
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables.data import NewReport
 
-# import json
+
+def generic_alert(recipients: List[str], from_number: str, msg: str) -> None:
+    """Send a text message to the given recipients."""
+    send_text_msg(get_twilio_client(), recipients, from_number, msg)
+
+
+def get_twilio_info() -> Tuple[Optional[str], Optional[List[str]]]:
+    """Read the Twilio from number, client and phone numbers from the environment."""
+    twilio_from = os.environ.get("TWILIO_FROM")
+    phone_numbers = os.environ.get("ALERT_RECIPIENTS")
+    return twilio_from, phone_numbers.split(",") if phone_numbers is not None else None
 
 
 def alert(all_values: bool, new_report: NewReport, recipients: List[str], from_number: str) -> None:
@@ -47,21 +58,9 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
         return f"\n❗NEW VALUE❗\n{link}"
 
 
-def get_from_number() -> Optional[str]:
-    """Read the Twilio from number from the environment."""
-    return os.environ.get("TWILIO_FROM")
-
-
 def get_twilio_client() -> Client:
     """Get a Twilio client."""
     return Client(os.environ.get("TWILIO_ACCOUNT_SID"), os.environ.get("TWILIO_AUTH_TOKEN"))
-
-
-def get_phone_numbers() -> Optional[list[str]]:
-    """Get the phone numbers to send text messages to."""
-    # print("ALERT RECIPIENTS:", os.environ.get("ALERT_RECIPIENTS"))
-    nums = os.environ.get("ALERT_RECIPIENTS")
-    return nums.split(",") if nums is not None else None
 
 
 def send_text_msg(client: Client, recipients: list[str], from_number: str, msg: str) -> None:
