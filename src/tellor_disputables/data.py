@@ -8,7 +8,6 @@ from typing import Tuple
 from typing import Union
 
 from telliot_core.apps.telliot_config import TelliotConfig
-from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
 from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries.abi_query import AbiQuery
