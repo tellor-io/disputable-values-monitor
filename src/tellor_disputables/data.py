@@ -50,14 +50,6 @@ def get_query_type(q: OracleQuery) -> str:
     return type(q).__name__
 
 
-def get_contract(web3: Web3, addr: str, abi: str) -> Contract:
-    """Get a contract instance for the given address and ABI."""
-    return web3.eth.contract(  # type: ignore
-        address=addr,
-        abi=abi,
-    )
-
-
 def mk_filter(
     from_block: int, to_block: Union[str, int], addr: str, topics: list[str]
 ) -> dict[str, Union[int, str, list[str]]]:
