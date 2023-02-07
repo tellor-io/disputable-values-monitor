@@ -13,12 +13,14 @@ from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
+from telliot_feeds.queries.query import OracleQuery
 from urllib3.exceptions import MaxRetryError
 from urllib3.exceptions import NewConnectionError
 from web3 import Web3
 from web3._utils.events import get_event_data
 from web3.types import LogReceipt
 
+from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
@@ -40,6 +42,11 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
     else:
         logging.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
+
+
+def get_query_type(q: OracleQuery) -> str:
+    """Get query type from class name"""
+    return type(q).__name__
 
 
 def mk_filter(
@@ -95,21 +102,25 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
     return await feed.source.fetch_new_datapoint()
 
 
-async def is_disputable(reported_val: float, query_id: str, conf_threshold: float = 0.05) -> Optional[bool]:
+async def is_disputable(
+    reported_val: Union[str, bytes, float, int], current_feed: DataFeed[Any], conf_threshold: float = 0.05
+) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if reported_val is None:
         logging.error("Need reported value to check disputability")
         return None
 
-    if query_id not in DATAFEED_LOOKUP:
-        logging.info(f"new report for unsupported query ID: {query_id}")
-        return None
-
-    current_feed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
     trusted_val, _ = await general_fetch_new_datapoint(current_feed)
     if trusted_val is not None:
-        percent_diff = (reported_val - trusted_val) / trusted_val
-        return float(abs(percent_diff)) > conf_threshold
+
+        if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
+            percent_diff: float = (reported_val - trusted_val) / trusted_val
+            return float(abs(percent_diff)) > conf_threshold
+        elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
+            return trusted_val == reported_val
+        else:
+            logging.error("Reported value is an unsupported data type")
+            return None
     else:
         logging.error("Unable to fetch new datapoint from feed")
         return None
@@ -182,11 +193,15 @@ async def parse_new_report_event(
     cfg: TelliotConfig,
     confidence_threshold: float,
     log: LogReceipt,
+    feed: DataFeed = None,
+    see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
+
+    new_report = NewReport()
 
     if not endpoint:
         logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
@@ -203,36 +218,49 @@ async def parse_new_report_event(
         codec = w3.codec
         event_data = get_event_data(codec, NEW_REPORT_ABI, log)
 
-    query_id = event_data.args._queryId.hex()
-
-    tx_hash = event_data.transactionHash.hex()
     q = get_query_from_data(event_data.args._queryData)
+
+    if q is None:
+        logging.error("Unable to form query from query data")
+        return None
+
+    new_report.tx_hash = event_data.transactionHash.hex()
+    new_report.chain_id = endpoint.web3.eth.chain_id
+    new_report.query_id = "0x" + event_data.args._queryId.hex()
+    new_report.query_type = get_query_type(q)
+    new_report.value = q.value_type.decode(event_data.args._value)
+    new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
+
+    if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
+        new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
+        return new_report
+    if feed is None:
+        feed = DATAFEED_LOOKUP[new_report.query_id[2:]]  # strip "0x"
+    else:
+        if new_report.query_id != feed.query.query_id.hex():
+            logging.info("skipping undesired NewReport event")
+            return None
+
     if isinstance(q, SpotPrice):
-        asset = q.asset.upper()
-        currency = q.currency.upper()
+        new_report.asset = q.asset.upper()
+        new_report.currency = q.currency.upper()
     else:
         logging.error("unsupported query type")
         return None
 
-    val = q.value_type.decode(event_data.args._value)
-    link = get_tx_explorer_url(tx_hash=tx_hash, cfg=cfg)
-    disputable = await is_disputable(val, query_id, confidence_threshold)
+    disputable = await is_disputable(new_report.value, feed, confidence_threshold)
     if disputable is None:
-        logging.info("unable to check disputability")
-        return None
-    else:
-        status_str = disputable_str(disputable, query_id)
 
-        return NewReport(
-            chain_id=w3.eth.chain_id,
-            eastern_time=event_data.args._time,
-            tx_hash=tx_hash,
-            link=link,
-            query_type=type(q).__name__,
-            value=val,
-            asset=asset,
-            currency=currency,
-            query_id=query_id,
-            disputable=disputable,
-            status_str=status_str,
-        )
+        if see_all_values:
+
+            new_report.status_str = disputable_str(disputable, new_report.query_id)
+            new_report.disputable = disputable
+
+            return new_report
+        else:
+            logging.info("unable to check disputability")
+            return None
+    else:
+        new_report.status_str = disputable_str(disputable, new_report.query_id)
+
+        return new_report

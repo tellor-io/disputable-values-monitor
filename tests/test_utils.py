@@ -13,7 +13,7 @@ def test_get_tx_explorer_url():
     cfg = TelliotConfig()
     cfg.main.chain_id = chain_id
 
-    tx_url = get_tx_explorer_url(tx_hash, cfg=TelliotConfig())
+    tx_url = get_tx_explorer_url(tx_hash, cfg=cfg)
     assert isinstance(tx_url, str)
 
 

@@ -8,7 +8,7 @@ import pandas as pd
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
-from telliot_feeds.cli.utils import build_query
+from telliot_feeds.cli.utils import build_feed_from_input
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -63,7 +63,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     displayed_events = set()
 
     # Build query if filter is set
-    query_id = build_query().query_id.hex() if filter else None
+    query_id = build_feed_from_input().query.query_id.hex() if filter else None
 
     while True:
 

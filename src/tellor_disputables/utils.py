@@ -2,6 +2,7 @@
 import os
 from dataclasses import dataclass
 from typing import Optional
+from typing import Union
 
 from telliot_core.apps.telliot_config import TelliotConfig
 
@@ -35,17 +36,17 @@ class Topics:
 class NewReport:
     """NewReport event."""
 
-    tx_hash: str
-    eastern_time: str
-    chain_id: int
-    link: str
-    query_type: str
-    value: float
-    asset: str
-    currency: str
-    query_id: str
-    disputable: Optional[bool]
-    status_str: str
+    tx_hash: str = ""
+    eastern_time: str = ""
+    chain_id: int = 0
+    link: str = ""
+    query_type: str = ""
+    value: Union[str, bytes, float, int] = 0
+    asset: str = ""
+    currency: str = ""
+    query_id: str = ""
+    disputable: Optional[bool] = None
+    status_str: str = ""
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
