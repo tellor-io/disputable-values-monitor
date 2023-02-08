@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "tellor-disputables"
-version = "0.0.1"
+version = "1.0.0"
 description = "dashboard & text alerts for disputable values reported to Tellor oracles"
-authors = ["oraclown <info@tellor.io>"]
+authors = ["tallywiesenberg <info@tellor.io>"]
 license = "MIT"
 packages = [{ include = "tellor_disputables", from = "src" }]
 
