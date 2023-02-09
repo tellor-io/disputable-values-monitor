@@ -3,7 +3,12 @@
 from dataclasses import dataclass
 from enum import Enum
 import logging
-from typing import Optional
+from typing import Any, Optional, Union
+
+from telliot_feeds.datafeed import DataFeed
+
+from tellor_disputables.data import general_fetch_new_datapoint
+
 
 class ThresholdType(Enum):
     Percentage = "percentage"
@@ -42,19 +47,28 @@ class Threshold:
 
 @dataclass
 class MonitoredFeed:
-    feed: DataFeed
+    feed: DataFeed[Any]
     threshold: Threshold
 
     async def is_disputable(
-        reported_val: Union[str, bytes, float, int], current_feed: DataFeed[Any], conf_threshold: float = 0.05
+        self, reported_val: Union[str, bytes, float, int],
     ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
             logging.error("Need reported value to check disputability")
             return None
 
-        trusted_val, _ = await general_fetch_new_datapoint(current_feed)
+        trusted_val, _ = await general_fetch_new_datapoint(self.feed)
         if trusted_val is not None:
+
+            if self.threshold.type == ThresholdType.Percentage:
+                pass
+
+            elif self.threshold.type == ThresholdType.Range:
+                pass
+
+            elif self.threshold.type == ThresholdType.Equality:
+                pass
 
             if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
                 percent_diff: float = (reported_val - trusted_val) / trusted_val

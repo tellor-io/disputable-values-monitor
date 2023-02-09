@@ -102,29 +102,6 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
     return await feed.source.fetch_new_datapoint()
 
 
-async def is_disputable(
-    reported_val: Union[str, bytes, float, int], current_feed: DataFeed[Any], conf_threshold: float = 0.05
-) -> Optional[bool]:
-    """Check if the reported value is disputable."""
-    if reported_val is None:
-        logging.error("Need reported value to check disputability")
-        return None
-
-    trusted_val, _ = await general_fetch_new_datapoint(current_feed)
-    if trusted_val is not None:
-
-        if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
-            percent_diff: float = (reported_val - trusted_val) / trusted_val
-            return float(abs(percent_diff)) > conf_threshold
-        elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
-            return trusted_val == reported_val
-        else:
-            logging.error("Reported value is an unsupported data type")
-            return None
-    else:
-        logging.error("Unable to fetch new datapoint from feed")
-        return None
-
 
 async def chain_events(
     cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], wait: int
