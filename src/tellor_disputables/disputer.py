@@ -34,10 +34,19 @@ class Threshold:
 
     def __post_init__(self) -> None:
 
+        self.safe_value_checks()
+    
+    def __setattr__(self, __name: str, __value: Union[ThresholdType, int, None]) -> None:
+
+        if (__name == "type") and (not isinstance(__value, ThresholdType)):
+            raise ValueError("type must be of enum ThresholdType: Percentage, Equality, or Range")
+
+        self.safe_value_checks()
+
+    def safe_value_checks(self):
         if self.type == ThresholdType.Equality:
-            if self.amount != 0:
-                logging.warn("Equality threshold selected, ignoring amount")
-                self.amount = None
+            logging.warn("Equality threshold selected, ignoring amount")
+            self.amount = None
 
         if self.type != ThresholdType.Equality:
             if self.amount is None:
@@ -62,19 +71,16 @@ class MonitoredFeed:
         if trusted_val is not None:
 
             if self.threshold.type == ThresholdType.Percentage:
-                pass
+                percent_diff: float = (reported_val - trusted_val) / trusted_val
+                return float(abs(percent_diff)) > self.threshold.amount
 
             elif self.threshold.type == ThresholdType.Range:
-                pass
+                range_: float = reported_val - trusted_val
+                return range_ > self.threshold.amount
 
             elif self.threshold.type == ThresholdType.Equality:
-                pass
-
-            if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
-                percent_diff: float = (reported_val - trusted_val) / trusted_val
-                return float(abs(percent_diff)) > conf_threshold
-            elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
                 return trusted_val == reported_val
+
             else:
                 logging.error("Reported value is an unsupported data type")
                 return None
