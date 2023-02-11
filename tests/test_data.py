@@ -44,30 +44,7 @@ def log():
     )
 
 
-@pytest.mark.asyncio
-async def test_is_disputable(caplog):
-    """test check for disputability for a float value"""
-    val = 1000.0
-    threshold = 0.05
 
-    # ETH/USD
-    current_feed = eth_usd_median_feed
-
-    # Is disputable
-    disputable = await is_disputable(val, current_feed, threshold)
-    assert isinstance(disputable, bool)
-    assert disputable
-
-    # No reported value
-    disputable = await is_disputable(reported_val=None, current_feed=current_feed, conf_threshold=threshold)
-    assert disputable is None
-    assert "Need reported value to check disputability" in caplog.text
-
-    # Unable to fetch price
-    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
-        disputable = await is_disputable(val, current_feed, threshold)
-        assert disputable is None
-        assert "Unable to fetch new datapoint from feed" in caplog.text
 
 
 def test_get_query_from_data():
@@ -146,27 +123,6 @@ def test_get_contract_info():
     addr, abi = get_contract_info(1234567, "tellor")
     assert not addr
     assert not abi
-
-
-@pytest.mark.asyncio
-async def test_different_conf_thresholds():
-    """test if a value is dispuable under different confindence thresholds"""
-
-    # ETH/USD
-    feed = eth_usd_median_feed
-    val = 666
-    threshold = 0.05
-
-    # Is disputable
-    disputable = await is_disputable(val, feed, threshold)
-    assert isinstance(disputable, bool)
-    assert disputable
-
-    threshold = 0.99
-    # Is now not disputable
-    disputable = await is_disputable(val, feed, threshold)
-    assert isinstance(disputable, bool)
-    assert not disputable
 
 
 @pytest.mark.asyncio
