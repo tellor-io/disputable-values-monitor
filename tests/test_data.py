@@ -140,7 +140,7 @@ def test_get_contract_info():
     addr, abi = get_contract_info(5, "tellor360")
 
     assert addr
-    assert addr == "0xB3B662644F8d3138df63D2F43068ea621e2981f9"  # tellor 360 address
+    assert addr == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"  # tellor 360 address
     assert abi
 
     addr, abi = get_contract_info(1234567, "tellor")

@@ -11,5 +11,5 @@ def check_twilio_configured() -> None:
     try:
         _ = get_twilio_client()
     except TwilioException as e:
-        warnings.warn(str(e))
+        warnings.warn(str(e), stacklevel=2)
         pytest.skip(str(e))

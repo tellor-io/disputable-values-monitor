@@ -27,7 +27,26 @@ DATAFEED_LOOKUP = {
     "6e5122118ce52cc9b97c359c1f174a3c21c71d810f7addce3484cc28e0be0f29": feeds.ric_usd_feed.ric_usd_median_feed,
     "3f640bf607feb4455c3eb10629385d823341cd18fef6f9f87b8bcfbeafc44eeb": feeds.sushi_usd_feed.sushi_usd_median_feed,
     "83245f6a6a2f6458558a706270fbcc35ac3a81917602c1313d3bfa998dcc2d4b": feeds.pls_usd_feed,
-    "12906c5e9178631dba86f1f750f7ab7451c61e6357160eb890029b9eac1fb235": feeds.albt_usd_median_feed
+    "12906c5e9178631dba86f1f750f7ab7451c61e6357160eb890029b9eac1fb235": feeds.albt_usd_median_feed,
+    "9e1b8afa9d013a06cc4048d1abc5d09b2509a53116db8b3e4a9aad0c88687c8a": feeds.aave_usd_median_feed,
+    "0ea9091cc51722124ea273d517d3d3f7165559e7775e3dc3d086a305bad26e3b": feeds.avax_usd_median_feed,
+    "7ea0d1d673fe38fcdff322c115b0031cdc56696928226701192052c05f00f613": feeds.badger_usd_median_feed,
+    "efa84ae5ea9eb0545e159f78f0a44911ac5a81ecb6ff0c4e32107bcfc66c4baa": feeds.bch_usd_median_feed,
+    "d34bdbc3f48515d7c3be63775e8e5657c5c281c0cf519e7f999b7020ae326b69": feeds.comp_usd_median_feed,
+    "4212eec9815e6acb627893967d9ab4d81a5bd4d4ed24d9e3812ba5c54dce38c6": feeds.crv_usd_median_feed,
+    "15d3cb16e8175919781af07b2ce06714d24f168284b1b47b14b6bfbe9a5a02ff": feeds.doge_usd_median_feed,
+    "8810ffb0cfcb6131da29ed4b229f252d6bac6fc98fc4a61ffbde5b48131e0228": feeds.dot_usd_median_feed,
+    "60723147b1b97df5ff4e69cf99b6a414acc7da119109811af59fe417730945fe": feeds.eth_btc_median_feed,
+    "541e673f520d0d57fa13e38cc510e5e8752005b03030e1d3b843b85f5eb5a411": feeds.eul_usd_median_feed,
+    "537422e5383888586f8f9bca62c5bfd8eb0f8c1bcd335b1a691e6b550c92dcce": feeds.fil_usd_median_feed,
+    "791387543068bca4b983782967bc8e72b80d3e5a5bdf8250796377ec88b227aa": feeds.gno_usd_median_feed,
+    "c138a64c42a40eb5ba8f64de1e62884a0e4259d8c34872c5d5d52a8fa426d697": feeds.link_usd_median_feed,
+    "19585d912afb72378e3986a7a53f1eae1fbae792cd17e1d0df063681326823ae": feeds.ltc_usd_median_feed,
+    "5a81384fbb9313d56e1510a0fd7e51617a796e2d5f8806e4a2f3b4e5d9999617": feeds.rai_usd_median_feed,
+    "a3b64986889b3a1817db443d3846f9af51d6dc3058b13920afb37590f36b9ba1": feeds.shib_usd_median_feed,
+    "b44a64a8c4f1006949b8f471594074e97c5f30ff86acffb2d2a13c00f3aa2da0": feeds.uni_usd_median_feed,
+    "17408737cc4a2657852d14af840811cce2aa3ebb0c9176d2fdfd6abfa9400033": feeds.xdai_usd_median_feed,
+    "c5acb66f4e3e0f6f9e5f52a45ccb9a8b2aef8366bf50f62faaa51248c4f67c41": feeds.yfi_usd_median_feed
     # "": feeds.diva_protocol_feed.assemble_diva_datafeed
 }
 
