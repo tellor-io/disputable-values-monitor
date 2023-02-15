@@ -8,6 +8,7 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
 from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
+from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
@@ -80,7 +81,7 @@ def test_get_query_from_data():
 async def test_parse_new_report_event(log):
 
     threshold = Threshold(Metrics.Percentage, 0.50)
-    monitored_feed = MonitoredFeed(btc_usd_median_feed, threshold)
+    monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
@@ -92,7 +93,7 @@ async def test_parse_new_report_event(log):
         5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
     )
     cfg.endpoints.endpoints.append(endpoint)
-    new_report = await parse_new_report_event(cfg, monitored_feed, log)
+    new_report = await parse_new_report_event(cfg, log, monitored_feed)
 
     cfg.endpoints.endpoints.remove(endpoint)
 
@@ -144,12 +145,9 @@ async def test_feed_filter(caplog, log):
     cfg.endpoints.endpoints.append(endpoint)
 
     # we are monitoring a different feed
-    feed = btc_usd_median_feed
-
-    confidence_threshold = 0.50
-
+    monitored_feed = MonitoredFeed(btc_usd_median_feed, Threshold(Metrics.Percentage, 0.50))
     # try to parse it
-    res = await parse_new_report_event(cfg, confidence_threshold, feed=feed, log=log)
+    res = await parse_new_report_event(cfg, monitored_feed=monitored_feed, log=log)
 
     # parser should return None
     assert not res

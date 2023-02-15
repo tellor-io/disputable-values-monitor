@@ -37,7 +37,7 @@ class Threshold:
     def __post_init__(self) -> None:
 
         if self.metric == Metrics.Equality:
-            logging.warn("Equality threshold selected, ignoring amount")
+            logging.warning("Equality threshold selected, ignoring amount")
             self.amount = None
 
         if self.metric != Metrics.Equality:
@@ -67,7 +67,7 @@ class MonitoredFeed:
 
             if self.threshold.metric == Metrics.Percentage:
 
-                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str,bytes)):
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
                     logging.error("Cannot evaluate percent difference on text/addresses/bytes")
                     return None
                 if self.threshold.amount is None:
@@ -78,7 +78,7 @@ class MonitoredFeed:
 
             elif self.threshold.metric == Metrics.Range:
 
-                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str,bytes)):
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
                     logging.error("Cannot evaluate range on text/addresses/bytes")
 
                 if self.threshold.amount is None:

@@ -204,7 +204,7 @@ async def parse_new_report_event(
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
     else:
-        if new_report.query_id != monitored_feed.feed.query.query_id.hex():
+        if new_report.query_id != "0x" + monitored_feed.feed.query.query_id.hex():
             logging.info("skipping undesired NewReport event")
             return None
 
