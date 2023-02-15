@@ -1,84 +1,122 @@
+import time
+from unittest.mock import patch
 
 import pytest
+from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
-from tellor_disputables.disputer import Metrics, Threshold
-
-
-def test_setting_invalid_metric():
-    """test setting Threshold.metric to something other than Metrics enum"""
-
-    thres = Threshold(metric=Metrics.Equality, amount=0)
-
-    msg = "metric must be of enum Metrics: Percentage, Equality, or Range"
-    with pytest.raises(ValueError) as err:
-        thres.metric = 42
-
-    assert str(err.value) == msg
-
-    with pytest.raises(ValueError) as err:
-        thres.metric = "threshold metric cannot be a string"
-
-    assert msg in str(err.value)
+from tellor_disputables.disputer import Metrics
+from tellor_disputables.disputer import MonitoredFeed
+from tellor_disputables.disputer import Threshold
 
 
-
-def test_safety_checks_in_constructor():
+def test_safety_checks_in_constructor(caplog):
     """test safe value checks in constructor"""
 
-    #log message when metric is set to "equality"
+    # log message when metric is set to "equality"
+    msg = "Equality threshold selected, ignoring amount"
 
-    #raise value error if metric is not "equality" and amount is None
+    thres = Threshold(Metrics.Equality, 20)
+    assert msg in caplog.text
+    assert thres.amount is None
+
+    # raise value error if metric is not "equality" and amount is None
     msg = "threshold selected, amount cannot be None"
     with pytest.raises(ValueError) as err:
         _ = Threshold(Metrics.Percentage, None)
 
     assert msg in str(err.value)
-    
 
-    #raise value error if metric is not "equality" and amount is negative
+    # raise value error if metric is not "equality" and amount is negative
     msg = "threshold selected, amount cannot be negative"
     with pytest.raises(ValueError) as err:
         _ = Threshold(Metrics.Range, -10)
 
     assert msg in str(err.value)
 
-"""test safe value checks in attribute setters"""
 
-"""test reported value is None should return None"""
+@pytest.mark.asyncio
+async def test_percentage():
+    """test example percentage calculation"""
+    reported_val = 750
+    telliot_val = 1000
+    percentage = 0.25
+    threshold = Threshold(Metrics.Percentage, percentage)
+    mf = MonitoredFeed(eth_usd_median_feed, threshold)
 
-"""test is disputable returns None if can't retrieve value"""
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert disputable
 
-"""test return type of metrics"""
+    telliot_val = 751
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert not disputable
 
-"""test example percentage on ETH/USD"""
 
-"""test example range on SHIB/USD"""
+@pytest.mark.asyncio
+async def test_range():
+    """test example range calculation"""
 
-"""test example equality on TellorOracleAddress type"""
+    reported_val = 500
+    telliot_val = 1000
+    range = 500
+    threshold = Threshold(Metrics.Range, range)
+    mf = MonitoredFeed(eth_usd_median_feed, threshold)
+
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert disputable
+
+    telliot_val = 501
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert not disputable
+
+
+@pytest.mark.asyncio
+async def test_equality():
+    """test example equality calculation"""
+
+    reported_val = "0xa7654E313FbB25b2cF367730CB5c2759fAf831a1"  # checksummed
+    telliot_val = "0xa7654e313fbb25b2cf367730cb5c2759faf831a1"  # not checksummed
+    threshold = Threshold(Metrics.Equality, 20)  # amount will be disregarded!
+
+    assert threshold.amount is None
+
+    mf = MonitoredFeed(eth_usd_median_feed, threshold)
+
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert not disputable
+
+    telliot_val = 501  # throw a completely different data type at the equality operator
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await mf.is_disputable(reported_val)
+        assert disputable
 
 
 @pytest.mark.asyncio
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
     val = 1000.0
-    threshold = 0.05
+    threshold = Threshold(metric=Metrics.Percentage, amount=0.05)
 
     # ETH/USD
-    current_feed = eth_usd_median_feed
+    mf = MonitoredFeed(eth_usd_median_feed, threshold)
 
     # Is disputable
-    disputable = await is_disputable(val, current_feed, threshold)
+    disputable = await mf.is_disputable(val)
     assert isinstance(disputable, bool)
     assert disputable
 
     # No reported value
-    disputable = await is_disputable(reported_val=None, current_feed=current_feed, conf_threshold=threshold)
+    disputable = await mf.is_disputable(reported_val=None)
     assert disputable is None
     assert "Need reported value to check disputability" in caplog.text
 
     # Unable to fetch price
-    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
-        disputable = await is_disputable(val, current_feed, threshold)
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(None, None)):
+        disputable = await mf.is_disputable(val)
         assert disputable is None
         assert "Unable to fetch new datapoint from feed" in caplog.text
 
@@ -88,17 +126,17 @@ async def test_different_conf_thresholds():
     """test if a value is dispuable under different confindence thresholds"""
 
     # ETH/USD
-    feed = eth_usd_median_feed
+    threshold = Threshold(Metrics.Percentage, 0.05)
+    mf = MonitoredFeed(eth_usd_median_feed, threshold)
     val = 666
-    threshold = 0.05
 
     # Is disputable
-    disputable = await is_disputable(val, feed, threshold)
+    disputable = await mf.is_disputable(val)
     assert isinstance(disputable, bool)
     assert disputable
 
-    threshold = 0.99
+    mf.threshold.amount = 2.0
     # Is now not disputable
-    disputable = await is_disputable(val, feed, threshold)
+    disputable = await mf.is_disputable(val)
     assert isinstance(disputable, bool)
     assert not disputable

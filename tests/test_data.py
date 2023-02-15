@@ -8,7 +8,6 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
 from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
-from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
@@ -17,9 +16,11 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
-from tellor_disputables.data import is_disputable
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.disputer import Metrics
+from tellor_disputables.disputer import MonitoredFeed
+from tellor_disputables.disputer import Threshold
 
 
 @pytest.fixture
@@ -42,9 +43,6 @@ def log():
             "removed": False,
         }
     )
-
-
-
 
 
 def test_get_query_from_data():
@@ -81,6 +79,9 @@ def test_get_query_from_data():
 @pytest.mark.asyncio
 async def test_parse_new_report_event(log):
 
+    threshold = Threshold(Metrics.Percentage, 0.50)
+    monitored_feed = MonitoredFeed(btc_usd_median_feed, threshold)
+
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
 
@@ -91,7 +92,7 @@ async def test_parse_new_report_event(log):
         5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
     )
     cfg.endpoints.endpoints.append(endpoint)
-    new_report = await parse_new_report_event(cfg, 0.50, log)
+    new_report = await parse_new_report_event(cfg, monitored_feed, log)
 
     cfg.endpoints.endpoints.remove(endpoint)
 
@@ -216,7 +217,7 @@ async def test_parse_oracle_address_submission():
         patch("tellor_disputables.data.get_query_type", return_value="TellorOracleAddress"),
     ):
         new_report: NewReport = await parse_new_report_event(
-            cfg=cfg, log=log, confidence_threshold=0.05, feed=feed, see_all_values=see_all_values
+            cfg=cfg, log=log, monitored_feed=feed, see_all_values=see_all_values
         )  # threshold is ignored
 
     cfg.endpoints.endpoints.remove(endpoint)

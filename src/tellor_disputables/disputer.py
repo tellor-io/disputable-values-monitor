@@ -1,13 +1,12 @@
 """Utilities for the auto-disputer on Tellor on any EVM network"""
-
+import logging
 from dataclasses import dataclass
 from enum import Enum
-import logging
-from typing import Any, Optional, Union
+from typing import Any
+from typing import Optional
+from typing import Union
 
 from telliot_feeds.datafeed import DataFeed
-
-from tellor_disputables.data import general_fetch_new_datapoint
 
 
 class Metrics(Enum):
@@ -28,24 +27,15 @@ class Threshold:
 
     If self.metric == "percentage", amount is a percent with a minimum of 0
     If self.metric == "equality", amount is None
-    If self.metric == "range", amount is the maximum distance an on-chain value can have from 
+    If self.metric == "range", amount is the maximum distance an on-chain value can have from
     the trusted value from telliot
     """
+
     metric: Metrics
-    amount: Optional[int]
+    amount: Union[int, float, None]
 
     def __post_init__(self) -> None:
 
-        self.safe_value_checks()
-    
-    def __setattr__(self, __name: str, __value: Union[Metrics, int, None]) -> None:
-
-        if (__name == "metric") and (not isinstance(__value, Metrics)):
-            raise ValueError("metric must be of enum Metrics: Percentage, Equality, or Range")
-
-        self.safe_value_checks()
-
-    def safe_value_checks(self):
         if self.metric == Metrics.Equality:
             logging.warn("Equality threshold selected, ignoring amount")
             self.amount = None
@@ -53,8 +43,10 @@ class Threshold:
         if self.metric != Metrics.Equality:
             if self.amount is None:
                 raise ValueError(f"{self.metric} threshold selected, amount cannot be None")
+
             if self.amount < 0:
                 raise ValueError(f"{self.metric} threshold selected, amount cannot be negative")
+
 
 @dataclass
 class MonitoredFeed:
@@ -62,7 +54,8 @@ class MonitoredFeed:
     threshold: Threshold
 
     async def is_disputable(
-        self, reported_val: Union[str, bytes, float, int, None],
+        self,
+        reported_val: Union[str, bytes, float, int, None],
     ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
@@ -70,18 +63,41 @@ class MonitoredFeed:
             return None
 
         trusted_val, _ = await general_fetch_new_datapoint(self.feed)
-        if trusted_val is not None:
+        if isinstance(trusted_val, (str, int, float, bytes)):
 
             if self.threshold.metric == Metrics.Percentage:
+
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str,bytes)):
+                    logging.error("Cannot evaluate percent difference on text/addresses/bytes")
+                    return None
+                if self.threshold.amount is None:
+                    logging.error("Please set a threshold amount to measure percent difference")
+                    return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
-                return float(abs(percent_diff)) > self.threshold.amount
+                return float(abs(percent_diff)) >= self.threshold.amount
 
             elif self.threshold.metric == Metrics.Range:
+
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str,bytes)):
+                    logging.error("Cannot evaluate range on text/addresses/bytes")
+
+                if self.threshold.amount is None:
+                    logging.error("Please set a threshold amount to measure range")
+                    return None
                 range_: float = abs(reported_val - trusted_val)
-                return range_ > self.threshold.amount
+                return range_ >= self.threshold.amount
 
             elif self.threshold.metric == Metrics.Equality:
-                return trusted_val == reported_val
+
+                # if we have two bytes strings (not raw bytes)
+                if (
+                    (isinstance(reported_val, str))
+                    and (isinstance(trusted_val, str))
+                    and reported_val.startswith("0x")
+                    and trusted_val.startswith("0x")
+                ):
+                    return trusted_val.lower() != reported_val.lower()
+                return trusted_val != reported_val
 
             else:
                 logging.error("Attemping comparison with unknown threshold metric")
@@ -89,3 +105,8 @@ class MonitoredFeed:
         else:
             logging.error("Unable to fetch new datapoint from feed")
             return None
+
+
+async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
+    """Fetch a new datapoint from a datafeed."""
+    return await feed.source.fetch_new_datapoint()
