@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tellor-disputables"
-version = "1.0.0"
+version = "1.1.0"
 description = "dashboard & text alerts for disputable values reported to Tellor oracles"
 authors = ["tallywiesenberg <info@tellor.io>"]
 license = "MIT"
