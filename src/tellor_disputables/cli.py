@@ -9,7 +9,6 @@ from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 from telliot_feeds.cli.utils import build_feed_from_input
-from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -18,9 +17,6 @@ from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.disputer import Metrics
-from tellor_disputables.disputer import MonitoredFeed
-from tellor_disputables.disputer import Threshold
 from tellor_disputables.utils import clear_console
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import Topics
@@ -107,13 +103,9 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
                     continue
 
                 try:
-
-                    # TODO remove this temporary MonitoredFeed
-                    # replace it with CLI input
-                    # FOR DEMO ONLY
-                    threshold = Threshold(Metrics.Percentage, amount=0.25)
-                    monitored_feed = MonitoredFeed(feed=eth_usd_median_feed, threshold=threshold)
-                    new_report = await parse_new_report_event(cfg=cfg, monitored_feed=monitored_feed, log=event)
+                    new_report = await parse_new_report_event(
+                        cfg=cfg, confidence_threshold=confidence_threshold, log=event
+                    )
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
                     continue
