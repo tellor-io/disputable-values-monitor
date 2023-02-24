@@ -17,9 +17,11 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
-from tellor_disputables.data import is_disputable
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.disputer import Metrics
+from tellor_disputables.disputer import MonitoredFeed
+from tellor_disputables.disputer import Threshold
 
 
 @pytest.fixture
@@ -42,32 +44,6 @@ def log():
             "removed": False,
         }
     )
-
-
-@pytest.mark.asyncio
-async def test_is_disputable(caplog):
-    """test check for disputability for a float value"""
-    val = 1000.0
-    threshold = 0.05
-
-    # ETH/USD
-    current_feed = eth_usd_median_feed
-
-    # Is disputable
-    disputable = await is_disputable(val, current_feed, threshold)
-    assert isinstance(disputable, bool)
-    assert disputable
-
-    # No reported value
-    disputable = await is_disputable(reported_val=None, current_feed=current_feed, conf_threshold=threshold)
-    assert disputable is None
-    assert "Need reported value to check disputability" in caplog.text
-
-    # Unable to fetch price
-    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
-        disputable = await is_disputable(val, current_feed, threshold)
-        assert disputable is None
-        assert "Unable to fetch new datapoint from feed" in caplog.text
 
 
 def test_get_query_from_data():
@@ -104,6 +80,9 @@ def test_get_query_from_data():
 @pytest.mark.asyncio
 async def test_parse_new_report_event(log):
 
+    threshold = Threshold(Metrics.Percentage, 0.50)
+    monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
+
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
 
@@ -114,7 +93,7 @@ async def test_parse_new_report_event(log):
         5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
     )
     cfg.endpoints.endpoints.append(endpoint)
-    new_report = await parse_new_report_event(cfg, 0.50, log)
+    new_report = await parse_new_report_event(cfg, log, monitored_feed)
 
     cfg.endpoints.endpoints.remove(endpoint)
 
@@ -149,27 +128,6 @@ def test_get_contract_info():
 
 
 @pytest.mark.asyncio
-async def test_different_conf_thresholds():
-    """test if a value is dispuable under different confindence thresholds"""
-
-    # ETH/USD
-    feed = eth_usd_median_feed
-    val = 666
-    threshold = 0.05
-
-    # Is disputable
-    disputable = await is_disputable(val, feed, threshold)
-    assert isinstance(disputable, bool)
-    assert disputable
-
-    threshold = 0.99
-    # Is now not disputable
-    disputable = await is_disputable(val, feed, threshold)
-    assert isinstance(disputable, bool)
-    assert not disputable
-
-
-@pytest.mark.asyncio
 async def test_feed_filter(caplog, log):
     """test that, if the user wants to monitor only one feed, all other feeds are ignored and skipped"""
 
@@ -187,12 +145,9 @@ async def test_feed_filter(caplog, log):
     cfg.endpoints.endpoints.append(endpoint)
 
     # we are monitoring a different feed
-    feed = btc_usd_median_feed
-
-    confidence_threshold = 0.50
-
+    monitored_feed = MonitoredFeed(btc_usd_median_feed, Threshold(Metrics.Percentage, 0.50))
     # try to parse it
-    res = await parse_new_report_event(cfg, confidence_threshold, feed=feed, log=log)
+    res = await parse_new_report_event(cfg, monitored_feed=monitored_feed, log=log)
 
     # parser should return None
     assert not res
@@ -260,7 +215,7 @@ async def test_parse_oracle_address_submission():
         patch("tellor_disputables.data.get_query_type", return_value="TellorOracleAddress"),
     ):
         new_report: NewReport = await parse_new_report_event(
-            cfg=cfg, log=log, confidence_threshold=0.05, feed=feed, see_all_values=see_all_values
+            cfg=cfg, log=log, monitored_feed=feed, see_all_values=see_all_values
         )  # threshold is ignored
 
     cfg.endpoints.endpoints.remove(endpoint)
