@@ -1,0 +1,9 @@
+# AutoDisputer configuration file
+freshness: 86400 # in seconds
+feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
+  - QueryType: "SpotPrice"
+    asset: eth
+    currency: usd
+    threshold:
+      type: percentage
+      amount: 0.75 # 50%

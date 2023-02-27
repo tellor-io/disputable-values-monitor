@@ -6,6 +6,8 @@ from typing import Any
 from typing import Optional
 from typing import Union
 
+from telliot_core.model.base import Base
+
 from telliot_feeds.datafeed import DataFeed
 
 
@@ -16,7 +18,7 @@ class Metrics(Enum):
 
 
 @dataclass
-class Threshold:
+class Threshold(Base):
     """
     A Threshold for sending a dispute.
 
@@ -49,7 +51,7 @@ class Threshold:
 
 
 @dataclass
-class MonitoredFeed:
+class MonitoredFeed(Base):
     feed: DataFeed[Any]
     threshold: Threshold
 
