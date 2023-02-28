@@ -54,6 +54,7 @@ class Threshold(Base):
 class MonitoredFeed(Base):
     feed: DataFeed[Any]
     threshold: Threshold
+    query_id: str
 
     async def is_disputable(
         self,
