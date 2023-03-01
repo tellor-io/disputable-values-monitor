@@ -54,14 +54,6 @@ async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: 
     """CLI dashboard to display recent values reported to Tellor oracles."""
     await start(all_values=all_values, wait=wait, filter=filter, confidence_threshold=confidence_threshold)
 
-def add_0x(query_id: str) -> str:
-    """Add 0x to query_id if not already present."""
-    if query_id is None:
-        return []
-    if query_id.startswith("0x"):
-        return [query_id]
-    return [f"0x{query_id}"]
-
 async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
     """Start the CLI dashboard."""
     print_title_info()
@@ -83,7 +75,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
         event_lists = await get_events(
             cfg=cfg,
             contract_name="tellor360-oracle",
-            topics=[Topics.NEW_REPORT] + add_0x(query_id),
+            topics=[Topics.NEW_REPORT] if query_id is None else [Topics.NEW_REPORT, f"0x{query_id}"],
             wait=wait,
         )
         tellor360_events = await chain_events(
