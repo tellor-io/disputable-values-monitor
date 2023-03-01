@@ -54,6 +54,7 @@ async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: 
     """CLI dashboard to display recent values reported to Tellor oracles."""
     await start(all_values=all_values, wait=wait, filter=filter, confidence_threshold=confidence_threshold)
 
+
 async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
     """Start the CLI dashboard."""
     print_title_info()
