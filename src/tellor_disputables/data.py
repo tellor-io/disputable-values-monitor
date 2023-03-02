@@ -229,5 +229,6 @@ async def parse_new_report_event(
             return None
     else:
         new_report.status_str = disputable_str(disputable, new_report.query_id)
+        new_report.disputable = disputable
 
         return new_report

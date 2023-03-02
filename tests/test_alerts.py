@@ -12,6 +12,32 @@ from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.data import NewReport
 
 
+def test_notify_typical_disputable(capsys):
+    """Test a typical disputable value on ETH/USD feed"""
+
+    def first_alert():
+        print("alert sent")
+
+    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert()])):
+        r = NewReport(
+            "0xabc123",
+            time.time(),
+            1,
+            "etherscan.io/abc",
+            "query type",
+            15.5,
+            "eth",
+            "usd",
+            "query id",
+            True,
+            "status ",
+        )
+
+        alert(False, r, "", "")
+
+        assert "alert sent" in capsys.readouterr().out
+
+
 def test_generate_alert_msg():
     link = "example transaction link"
     msg = generate_alert_msg(True, link)
