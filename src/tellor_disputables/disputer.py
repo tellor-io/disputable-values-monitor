@@ -7,7 +7,6 @@ from typing import Optional
 from typing import Union
 
 from telliot_core.model.base import Base
-
 from telliot_feeds.datafeed import DataFeed
 
 
@@ -54,7 +53,7 @@ class Threshold(Base):
 class MonitoredFeed(Base):
     feed: DataFeed[Any]
     threshold: Threshold
-    query_id: str
+    query_id: Optional[str] = None
 
     async def is_disputable(
         self,

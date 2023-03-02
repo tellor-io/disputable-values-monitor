@@ -109,7 +109,7 @@ async def test_parse_new_report_event(log):
     assert not new_report.disputable
 
     # DISPUTABLE EVENT
-    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
+    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
         new_report = await parse_new_report_event(cfg, log, monitored_feed)
 
         assert new_report.disputable

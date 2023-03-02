@@ -1,23 +1,29 @@
 """contains AutoDisputerConfig class for adjusting the settings of the auto-disputer"""
-
-from dataclasses import dataclass
 import logging
-from telliot_feeds.feeds import DataFeed
-from tellor_disputables import DATAFEED_LOOKUP
-from typing import Any, List, Optional
-from box import Box
+from dataclasses import dataclass
+from typing import Any
+from typing import List
+from typing import Optional
+
 import yaml
-from tellor_disputables.disputer import Metrics, MonitoredFeed, Threshold
+from box import Box
+from telliot_feeds.feeds import DataFeed
+
+from tellor_disputables import DATAFEED_LOOKUP
+from tellor_disputables.disputer import Metrics
+from tellor_disputables.disputer import MonitoredFeed
+from tellor_disputables.disputer import Threshold
+
 
 @dataclass
 class AutoDisputerConfig:
 
-    monitored_feeds: List[MonitoredFeed]
+    monitored_feeds: Optional[List[MonitoredFeed]]
 
     def __init__(self) -> None:
 
         try:
-            with open('disputer-config.yaml', 'r') as f:
+            with open("disputer-config.yaml", "r") as f:
                 self.box = Box(yaml.safe_load(f))
         except (yaml.parser.ParserError, yaml.scanner.ScannerError) as e:
             logging.error(f"YAML file error: {e}")
@@ -31,8 +37,7 @@ class AutoDisputerConfig:
 
         self.monitored_feeds = self.build_monitored_feeds_from_yaml()
 
-
-    def build_monitored_feeds_from_yaml(self) -> Optional[MonitoredFeed]:
+    def build_monitored_feeds_from_yaml(self) -> Optional[List[MonitoredFeed]]:
         """
         Build a List[MonitoredFeed] from YAML input
 
@@ -55,7 +60,7 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    query_id = self.box.feeds[i].query_id[2:] #TODO loop through all instead of only 0
+                    query_id = self.box.feeds[i].query_id[2:]  # TODO loop through all instead of only 0
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -71,7 +76,7 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    threshold_type = self.box.feeds[i].threshold.type #TODO loop through all instead of only 0
+                    threshold_type = self.box.feeds[i].threshold.type  # TODO loop through all instead of only 0
                     threshold_amount = self.box.feeds[i].threshold.amount
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
@@ -88,6 +93,8 @@ class AutoDisputerConfig:
             monitored_feeds.append(MonitoredFeed(datafeed, threshold, query_id))
 
         return monitored_feeds
+
+
 if __name__ == "__main__":
 
     print(AutoDisputerConfig())
