@@ -8,7 +8,6 @@ import pandas as pd
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
-from telliot_feeds.cli.utils import build_feed_from_input
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -63,8 +62,6 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     displayed_events = set()
 
     # Build query if filter is set
-    query_id = build_feed_from_input().query.query_id.hex() if filter else None
-
     while True:
 
         cfg = TelliotConfig()
@@ -72,7 +69,13 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
         event_lists = await get_events(
             cfg=cfg,
             contract_name="tellor360-oracle",
-            topics=[Topics.NEW_REPORT] + [f"0x{query_id}"] if query_id is not None else [],
+            topics=[Topics.NEW_REPORT],
+            wait=wait,
+        )
+        tellor_flex_report_events = await get_events(
+            cfg=cfg,
+            contract_name="tellorflex-oracle",
+            topics=[Topics.NEW_REPORT],
             wait=wait,
         )
         tellor360_events = await chain_events(
@@ -85,7 +88,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
             wait=wait,
         )
-        event_lists += tellor360_events
+        event_lists += tellor360_events + tellor_flex_report_events
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             if not event_list:
