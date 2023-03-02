@@ -76,7 +76,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
         event_lists = await get_events(
             cfg=cfg,
             contract_name="tellor360-oracle",
-            topics=[Topics.NEW_REPORT] + [f"0x{query_id}"] if query_id is not None else [],
+            topics=[Topics.NEW_REPORT] if query_id is None else [Topics.NEW_REPORT, f"0x{query_id}"],
             wait=wait,
         )
         tellor360_events = await chain_events(
