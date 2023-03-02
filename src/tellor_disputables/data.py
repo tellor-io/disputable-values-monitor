@@ -9,7 +9,6 @@ from typing import Union
 
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.directory import contract_directory
-from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
@@ -21,9 +20,9 @@ from web3._utils.events import get_event_data
 from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
-from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
+from tellor_disputables.disputer import MonitoredFeed
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import NewReport
@@ -97,35 +96,6 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
     return unique_events_list
 
 
-async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
-    """Fetch a new datapoint from a datafeed."""
-    return await feed.source.fetch_new_datapoint()
-
-
-async def is_disputable(
-    reported_val: Union[str, bytes, float, int], current_feed: DataFeed[Any], conf_threshold: float = 0.05
-) -> Optional[bool]:
-    """Check if the reported value is disputable."""
-    if reported_val is None:
-        logging.error("Need reported value to check disputability")
-        return None
-
-    trusted_val, _ = await general_fetch_new_datapoint(current_feed)
-    if trusted_val is not None:
-
-        if isinstance(trusted_val, (float, int)) and isinstance(reported_val, (float, int)):
-            percent_diff: float = (reported_val - trusted_val) / trusted_val
-            return float(abs(percent_diff)) > conf_threshold
-        elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
-            return trusted_val == reported_val
-        else:
-            logging.error("Reported value is an unsupported data type")
-            return None
-    else:
-        logging.error("Unable to fetch new datapoint from feed")
-        return None
-
-
 async def chain_events(
     cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], wait: int
 ) -> List[List[tuple[int, Any]]]:
@@ -191,9 +161,8 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
 
 async def parse_new_report_event(
     cfg: TelliotConfig,
-    confidence_threshold: float,
     log: LogReceipt,
-    feed: DataFeed = None,
+    monitored_feed: MonitoredFeed,
     see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
@@ -234,10 +203,8 @@ async def parse_new_report_event(
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
-    if feed is None:
-        feed = DATAFEED_LOOKUP[new_report.query_id[2:]]  # strip "0x"
     else:
-        if new_report.query_id != feed.query.query_id.hex():
+        if new_report.query_id != "0x" + monitored_feed.feed.query.query_id.hex():
             logging.info("skipping undesired NewReport event")
             return None
 
@@ -248,7 +215,7 @@ async def parse_new_report_event(
         logging.error("unsupported query type")
         return None
 
-    disputable = await is_disputable(new_report.value, feed, confidence_threshold)
+    disputable = await monitored_feed.is_disputable(new_report.value)
     if disputable is None:
 
         if see_all_values:
