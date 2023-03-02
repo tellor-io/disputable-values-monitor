@@ -37,7 +37,7 @@ class NewReport:
     """NewReport event."""
 
     tx_hash: str = ""
-    eastern_time: str = ""
+    submission_timestamp: int = 0 # timestamp attached to NewReport event (NOT the time retrieved by the DVM)
     chain_id: int = 0
     link: str = ""
     query_type: str = ""
