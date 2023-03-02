@@ -199,6 +199,7 @@ async def parse_new_report_event(
     new_report.query_type = get_query_type(q)
     new_report.value = q.value_type.decode(event_data.args._value)
     new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
+    new_report.submission_timestamp = event_data.args._timestamp # in unix time
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
