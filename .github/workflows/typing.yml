@@ -32,4 +32,4 @@ jobs:
           poetry env use 3.9 && poetry install
       - name: "Run poetry typing on ${{ matrix.python-version }}"
         run:
-          poetry run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
+          poetry run mypy --strict --install-types src --implicit-reexport --ignore-missing-imports --disable-error-code misc
