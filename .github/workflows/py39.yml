@@ -3,9 +3,9 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: ["dvm-main", "auto-disputer-main"]
   pull_request:
-    branches: ["main"]
+    branches: ["dvm-main", "auto-disputer-main"]
   workflow_dispatch:
 
 jobs:
@@ -19,6 +19,7 @@ jobs:
       TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
       ALERT_RECIPIENTS: ${{ secrets.ALERT_RECIPIENTS }}
       NODE_URL: ${{ secrets.NODE_URL }}
+      MAINNET_URL: ${{ secrets.MAINNET_URL }}
 
     strategy:
       matrix:

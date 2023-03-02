@@ -1,8 +1,11 @@
 """Tests for getting & parsing NewReport events."""
 import logging
+import os
+import time
 from unittest.mock import patch
 
 import pytest
+from dotenv import load_dotenv
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
@@ -20,6 +23,8 @@ from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import is_disputable
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
+
+load_dotenv()
 
 
 @pytest.fixture
@@ -110,19 +115,26 @@ async def test_parse_new_report_event(log):
     for endpoint in cfg.endpoints.find(chain_id=5):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(
-        5, "Goerli", "Infura", "https://goerli.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
-    )
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
-    new_report = await parse_new_report_event(cfg, 0.50, log)
 
-    cfg.endpoints.endpoints.remove(endpoint)
+    # NON-DISPUTABLE EVENT
+    new_report = await parse_new_report_event(cfg, 0.50, log)
 
     assert new_report
 
     assert new_report.chain_id == 5
     assert new_report.tx_hash == log.transactionHash.hex()
     assert "etherscan" in new_report.link
+    assert not new_report.disputable
+
+    # DISPUTABLE EVENT
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
+        new_report = await parse_new_report_event(cfg, 0.50, log)
+
+        assert new_report.disputable
+
+    cfg.endpoints.endpoints.remove(endpoint)
 
 
 @pytest.mark.asyncio
@@ -181,9 +193,7 @@ async def test_feed_filter(caplog, log):
     for endpoint in cfg.endpoints.find(chain_id=1):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(
-        1, "Mainnet", "Infura", "https://mainnet.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
-    )
+    endpoint = RPCEndpoint(1, "Goerli", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
 
     # we are monitoring a different feed
@@ -245,9 +255,7 @@ async def test_parse_oracle_address_submission():
     for endpoint in cfg.endpoints.find(chain_id=1):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(
-        1, "Mainnet", "Infura", "https://mainnet.infura.io/v3/db7ce830b1224efe93ae3240f7aaa764", "etherscan.io"
-    )
+    endpoint = RPCEndpoint(1, "Mainnet", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
 
     tx_hash = "0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
