@@ -4,6 +4,7 @@ import warnings
 from time import sleep
 
 import click
+
 import pandas as pd
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
@@ -14,13 +15,14 @@ from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import generic_alert
 from tellor_disputables.alerts import get_twilio_info
+from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.disputer import Metrics
-from tellor_disputables.disputer import MonitoredFeed
-from tellor_disputables.disputer import Threshold
-from tellor_disputables.utils import clear_console
+from tellor_disputables.data import Metrics
+from tellor_disputables.data import MonitoredFeed
+from tellor_disputables.data import Threshold
+from tellor_disputables.utils import clear_console, select_account
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import Topics
 
@@ -37,30 +39,30 @@ def print_title_info() -> None:
 
 @click.command()
 @click.option(
-    "-a", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
+    "-av", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
+)
+@click.option(
+    "-a", "--account", help="the name of a ChainedAccount to dispute with", type=str
 )
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-f", "--filter", help="build a queryId and get alerts for that queryId only", is_flag=True)
-@click.option(
-    "-c",
-    "--confidence-threshold",
-    help="percent difference threshold for notifications (a float between 0 and 1)",
-    type=float,
-    default=0.05,
-)
 @async_run
-async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
+async def main(all_values: bool, wait: int, account: str) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, filter=filter, confidence_threshold=confidence_threshold)
+    await start(all_values=all_values, wait=wait, account=account)
 
 
-async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
+async def start(all_values: bool, wait: int, account: str) -> None:
     """Start the CLI dashboard."""
     print_title_info()
     from_number, recipients = get_twilio_info()
     if from_number is None or recipients is None:
         logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
+    
+    cfg = TelliotConfig()
+    disp_cfg = AutoDisputerConfig()
+
+    select_account(cfg, account)
 
     display_rows = []
     displayed_events = set()
@@ -68,7 +70,6 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     # Build query if filter is set
     while True:
 
-        cfg = TelliotConfig()
         # Fetch NewReport events
         event_lists = await get_events(
             cfg=cfg,
@@ -110,13 +111,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
                     continue
 
                 try:
-
-                    # TODO remove this temporary MonitoredFeed
-                    # replace it with CLI input
-                    # FOR DEMO ONLY
-                    threshold = Threshold(Metrics.Percentage, amount=0.25)
-                    monitored_feed = MonitoredFeed(feed=eth_usd_median_feed, threshold=threshold)
-                    new_report = await parse_new_report_event(cfg=cfg, monitored_feed=monitored_feed, log=event)
+                    new_report = await parse_new_report_event(cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event)
                 except Exception as e:
                     logging.error("unable to parse new report event! " + str(e))
                     continue
@@ -135,7 +130,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
                 display_rows.append(
                     (
                         new_report.tx_hash,
-                        new_report.eastern_time,
+                        new_report.submission_timestamp,
                         new_report.link,
                         new_report.query_type,
                         new_report.value,
