@@ -376,16 +376,50 @@ async def test_different_conf_thresholds():
     assert isinstance(disputable, bool)
     assert not disputable
 
-def test_get_contract():
+def test_get_contract(caplog):
     """test getting governance and token contracts"""
 
+    # optimistic setup
     cfg = TelliotConfig()
+    cfg.main.chain_id= 1
     account = ChainedAccount("test-account")
-    cfg.main.chain_id = 1
     name = "trb-token"
 
     token_contract = get_contract(cfg, account, name)
 
-    assert token_contract.address == "0x88466f374B6bB10DE3911Cb3CCF6667B70269146"
+    assert token_contract
+    assert token_contract.address == "0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0"
     assert token_contract.account == account
     assert token_contract.connect().ok
+
+    # bad chain id
+    cfg.main.chain_id = 12345
+
+    token_contract = get_contract(cfg, account, name)
+
+    assert not token_contract
+    assert "Could not find contract" in caplog.text
+
+    # bad contract name
+    cfg.main.chain_id = 1
+    name = "trbbbbb-123"
+
+    token_contract = get_contract(cfg, account, name)
+
+    assert not token_contract
+    assert "Could not find contract" in caplog.text
+
+    # bad endpoint
+    cfg.main.chain_id = 5
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", "bad-rpc-link.com", "etherscan.io")
+    cfg.endpoints.endpoints.insert(0, endpoint)
+    name = "trb-token"
+    account = ChainedAccount("test-account")
+
+    token_contract = get_contract(cfg, account, name)
+
+    assert not token_contract
+    assert "Could not connect to endpoint" in caplog.text
+
+    cfg.endpoints.endpoints.remove(endpoint)
+

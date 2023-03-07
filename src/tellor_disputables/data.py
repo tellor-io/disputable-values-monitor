@@ -161,7 +161,6 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     """Build Contract object from abi and address"""
 
     chain_id = cfg.main.chain_id
-    cfg.get_endpoint().connect()
     addr, abi = get_contract_info(chain_id, name)
 
     if (addr is None) or (abi is None):
@@ -171,6 +170,16 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     
     c = Contract(addr, abi, cfg.get_endpoint(), account)
 
+    try:
+        connected_to_node = cfg.get_endpoint().connect()
+    except (ValueError, ConnectionError) as e:
+        logging.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + str(e))
+        return None
+    
+    if not connected_to_node:
+        logging.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + status.error)
+        return None
+    
     status = c.connect()
 
     if not status.ok:

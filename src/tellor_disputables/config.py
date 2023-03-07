@@ -60,7 +60,7 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    query_id = self.box.feeds[i].query_id[2:]  # TODO loop through all instead of only 0
+                    query_id = self.box.feeds[i].query_id[2:]
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -76,7 +76,7 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    threshold_type = self.box.feeds[i].threshold.type  # TODO loop through all instead of only 0
+                    threshold_type = self.box.feeds[i].threshold.type
                     threshold_amount = self.box.feeds[i].threshold.amount
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
