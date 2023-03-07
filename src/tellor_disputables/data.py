@@ -1,11 +1,21 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
+from dataclasses import dataclass
 import logging
 from typing import Any
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
+
+from enum import Enum
+from typing import Any
+from typing import Optional
+from typing import Union
+from chained_accounts import ChainedAccount
+
+from telliot_core.model.base import Base
+from telliot_feeds.datafeed import DataFeed
 
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.directory import contract_directory
@@ -22,10 +32,115 @@ from web3.types import LogReceipt
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.disputer import MonitoredFeed
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import NewReport
+
+from telliot_core.contract.contract import Contract
+
+
+class Metrics(Enum):
+    Percentage = "percentage"
+    Equality = "equality"
+    Range = "range"
+
+
+@dataclass
+class Threshold(Base):
+    """
+    A Threshold for sending a dispute.
+
+    amount (Optional[int]) -- amount of tolerated difference between
+    submitted on-chain values and trusted values from telliot.
+
+    metric (Metrics) -- type of threshold
+
+    If self.metric == "percentage", amount is a percent with a minimum of 0
+    If self.metric == "equality", amount is None
+    If self.metric == "range", amount is the maximum distance an on-chain value can have from
+    the trusted value from telliot
+    """
+
+    metric: Metrics
+    amount: Union[int, float, None]
+
+    def __post_init__(self) -> None:
+
+        if self.metric == Metrics.Equality:
+            logging.warning("Equality threshold selected, ignoring amount")
+            self.amount = None
+
+        if self.metric != Metrics.Equality:
+            if self.amount is None:
+                raise ValueError(f"{self.metric} threshold selected, amount cannot be None")
+
+            if self.amount < 0:
+                raise ValueError(f"{self.metric} threshold selected, amount cannot be negative")
+
+
+@dataclass
+class MonitoredFeed(Base):
+    feed: DataFeed[Any]
+    threshold: Threshold
+    query_id: Optional[str] = None
+
+    async def is_disputable(
+        self,
+        reported_val: Union[str, bytes, float, int, None],
+    ) -> Optional[bool]:
+        """Check if the reported value is disputable."""
+        if reported_val is None:
+            logging.error("Need reported value to check disputability")
+            return None
+
+        trusted_val, _ = await general_fetch_new_datapoint(self.feed)
+        if isinstance(trusted_val, (str, int, float, bytes)):
+
+            if self.threshold.metric == Metrics.Percentage:
+
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
+                    logging.error("Cannot evaluate percent difference on text/addresses/bytes")
+                    return None
+                if self.threshold.amount is None:
+                    logging.error("Please set a threshold amount to measure percent difference")
+                    return None
+                percent_diff: float = (reported_val - trusted_val) / trusted_val
+                return float(abs(percent_diff)) >= self.threshold.amount
+
+            elif self.threshold.metric == Metrics.Range:
+
+                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
+                    logging.error("Cannot evaluate range on text/addresses/bytes")
+
+                if self.threshold.amount is None:
+                    logging.error("Please set a threshold amount to measure range")
+                    return None
+                range_: float = abs(reported_val - trusted_val)
+                return range_ >= self.threshold.amount
+
+            elif self.threshold.metric == Metrics.Equality:
+
+                # if we have two bytes strings (not raw bytes)
+                if (
+                    (isinstance(reported_val, str))
+                    and (isinstance(trusted_val, str))
+                    and reported_val.startswith("0x")
+                    and trusted_val.startswith("0x")
+                ):
+                    return trusted_val.lower() != reported_val.lower()
+                return trusted_val != reported_val
+
+            else:
+                logging.error("Attemping comparison with unknown threshold metric")
+                return None
+        else:
+            logging.error("Unable to fetch new datapoint from feed")
+            return None
+
+
+async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
+    """Fetch a new datapoint from a datafeed."""
+    return await feed.source.fetch_new_datapoint()
 
 
 def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -41,6 +156,28 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
     else:
         logging.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
+    
+def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Optional[Contract]:
+    """Build Contract object from abi and address"""
+
+    chain_id = cfg.main.chain_id
+    cfg.get_endpoint().connect()
+    addr, abi = get_contract_info(chain_id, name)
+
+    if (addr is None) or (abi is None):
+        logging.error(f"Could not find contract {name} on chain_id {chain_id}")
+        return None
+        
+    
+    c = Contract(addr, abi, cfg.get_endpoint(), account)
+
+    status = c.connect()
+
+    if not status.ok:
+        logging.error(f"Could not connect to contract {name} on chain_id {chain_id}: " + status.error)
+        return None
+    
+    return c
 
 
 def get_query_type(q: OracleQuery) -> str:
@@ -162,10 +299,12 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
 async def parse_new_report_event(
     cfg: TelliotConfig,
     log: LogReceipt,
-    monitored_feed: MonitoredFeed,
+    monitored_feeds: List[MonitoredFeed],
     see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
+
+    q_ids_to_monitored_feeds = {"0x" + monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds}
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
@@ -204,10 +343,12 @@ async def parse_new_report_event(
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
+    
+    if new_report.query_id not in q_ids_to_monitored_feeds: #TODO ensure both has 0x or none have 0x
+        logging.info("skipping undesired NewReport event")
+        return None
     else:
-        if new_report.query_id != "0x" + monitored_feed.feed.query.query_id.hex():
-            logging.info("skipping undesired NewReport event")
-            return None
+        monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]
 
     if isinstance(q, SpotPrice):
         new_report.asset = q.asset.upper()
