@@ -10,9 +10,9 @@ from box import Box
 from telliot_feeds.feeds import DataFeed
 
 from tellor_disputables import DATAFEED_LOOKUP
-from tellor_disputables.disputer import Metrics
-from tellor_disputables.disputer import MonitoredFeed
-from tellor_disputables.disputer import Threshold
+from tellor_disputables.data import Metrics
+from tellor_disputables.data import MonitoredFeed
+from tellor_disputables.data import Threshold
 
 
 @dataclass
