@@ -423,3 +423,7 @@ def test_get_contract(caplog):
 
     cfg.endpoints.endpoints.remove(endpoint)
 
+
+def test_multiple_thresholds_for_one_feed():
+    """Should support multiple separate thresholds for one query id"""
+    pass

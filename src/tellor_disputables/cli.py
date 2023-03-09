@@ -9,7 +9,6 @@ import pandas as pd
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
-from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
@@ -19,9 +18,6 @@ from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.data import Metrics
-from tellor_disputables.data import MonitoredFeed
-from tellor_disputables.data import Threshold
 from tellor_disputables.utils import clear_console, select_account
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import Topics
