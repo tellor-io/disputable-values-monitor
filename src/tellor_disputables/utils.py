@@ -1,4 +1,5 @@
 """Helper functions."""
+import logging
 import os
 from dataclasses import dataclass
 from typing import Optional
@@ -64,3 +65,20 @@ def clear_console() -> None:
     # mac, linux (name=="posix")
     else:
         _ = os.system("clear")
+
+
+def get_logger(name: str) -> logging.Logger:
+    """DVM logger
+
+    Returns a logger that logs to file. The name arg
+    should be the current file name. For example:
+    _ = get_logger(name=__name__)
+    """
+    log_format = "%(levelname)-7s | %(name)s | %(message)s"
+    fh = logging.FileHandler("log.txt")
+    formatter = logging.Formatter(log_format)
+    fh.setFormatter(formatter)
+    logger = logging.getLogger(name)
+    logger.addHandler(fh)
+    logger.setLevel(logging.DEBUG)
+    return logger

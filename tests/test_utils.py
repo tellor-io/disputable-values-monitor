@@ -4,6 +4,7 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
 from src.tellor_disputables.utils import disputable_str
+from src.tellor_disputables.utils import get_logger
 from src.tellor_disputables.utils import get_tx_explorer_url
 
 
@@ -28,3 +29,15 @@ def test_disputable_str():
     disp_str1 = disputable_str(disputable1, query_id)
     assert isinstance(disp_str1, str)
     assert disp_str1 == "no ✔️"
+
+
+def test_logger():
+
+    logger = get_logger(__name__)
+
+    logger.error("test message that writes to log.txt")
+
+    with open("log.txt", "r") as f:
+        contents = f.readlines()[-1]
+
+    assert "test message that writes to log.txt" in contents
