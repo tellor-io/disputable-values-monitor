@@ -1,6 +1,5 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
-import logging
 from typing import Any
 from typing import List
 from typing import Optional
@@ -25,8 +24,11 @@ from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import disputable_str
+from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import NewReport
+
+logger = get_logger(__name__)
 
 
 def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -40,7 +42,7 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
         return addr, abi
 
     else:
-        logging.info(f"Could not find contract info for chain_id {chain_id}")
+        logger.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
 
 
@@ -70,9 +72,9 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
         block_number = web3.eth.get_block_number()
     except Exception as e:
         if "server rejected" in str(e):
-            logging.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
+            logger.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
         else:
-            logging.warning("unable to retrieve latest block number:" + str(e))
+            logger.warning("unable to retrieve latest block number:" + str(e))
         return []
 
     event_filter = mk_filter(block_number - int(blocks), "latest", addr, topics)
@@ -82,11 +84,11 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
     except (MaxRetryError, NewConnectionError, ValueError) as e:
         msg = str(e)
         if "unknown block" in msg:
-            logging.error("waiting for new blocks")
+            logger.error("waiting for new blocks")
         elif "request failed or timed out" in msg:
-            logging.error("request for eth event logs failed")
+            logger.error("request for eth event logs failed")
         else:
-            logging.error("unknown RPC error gathering eth event logs \n" + msg)
+            logger.error("unknown RPC error gathering eth event logs \n" + msg)
         return []
 
     unique_events_list = []
@@ -107,7 +109,7 @@ async def is_disputable(
 ) -> Optional[bool]:
     """Check if the reported value is disputable."""
     if reported_val is None:
-        logging.error("Need reported value to check disputability")
+        logger.error("Need reported value to check disputability")
         return None
 
     trusted_val, _ = await general_fetch_new_datapoint(current_feed)
@@ -119,10 +121,10 @@ async def is_disputable(
         elif isinstance(trusted_val, (str, bytes)) and isinstance(reported_val, (str, bytes)):
             return trusted_val == reported_val
         else:
-            logging.error("Reported value is an unsupported data type")
+            logger.error("Reported value is an unsupported data type")
             return None
     else:
-        logging.error("Unable to fetch new datapoint from feed")
+        logger.error("Unable to fetch new datapoint from feed")
         return None
 
 
@@ -140,7 +142,7 @@ async def chain_events(
                 endpoint.connect()
                 w3 = endpoint.web3
             except (IndexError, ValueError) as e:
-                logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+                logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
                 continue
             events_loop.append(log_loop(w3, address, topic, wait))
     events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
@@ -161,7 +163,7 @@ async def get_events(
         try:
             endpoint.connect()
         except Exception as e:
-            logging.warning("unable to connect to endpoint: " + str(e))
+            logger.warning("unable to connect to endpoint: " + str(e))
 
         w3 = endpoint.web3
 
@@ -204,7 +206,7 @@ async def parse_new_report_event(
     new_report = NewReport()
 
     if not endpoint:
-        logging.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
+        logger.error(f"Unable to find a suitable endpoint for chain_id {chain_id}")
         return None
     else:
 
@@ -212,7 +214,7 @@ async def parse_new_report_event(
             endpoint.connect()
             w3 = endpoint.web3
         except ValueError as e:
-            logging.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+            logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
             return None
 
         codec = w3.codec
@@ -221,7 +223,7 @@ async def parse_new_report_event(
     q = get_query_from_data(event_data.args._queryData)
 
     if q is None:
-        logging.error("Unable to form query from query data")
+        logger.error("Unable to form query from query data")
         return None
 
     new_report.tx_hash = event_data.transactionHash.hex()
@@ -238,14 +240,14 @@ async def parse_new_report_event(
         feed = DATAFEED_LOOKUP[new_report.query_id[2:]]  # strip "0x"
     else:
         if new_report.query_id != feed.query.query_id.hex():
-            logging.info("skipping undesired NewReport event")
+            logger.info("skipping undesired NewReport event")
             return None
 
     if isinstance(q, SpotPrice):
         new_report.asset = q.asset.upper()
         new_report.currency = q.currency.upper()
     else:
-        logging.error("unsupported query type")
+        logger.error("unsupported query type")
         return None
 
     disputable = await is_disputable(new_report.value, feed, confidence_threshold)
@@ -258,7 +260,7 @@ async def parse_new_report_event(
 
             return new_report
         else:
-            logging.info("unable to check disputability")
+            logger.info("unable to check disputability")
             return None
     else:
         new_report.status_str = disputable_str(disputable, new_report.query_id)
