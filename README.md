@@ -104,3 +104,22 @@ Generate requirements.txt in case you have installed new dependencies:
 ```
 poetry export -f requirements.txt --output requirements.txt --without-hashes
 ```
+
+### Publishing a release
+1. Ensure all tests are passing on `dvm-main` branch.
+2. Remove "dev" from version in the `pyproject.toml` file. Example: version = "0.0.5dev" --> version = "0.0.5".
+3. On github, go to "Releases" -> "Draft a new release" -> "Choose a tag".
+4. Write in a new tag that corresponds with the version in `pyproject.toml` file. Example: v0.0.5
+5. If the tag is v.0.0.5, the release title should be Release 0.0.5.
+6. Click Auto-generate release notes.
+7. Check the box for This is a pre-release.
+8. Click Publish release.
+9. Navigate to the Actions tab from the main page of the package on github and make sure the release workflow completes successfully.
+10. Check to make sure the new version was released to test PyPI [here](https://test.pypi.org/project/tellor-disputables/).
+11. Test downloading and using the new version of the package from test PyPI ([example](https://stackoverflow.com/questions/34514703/pip-install-from-pypi-works-but-from-testpypi-fails-cannot-find-requirements)).
+12. Navigate back to the pre-release you just made and click edit (the pencil icon).
+13. Uncheck the This is a pre-release box.
+14. Publish the release.
+15. Make sure the release github action goes through.
+16. Download and test the new release on PyPI official [here](https://pypi.org/project/tellor-disputables/).
+17. Change the package version in **pyproject.toml**.py to be the next development version. For example, if you just released version 0.0.5, change **version** to be "0.0.6dev0".

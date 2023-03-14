@@ -19,13 +19,17 @@ from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.utils import clear_console, select_account
+from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
-logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
-logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
-logging.basicConfig(filename="log.txt", level=logging.INFO, format="%(asctime)s %(message)s")
+price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
+price_aggregator_logger.handlers = [
+    h for h in price_aggregator_logger.handlers if not isinstance(h, logging.StreamHandler)
+]
+
+logger = get_logger(__name__)
 
 
 def print_title_info() -> None:
@@ -52,7 +56,7 @@ async def start(all_values: bool, wait: int, account: str) -> None:
     print_title_info()
     from_number, recipients = get_twilio_info()
     if from_number is None or recipients is None:
-        logging.error("Missing phone numbers. See README for required environment variables. Exiting.")
+        logger.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
     
     cfg = TelliotConfig()
@@ -109,7 +113,7 @@ async def start(all_values: bool, wait: int, account: str) -> None:
                 try:
                     new_report = await parse_new_report_event(cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event)
                 except Exception as e:
-                    logging.error("unable to parse new report event! " + str(e))
+                    logger.error("unable to parse new report event! " + str(e))
                     continue
 
                 # Skip duplicate & missing events
