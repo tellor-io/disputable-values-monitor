@@ -2,6 +2,7 @@
 import logging
 import os
 import time
+from unittest import mock
 from unittest.mock import patch
 
 import time
@@ -404,3 +405,21 @@ def test_get_contract(caplog):
 def test_multiple_thresholds_for_one_feed():
     """Should support multiple separate thresholds for one query id"""
     pass
+
+
+@pytest.mark.asyncio
+async def test_NaN_value(log):
+    """test disputability when the Telliot value returns 0 or NaN or None"""
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 5
+
+    unusable_telliot_vals = [None, 0, 0.0]
+    threshold = Threshold(Metrics.Percentage, 0.50)
+    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
+
+    for telliot_val in unusable_telliot_vals:
+        with mock.patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, None)):
+            new_report = await parse_new_report_event(cfg, log, monitored_feeds)
+
+        assert not new_report

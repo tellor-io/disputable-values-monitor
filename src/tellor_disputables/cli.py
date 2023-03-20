@@ -46,7 +46,7 @@ def print_title_info() -> None:
     "-a", "--account", help="the name of a ChainedAccount to dispute with", type=str
 )
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-d" "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
+@click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
 @async_run
 async def main(all_values: bool, wait: int, account: str, is_disputing: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
@@ -57,7 +57,7 @@ async def start(all_values: bool, wait: int, account: str, is_disputing: bool) -
     """Start the CLI dashboard."""
     print_title_info()
 
-    if is_disputing:
+    if account and is_disputing:
         click.echo("...Now with auto-disputing!")
 
     from_number, recipients = get_twilio_info()
@@ -68,7 +68,7 @@ async def start(all_values: bool, wait: int, account: str, is_disputing: bool) -
     cfg = TelliotConfig()
     disp_cfg = AutoDisputerConfig()
 
-    select_account(cfg, account)
+    account = select_account(cfg, account)
 
     display_rows = []
     displayed_events = set()

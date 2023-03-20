@@ -19,7 +19,7 @@ from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
 
 @pytest.mark.asyncio
-async def test_dispute_on_timestamp_without_value(caplog, disputer_account: ChainedAccount):
+async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
     """
     test typical dispute with a timestamp that doesn't contain a value.
     it will revert on chain
@@ -48,6 +48,35 @@ async def test_dispute_on_timestamp_without_value(caplog, disputer_account: Chai
     for i in expected_success_logs:
         assert i in caplog.text
 
+    # missing query id
+    report.query_id = None
+
+    mock_approve_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
+    mock_dispute_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
+
+
+    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
+        await dispute(cfg, disputer_account, report)
+
+    for i in expected_success_logs:
+        assert i in caplog.text
+
+    report.query_id = ""
+
+    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
+        await dispute(cfg, disputer_account, report)
+
+    for i in expected_success_logs:
+        assert i in caplog.text
+
+    # query id is inactive
+    report.query_id = "0x7af670d5ad732a520e49b33749a97d58de18c234d5b0834415fb19647e03a2cb" # abc/usd
+
+    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
+        await dispute(cfg, disputer_account, report)
+
+    for i in expected_success_logs:
+        assert i in caplog.text
         
 @pytest.mark.asyncio
 async def test_dispute_using_sample_log(caplog, log, disputer_account):
@@ -87,4 +116,10 @@ async def test_dispute_using_sample_log(caplog, log, disputer_account):
         assert i in caplog.text
 
 
+@pytest.mark.asyncio
+async def test_response_to_bad_report():
 
+    """
+    stake reporter
+    submit report
+    """

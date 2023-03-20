@@ -17,6 +17,10 @@ logger = get_logger(__name__)
 async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewReport) -> None:
     """Main dispute logic for auto-disputer"""
 
+    if account is None:
+        logger.info("No account provided, skipping eligible dispute")
+        return None
+
     cfg.main.chain_id = new_report.chain_id
 
     token = get_contract(cfg, name="trb-token", account=account) #TODO test

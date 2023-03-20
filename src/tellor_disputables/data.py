@@ -95,6 +95,9 @@ class MonitoredFeed(Base):
             return None
 
         trusted_val, _ = await general_fetch_new_datapoint(self.feed)
+        if not trusted_val:
+            logger.warning("trusted val was " + str(trusted_val))
+
         if isinstance(trusted_val, (str, int, float, bytes)):
 
             if self.threshold.metric == Metrics.Percentage:
