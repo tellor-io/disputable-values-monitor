@@ -1,10 +1,6 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
-<<<<<<< HEAD
 from dataclasses import dataclass
-import logging
-=======
->>>>>>> f5333ab01433b9459c51b49074d7234d32a3a68b
 from typing import Any
 from typing import List
 from typing import Optional
@@ -42,6 +38,7 @@ from tellor_disputables.utils import NewReport
 
 from telliot_core.contract.contract import Contract
 
+logger = get_logger(__name__)
 
 class Metrics(Enum):
     Percentage = "percentage"
@@ -71,7 +68,7 @@ class Threshold(Base):
     def __post_init__(self) -> None:
 
         if self.metric == Metrics.Equality:
-            logging.warning("Equality threshold selected, ignoring amount")
+            logger.warning("Equality threshold selected, ignoring amount")
             self.amount = None
 
         if self.metric != Metrics.Equality:
@@ -94,7 +91,7 @@ class MonitoredFeed(Base):
     ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
-            logging.error("Need reported value to check disputability")
+            logger.error("Need reported value to check disputability")
             return None
 
         trusted_val, _ = await general_fetch_new_datapoint(self.feed)
@@ -103,10 +100,10 @@ class MonitoredFeed(Base):
             if self.threshold.metric == Metrics.Percentage:
 
                 if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
-                    logging.error("Cannot evaluate percent difference on text/addresses/bytes")
+                    logger.error("Cannot evaluate percent difference on text/addresses/bytes")
                     return None
                 if self.threshold.amount is None:
-                    logging.error("Please set a threshold amount to measure percent difference")
+                    logger.error("Please set a threshold amount to measure percent difference")
                     return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
                 return float(abs(percent_diff)) >= self.threshold.amount
@@ -114,10 +111,10 @@ class MonitoredFeed(Base):
             elif self.threshold.metric == Metrics.Range:
 
                 if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
-                    logging.error("Cannot evaluate range on text/addresses/bytes")
+                    logger.error("Cannot evaluate range on text/addresses/bytes")
 
                 if self.threshold.amount is None:
-                    logging.error("Please set a threshold amount to measure range")
+                    logger.error("Please set a threshold amount to measure range")
                     return None
                 range_: float = abs(reported_val - trusted_val)
                 return range_ >= self.threshold.amount
@@ -135,10 +132,10 @@ class MonitoredFeed(Base):
                 return trusted_val != reported_val
 
             else:
-                logging.error("Attemping comparison with unknown threshold metric")
+                logger.error("Attemping comparison with unknown threshold metric")
                 return None
         else:
-            logging.error("Unable to fetch new datapoint from feed")
+            logger.error("Unable to fetch new datapoint from feed")
             return None
 
 
@@ -168,7 +165,7 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     addr, abi = get_contract_info(chain_id, name)
 
     if (addr is None) or (abi is None):
-        logging.error(f"Could not find contract {name} on chain_id {chain_id}")
+        logger.error(f"Could not find contract {name} on chain_id {chain_id}")
         return None
         
     
@@ -177,17 +174,17 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     try:
         connected_to_node = cfg.get_endpoint().connect()
     except (ValueError, ConnectionError) as e:
-        logging.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + str(e))
+        logger.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + str(e))
         return None
     
     if not connected_to_node:
-        logging.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + status.error)
+        logger.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + status.error)
         return None
     
     status = c.connect()
 
     if not status.ok:
-        logging.error(f"Could not connect to contract {name} on chain_id {chain_id}: " + status.error)
+        logger.error(f"Could not connect to contract {name} on chain_id {chain_id}: " + status.error)
         return None
     
     return c
@@ -358,7 +355,7 @@ async def parse_new_report_event(
         return new_report
     
     if new_report.query_id not in q_ids_to_monitored_feeds: #TODO ensure both has 0x or none have 0x
-        logging.info("skipping undesired NewReport event")
+        logger.info("skipping undesired NewReport event")
         return None
     else:
         monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]

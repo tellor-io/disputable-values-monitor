@@ -18,6 +18,7 @@ from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import clear_console, select_account
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
@@ -45,15 +46,20 @@ def print_title_info() -> None:
     "-a", "--account", help="the name of a ChainedAccount to dispute with", type=str
 )
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
+@click.option("-d" "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
 @async_run
-async def main(all_values: bool, wait: int, account: str) -> None:
+async def main(all_values: bool, wait: int, account: str, is_disputing: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, account=account)
+    await start(all_values=all_values, wait=wait, account=account, is_disputing=is_disputing)
 
 
-async def start(all_values: bool, wait: int, account: str) -> None:
+async def start(all_values: bool, wait: int, account: str, is_disputing: bool) -> None:
     """Start the CLI dashboard."""
     print_title_info()
+
+    if is_disputing:
+        click.echo("...Now with auto-disputing!")
+
     from_number, recipients = get_twilio_info()
     if from_number is None or recipients is None:
         logger.error("Missing phone numbers. See README for required environment variables. Exiting.")
@@ -125,7 +131,13 @@ async def start(all_values: bool, wait: int, account: str) -> None:
                 clear_console()
                 print_title_info()
 
+                if is_disputing:
+                    click.echo("...Now with auto-disputing!")
+
                 alert(all_values, new_report, recipients, from_number)
+
+                if is_disputing:
+                    await dispute(cfg, account, new_report)
 
                 display_rows.append(
                     (
