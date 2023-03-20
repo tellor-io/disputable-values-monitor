@@ -289,7 +289,7 @@ async def test_parse_oracle_address_submission():
 
 
 @pytest.mark.asyncio
-async def test_log_loop():
+async def test_log_loop(caplog):
     """test raised exceptions in log loop"""
 
     http_error = HTTPError("429 Client Error: Too Many Requests for url:")
@@ -304,3 +304,5 @@ async def test_log_loop():
 
     with mock.patch("web3.eth.Eth.get_logs", side_effect=[http_error]):
         await log_loop(w3, addr, topics, wait)
+
+    assert "Too many requests" in caplog.text
