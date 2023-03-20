@@ -1,9 +1,9 @@
 """tests for dispute logic of auto-disputer"""
 
-import time
 from unittest import mock
 import pytest
 from telliot_core.apps.core import TelliotConfig
+from tellor_disputables.data import get_contract
 from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import NewReport
 
@@ -12,6 +12,11 @@ from tellor_disputables.utils import NewReport
 async def test_dispute(disputer_account):
 
     cfg = TelliotConfig()
+
+    cfg.main.chain_id = 1
+
+    token = get_contract(cfg, disputer_account, "trb-token")
+    governance = get_contract(cfg, disputer_account, "tellor-governance")
 
     cfg.main.chain_id = 1337
 
@@ -28,4 +33,6 @@ async def test_dispute(disputer_account):
             True,
             "status ",
         )
-    await dispute(cfg, disputer_account, report)
+    
+    with mock.patch("tellor_disputables.data.get_contract", side_effect=[token, governance]):
+        await dispute(cfg, disputer_account, report)
