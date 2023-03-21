@@ -26,8 +26,6 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.data import get_contract, get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
-from tellor_disputables.data import is_disputable
-from tellor_disputables.data import log_loop
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import Metrics
@@ -277,15 +275,15 @@ async def test_range():
     telliot_val = 1000
     range = 500
     threshold = Threshold(Metrics.Range, range)
-    mf = MonitoredFeed(eth_usd_median_feed, threshold)
+    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
 
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await monitored_feeds.is_disputable(reported_val)
         assert disputable
 
     telliot_val = 501
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+        disputable = await monitored_feeds.is_disputable(reported_val)
         assert not disputable
 
 
@@ -299,15 +297,15 @@ async def test_equality():
 
     assert threshold.amount is None
 
-    mf = MonitoredFeed(eth_usd_median_feed, threshold)
+    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+        disputable = await monitored_feeds.is_disputable(reported_val)
         assert not disputable
 
     telliot_val = 501  # throw a completely different data type at the equality operator
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+        disputable = await monitored_feeds.is_disputable(reported_val)
         assert disputable
 
 
@@ -331,7 +329,7 @@ async def test_is_disputable(caplog):
     assert "Need reported value to check disputability" in caplog.text
 
     # Unable to fetch price
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(None, None)):
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
         disputable = await mf.is_disputable(val)
         assert disputable is None
         assert "Unable to fetch new datapoint from feed" in caplog.text

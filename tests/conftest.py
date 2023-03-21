@@ -49,9 +49,9 @@ def disputer_account():
     w3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
 
     w3.eth.send_transaction({
-        "from": w3.eth.coinbase,
+        "from": "0x31A47094C6325D357c7331c621d6768Ba041916e",
         "to": Web3.toChecksumAddress(disputer.address),
-        "value": int(1e19)
+        "value": int(1e20)
     })
 
 

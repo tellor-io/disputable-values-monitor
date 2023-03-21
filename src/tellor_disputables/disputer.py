@@ -34,9 +34,6 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         logger.error("Unable to find governance contract")
         return None
 
-    #TODO dry run call of begin dispute before approval
-    tx_receipt, status = await governance.read(func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp)
-
     # read balance of user and log it
     user_token_balance, status = await token.read("balanceOf", Web3.toChecksumAddress(account.address))
 
@@ -60,6 +57,13 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         logger.info("User balance is below dispute fee: need more tokens to initiate dispute")
         return None
     
+    #TODO dry run call of begin dispute before approval
+    tx_receipt, status = await governance.read(func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp)
+
+    if not status.ok:
+        msg = f"Disputing {new_report.link} would violate contract logic, skipping {str(status.e) if status.e else ''}"
+        logger.warning(msg=msg)
+        return None
 
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()

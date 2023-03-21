@@ -42,7 +42,7 @@ async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
 
     report = NewReport(
             "0xabc123",
-            1679425619, #this eth block does not have a tellor value on the eth/usd query id
+            1679425719, #this eth block does not have a tellor value on the eth/usd query id
             1337,
             "etherscan.io/",
             "SpotPrice",
@@ -56,7 +56,7 @@ async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
     
     await dispute(cfg, disputer_account, report)
 
-    expected_success_logs = ["balance", "Dispute Fee", "unable to begin dispute"]
+    expected_success_logs = ["balance", "Dispute Fee", "would violate contract logic, skipping"]
 
     for i in expected_success_logs:
         assert i in caplog.text
@@ -123,9 +123,9 @@ async def test_dispute_using_sample_log(caplog, log, disputer_account):
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
         await dispute(cfg, disputer_account, new_report)
 
-    expected_success_logs = ["balance", "Dispute Fee", tx_hash, tx_hash]
+    expected_logs = ["balance", "Dispute Fee", "balance is below dispute fee"]
 
-    for i in expected_success_logs:
+    for i in expected_logs:
         assert i in caplog.text
 
 

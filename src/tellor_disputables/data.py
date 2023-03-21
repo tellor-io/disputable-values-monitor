@@ -95,6 +95,7 @@ class MonitoredFeed(Base):
         trusted_val, _ = await general_fetch_new_datapoint(self.feed)
         if not trusted_val:
             logger.warning("trusted val was " + str(trusted_val))
+            return None
 
         if isinstance(trusted_val, (str, int, float, bytes)):
 
