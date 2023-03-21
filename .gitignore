@@ -141,3 +141,6 @@ Pipfile
 log.txt
 table.csv
 poetry.lock
+
+
+node_modules/

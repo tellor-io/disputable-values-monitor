@@ -2,11 +2,13 @@
 import logging
 import os
 import time
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
 from dotenv import load_dotenv
 from hexbytes import HexBytes
+from requests import HTTPError
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
@@ -21,6 +23,7 @@ from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
 from tellor_disputables.data import is_disputable
+from tellor_disputables.data import log_loop
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
 
@@ -283,3 +286,23 @@ async def test_parse_oracle_address_submission():
     assert new_report.query_type == "TellorOracleAddress"
     assert Web3.toChecksumAddress(new_report.value) == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     assert "VERY IMPORTANT DATA SUBMISSION" in new_report.status_str
+
+
+@pytest.mark.asyncio
+async def test_log_loop(caplog):
+    """test raised exceptions in log loop"""
+
+    http_error = HTTPError("429 Client Error: Too Many Requests for url:")
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 941
+    cfg.get_endpoint().connect()
+    w3 = cfg.get_endpoint().web3
+    addr = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    topics = []
+    wait = 0
+
+    with mock.patch("web3.eth.Eth.get_logs", side_effect=[http_error]):
+        await log_loop(w3, addr, topics, wait)
+
+    assert "Too many requests" in caplog.text
