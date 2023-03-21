@@ -34,6 +34,8 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         logger.error("Unable to find governance contract")
         return None
 
+    #TODO dry run call of begin dispute before approval
+    tx_receipt, status = await governance.read(func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp)
 
     # read balance of user and log it
     user_token_balance, status = await token.read("balanceOf", Web3.toChecksumAddress(account.address))
@@ -61,7 +63,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
 
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()
-    tx_receipt, status = await token.write("approve", spender=governance.address, amount=dispute_fee, gas_limit=60000, max_priority_fee_per_gas=gas_price)
+    tx_receipt, status = await token.write("approve", spender=governance.address, amount=dispute_fee, gas_limit=60000, legacy_gas_price=gas_price)
 
     if not status.ok:
         logger.error("unable to approve tokens for dispute fee:" + status.error)
@@ -70,7 +72,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
     logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
 
     # Write beginDispute(queryId, timestamp) and log “chain id <chain id>: dispute #(number of disputeId) initiated on query <Decoded Query Type w/ Parameters> – <queryId> at timestamp <Timestamp>
-    tx_receipt, status = await governance.write(func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp, gas_limit=120000, max_priority_fee_per_gas=gas_price)
+    tx_receipt, status = await governance.write(func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp, gas_limit=300000, legacy_gas_price=gas_price)
 
     if not status.ok:
         logger.error(f"unable to begin dispute on {new_report.query_id} at submission timestamp {new_report.submission_timestamp}:" + status.error)

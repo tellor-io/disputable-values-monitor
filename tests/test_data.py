@@ -12,6 +12,7 @@ from chained_accounts import ChainedAccount
 import pytest
 from dotenv import load_dotenv
 from hexbytes import HexBytes
+from requests import HTTPError
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
@@ -25,6 +26,8 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.data import get_contract, get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
+from tellor_disputables.data import is_disputable
+from tellor_disputables.data import log_loop
 from tellor_disputables.data import NewReport
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import Metrics

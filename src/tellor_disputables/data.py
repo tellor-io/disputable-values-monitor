@@ -22,8 +22,6 @@ from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from telliot_feeds.queries.query import OracleQuery
-from urllib3.exceptions import MaxRetryError
-from urllib3.exceptions import NewConnectionError
 from web3 import Web3
 from web3._utils.events import get_event_data
 from web3.types import LogReceipt
@@ -228,12 +226,14 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
 
     try:
         events = web3.eth.get_logs(event_filter)  # type: ignore
-    except (MaxRetryError, NewConnectionError, ValueError) as e:
+    except Exception as e:
         msg = str(e)
         if "unknown block" in msg:
             logger.error("waiting for new blocks")
         elif "request failed or timed out" in msg:
             logger.error("request for eth event logs failed")
+        elif "Too Many Requests" in msg:
+            logger.info(f"Too many requests to node on chain_id {web3.eth.chain_id}")
         else:
             logger.error("unknown RPC error gathering eth event logs \n" + msg)
         return []

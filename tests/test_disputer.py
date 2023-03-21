@@ -7,9 +7,11 @@ from chained_accounts import ChainedAccount
 import pytest
 from telliot_core.apps.core import TelliotConfig
 from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
-from tellor_disputables.data import Metrics, MonitoredFeed, Threshold, get_contract, parse_new_report_event
+from tellor_disputables.data import Metrics, MonitoredFeed, Threshold, get_contract_info, parse_new_report_event
 from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import NewReport
+
+from telliot_core.directory import contract_directory, ContractInfo
 
 from telliot_core.utils.response import ResponseStatus
 
@@ -25,13 +27,24 @@ async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
     it will revert on chain
     """
 
+    token_contract_info = contract_directory.find(name="trb-token", chain_id=1)[0]
+    governance_contract_info = contract_directory.find(name="tellor-governance", chain_id=1)[0]
+
+    forked_token = ContractInfo("trb-token-fork", "Ganache", {1337: token_contract_info.address[1]}, token_contract_info.abi_file)
+    forked_governance = ContractInfo("tellor-governance-fork", "Ganache", {1337: governance_contract_info.address[1]}, governance_contract_info.abi_file)
+
+    contract_directory.add_entry(forked_token)
+    contract_directory.add_entry(forked_governance)
+
     cfg = TelliotConfig()
+    cfg.main.chain_id = 1337
+    cfg.endpoints.endpoints.append(RPCEndpoint(1337, url="http://localhost:8545"))
 
     report = NewReport(
             "0xabc123",
-            1679274323, #this eth block does not have a tellor value on the eth/usd query id
-            5, # on goerli
-            "etherscan.io/abc",
+            1679425619, #this eth block does not have a tellor value on the eth/usd query id
+            1337,
+            "etherscan.io/",
             "SpotPrice",
             15.5,
             "eth",

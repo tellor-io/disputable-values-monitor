@@ -51,7 +51,7 @@ def disputer_account():
     w3.eth.send_transaction({
         "from": w3.eth.coinbase,
         "to": Web3.toChecksumAddress(disputer.address),
-        "value": 100000000000000000000
+        "value": int(1e19)
     })
 
 
