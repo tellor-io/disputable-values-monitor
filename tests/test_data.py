@@ -413,6 +413,9 @@ async def test_NaN_value(log):
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
+    
+    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
+    cfg.endpoints.endpoints.append(endpoint)
 
     unusable_telliot_vals = [None, 0, 0.0]
     threshold = Threshold(Metrics.Percentage, 0.50)
