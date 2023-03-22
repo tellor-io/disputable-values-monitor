@@ -360,6 +360,10 @@ def test_get_contract(caplog):
     # optimistic setup
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
+
+    endpoint = RPCEndpoint(1, "Mainnet", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
+    cfg.endpoints.endpoints.append(endpoint)
+    
     account = ChainedAccount("test-account")
     name = "trb-token"
 
