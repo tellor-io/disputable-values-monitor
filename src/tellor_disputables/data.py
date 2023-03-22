@@ -1,23 +1,19 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from enum import Enum
-from typing import Any
-from typing import Optional
-from typing import Union
 from chained_accounts import ChainedAccount
-
+from telliot_core.apps.telliot_config import TelliotConfig
+from telliot_core.contract.contract import Contract
+from telliot_core.directory import contract_directory
 from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
-
-from telliot_core.apps.telliot_config import TelliotConfig
-from telliot_core.directory import contract_directory
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.price.spot_price import SpotPrice
@@ -34,9 +30,8 @@ from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import NewReport
 
-from telliot_core.contract.contract import Contract
-
 logger = get_logger(__name__)
+
 
 class Metrics(Enum):
     Percentage = "percentage"
@@ -159,7 +154,8 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
     else:
         logger.info(f"Could not find contract info for chain_id {chain_id}")
         return None, None
-    
+
+
 def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Optional[Contract]:
     """Build Contract object from abi and address"""
 
@@ -169,8 +165,7 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     if (addr is None) or (abi is None):
         logger.error(f"Could not find contract {name} on chain_id {chain_id}")
         return None
-        
-    
+
     c = Contract(addr, abi, cfg.get_endpoint(), account)
 
     try:
@@ -178,17 +173,17 @@ def get_contract(cfg: TelliotConfig, account: ChainedAccount, name: str) -> Opti
     except (ValueError, ConnectionError) as e:
         logger.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + str(e))
         return None
-    
+
     if not connected_to_node:
-        logger.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}: " + status.error)
+        logger.error(f"Could not connect to endpoint {cfg.get_endpoint()} for chain_id {chain_id}")
         return None
-    
+
     status = c.connect()
 
     if not status.ok:
         logger.error(f"Could not connect to contract {name} on chain_id {chain_id}: " + status.error)
         return None
-    
+
     return c
 
 
@@ -318,7 +313,9 @@ async def parse_new_report_event(
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
-    q_ids_to_monitored_feeds = {"0x" + monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds}
+    q_ids_to_monitored_feeds = {
+        "0x" + monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
+    }
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
@@ -352,13 +349,13 @@ async def parse_new_report_event(
     new_report.query_type = get_query_type(q)
     new_report.value = q.value_type.decode(event_data.args._value)
     new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
-    new_report.submission_timestamp = event_data.args._time # in unix time
+    new_report.submission_timestamp = event_data.args._time  # in unix time
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
-    
-    if new_report.query_id not in q_ids_to_monitored_feeds: #TODO ensure both has 0x or none have 0x
+
+    if new_report.query_id not in q_ids_to_monitored_feeds:  # TODO ensure both has 0x or none have 0x
         logger.info("skipping undesired NewReport event")
         return None
     else:
