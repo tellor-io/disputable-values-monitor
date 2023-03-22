@@ -417,7 +417,7 @@ async def test_NaN_value(log):
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 5
-    
+
     endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
     cfg.endpoints.endpoints.insert(0, endpoint)
 
