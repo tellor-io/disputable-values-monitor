@@ -5,6 +5,7 @@ from time import sleep
 
 import click
 import pandas as pd
+from chained_accounts import ChainedAccount
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
@@ -13,12 +14,15 @@ from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
 from tellor_disputables.alerts import generic_alert
 from tellor_disputables.alerts import get_twilio_info
+from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import clear_console
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
+from tellor_disputables.utils import select_account
 from tellor_disputables.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
@@ -37,30 +41,36 @@ def print_title_info() -> None:
 
 @click.command()
 @click.option(
-    "-a", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
+    "-av", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
 )
+@click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-f", "--filter", help="build a queryId and get alerts for that queryId only", is_flag=True)
-@click.option(
-    "-c",
-    "--confidence-threshold",
-    help="percent difference threshold for notifications (a float between 0 and 1)",
-    type=float,
-    default=0.05,
-)
+@click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
 @async_run
-async def main(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
+async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, filter=filter, confidence_threshold=confidence_threshold)
+    await start(all_values=all_values, wait=wait, account_name=account_name, is_disputing=is_disputing)
 
 
-async def start(all_values: bool, wait: int, filter: bool, confidence_threshold: float) -> None:
+async def start(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
     """Start the CLI dashboard."""
+    cfg = TelliotConfig()
+    disp_cfg = AutoDisputerConfig()
     print_title_info()
+
     from_number, recipients = get_twilio_info()
     if from_number is None or recipients is None:
         logger.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
+
+    if not disp_cfg.monitored_feeds:
+        logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
+        return
+
+    if account_name and is_disputing:
+        click.echo("...Now with auto-disputing!")
+
+    account: ChainedAccount = select_account(cfg, account_name)
 
     display_rows = []
     displayed_events = set()
@@ -68,7 +78,6 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
     # Build query if filter is set
     while True:
 
-        cfg = TelliotConfig()
         # Fetch NewReport events
         event_lists = await get_events(
             cfg=cfg,
@@ -111,7 +120,7 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
 
                 try:
                     new_report = await parse_new_report_event(
-                        cfg=cfg, confidence_threshold=confidence_threshold, log=event
+                        cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event
                     )
                 except Exception as e:
                     logger.error("unable to parse new report event! " + str(e))
@@ -126,12 +135,18 @@ async def start(all_values: bool, wait: int, filter: bool, confidence_threshold:
                 clear_console()
                 print_title_info()
 
+                if is_disputing:
+                    click.echo("...Now with auto-disputing!")
+
                 alert(all_values, new_report, recipients, from_number)
+
+                if is_disputing:
+                    await dispute(cfg, account, new_report)
 
                 display_rows.append(
                     (
                         new_report.tx_hash,
-                        new_report.eastern_time,
+                        new_report.submission_timestamp,
                         new_report.link,
                         new_report.query_type,
                         new_report.value,

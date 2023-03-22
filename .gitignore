@@ -143,4 +143,7 @@ table.csv
 poetry.lock
 
 
+# ignore Ganache/brownie files
 node_modules/
+package-lock.json
+package.json
