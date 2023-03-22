@@ -41,7 +41,7 @@ jobs:
           npm install -g ganache-cli
           poetry env use 3.9 && poetry install
       - name: Start Ganache
-        run: nohup ganache-cli --fork {{ secrets.MAINNET_URL }} -l 3000000000 -d -p 8545 -u 0x31A47094C6325D357c7331c621d6768Ba041916e
+        run: nohup ganache-cli --fork ${{ secrets.MAINNET_URL }} -l 3000000000 -d -p 8545 -u 0x31A47094C6325D357c7331c621d6768Ba041916e
       - name: "Run poetry pytest for ${{ matrix.python-version }}"
         run:
           poetry run pytest
