@@ -20,6 +20,7 @@ jobs:
       ALERT_RECIPIENTS: ${{ secrets.ALERT_RECIPIENTS }}
       NODE_URL: ${{ secrets.NODE_URL }}
       MAINNET_URL: ${{ secrets.MAINNET_URL }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
 
     strategy:
       matrix:
