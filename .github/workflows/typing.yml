@@ -5,7 +5,7 @@ on:
   push:
     branches: ["dvm-main", "auto-disputer-main"]
   pull_request:
-    branches: ["main", "auto-disputer-main"]
+    branches: ["dvm-main", "auto-disputer-main"]
   workflow_dispatch:
 
 jobs:
