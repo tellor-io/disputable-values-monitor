@@ -76,7 +76,7 @@ async def test_parse_new_report_event(log):
         cfg.endpoints.endpoints.remove(endpoint)
 
     endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
-    cfg.endpoints.endpoints.append(endpoint)
+    cfg.endpoints.endpoints.insert(0, endpoint)
     new_report = await parse_new_report_event(cfg, log, [monitored_feed])
 
     # NON-DISPUTABLE EVENT
@@ -133,8 +133,8 @@ async def test_feed_filter(caplog, log):
     for endpoint in cfg.endpoints.find(chain_id=1):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(1, "Goerli", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
-    cfg.endpoints.endpoints.append(endpoint)
+    endpoint = RPCEndpoint(1, "Mainnet", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
+    cfg.endpoints.endpoints.insert(0, endpoint)
 
     # we are monitoring a different feed
     monitored_feed = MonitoredFeed(btc_usd_median_feed, Threshold(Metrics.Percentage, 0.50))
@@ -193,7 +193,7 @@ async def test_parse_oracle_address_submission():
         cfg.endpoints.endpoints.remove(endpoint)
 
     endpoint = RPCEndpoint(1, "Mainnet", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
-    cfg.endpoints.endpoints.append(endpoint)
+    cfg.endpoints.endpoints.insert(0, endpoint)
 
     tx_hash = "0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
     etherscan_link = "etherscan.io/tx/0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
@@ -362,8 +362,8 @@ def test_get_contract(caplog):
     cfg.main.chain_id = 1
 
     endpoint = RPCEndpoint(1, "Mainnet", "Infura", os.getenv("MAINNET_URL"), "etherscan.io")
-    cfg.endpoints.endpoints.append(endpoint)
-    
+    cfg.endpoints.endpoints.insert(0, endpoint)
+
     account = ChainedAccount("test-account")
     name = "trb-token"
 
@@ -419,7 +419,7 @@ async def test_NaN_value(log):
     cfg.main.chain_id = 5
     
     endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
-    cfg.endpoints.endpoints.append(endpoint)
+    cfg.endpoints.endpoints.insert(0, endpoint)
 
     unusable_telliot_vals = [None, 0, 0.0]
     threshold = Threshold(Metrics.Percentage, 0.50)
