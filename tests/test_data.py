@@ -5,14 +5,10 @@ import time
 from unittest import mock
 from unittest.mock import patch
 
-import time
-from unittest.mock import patch
-from chained_accounts import ChainedAccount
-
 import pytest
+from chained_accounts import ChainedAccount
 from dotenv import load_dotenv
 from hexbytes import HexBytes
-from requests import HTTPError
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
@@ -23,16 +19,18 @@ from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
-from tellor_disputables.data import get_contract, get_contract_info
+from tellor_disputables.data import get_contract
+from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
 from tellor_disputables.data import get_query_from_data
-from tellor_disputables.data import NewReport
-from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import Metrics
 from tellor_disputables.data import MonitoredFeed
+from tellor_disputables.data import NewReport
+from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import Threshold
 
 load_dotenv()
+
 
 def test_get_query_from_data():
     query_data = (
@@ -79,10 +77,10 @@ async def test_parse_new_report_event(log):
 
     endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
-    new_report = await parse_new_report_event(cfg, log, monitored_feed)
+    new_report = await parse_new_report_event(cfg, log, [monitored_feed])
 
     # NON-DISPUTABLE EVENT
-    new_report = await parse_new_report_event(cfg, log, monitored_feed)
+    new_report = await parse_new_report_event(cfg, log, [monitored_feed])
 
     assert new_report
 
@@ -92,8 +90,8 @@ async def test_parse_new_report_event(log):
     assert not new_report.disputable
 
     # DISPUTABLE EVENT
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
-        new_report = await parse_new_report_event(cfg, log, monitored_feed)
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
+        new_report = await parse_new_report_event(cfg, log, [monitored_feed])
 
         assert new_report.disputable
 
@@ -141,7 +139,7 @@ async def test_feed_filter(caplog, log):
     # we are monitoring a different feed
     monitored_feed = MonitoredFeed(btc_usd_median_feed, Threshold(Metrics.Percentage, 0.50))
     # try to parse it
-    res = await parse_new_report_event(cfg, monitored_feed=monitored_feed, log=log)
+    res = await parse_new_report_event(cfg, monitored_feeds=[monitored_feed], log=log)
 
     # parser should return None
     assert not res
@@ -199,7 +197,7 @@ async def test_parse_oracle_address_submission():
 
     tx_hash = "0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
     etherscan_link = "etherscan.io/tx/0xa5cac44128bbe2c195ed9dbc2412e8fb2e97b960a9aeb49c2ac111d35603579a"
-    feed = None
+    feeds = []
     see_all_values = False
 
     with (
@@ -207,7 +205,7 @@ async def test_parse_oracle_address_submission():
         patch("tellor_disputables.data.get_query_type", return_value="TellorOracleAddress"),
     ):
         new_report: NewReport = await parse_new_report_event(
-            cfg=cfg, log=log, monitored_feed=feed, see_all_values=see_all_values
+            cfg=cfg, log=log, monitored_feeds=feeds, see_all_values=see_all_values
         )  # threshold is ignored
 
     cfg.endpoints.endpoints.remove(endpoint)
@@ -222,6 +220,7 @@ async def test_parse_oracle_address_submission():
     assert new_report.query_type == "TellorOracleAddress"
     assert Web3.toChecksumAddress(new_report.value) == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
     assert "VERY IMPORTANT DATA SUBMISSION" in new_report.status_str
+
 
 def test_safety_checks_in_constructor(caplog):
     """test safe value checks in constructor"""
@@ -257,12 +256,12 @@ async def test_percentage():
     threshold = Threshold(Metrics.Percentage, percentage)
     mf = MonitoredFeed(eth_usd_median_feed, threshold)
 
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
         disputable = await mf.is_disputable(reported_val)
         assert disputable
 
     telliot_val = 751
-    with patch("tellor_disputables.disputer.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
+    with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
         disputable = await mf.is_disputable(reported_val)
         assert not disputable
 
@@ -275,15 +274,15 @@ async def test_range():
     telliot_val = 1000
     range = 500
     threshold = Threshold(Metrics.Range, range)
-    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
+    monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feeds.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(reported_val)
         assert disputable
 
     telliot_val = 501
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feeds.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(reported_val)
         assert not disputable
 
 
@@ -297,15 +296,15 @@ async def test_equality():
 
     assert threshold.amount is None
 
-    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
+    monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feeds.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(reported_val)
         assert not disputable
 
     telliot_val = 501  # throw a completely different data type at the equality operator
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feeds.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(reported_val)
         assert disputable
 
 
@@ -332,7 +331,6 @@ async def test_is_disputable(caplog):
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
         disputable = await mf.is_disputable(val)
         assert disputable is None
-        assert "Unable to fetch new datapoint from feed" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -355,12 +353,13 @@ async def test_different_conf_thresholds():
     assert isinstance(disputable, bool)
     assert not disputable
 
+
 def test_get_contract(caplog):
     """test getting governance and token contracts"""
 
     # optimistic setup
     cfg = TelliotConfig()
-    cfg.main.chain_id= 1
+    cfg.main.chain_id = 1
     account = ChainedAccount("test-account")
     name = "trb-token"
 

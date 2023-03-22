@@ -1,18 +1,19 @@
 import os
 import warnings
-from chained_accounts import ChainedAccount, find_accounts
-from dotenv import load_dotenv
-from hexbytes import HexBytes
 
 import pytest
+from chained_accounts import ChainedAccount
+from chained_accounts import find_accounts
+from dotenv import load_dotenv
+from hexbytes import HexBytes
 from twilio.base.exceptions import TwilioException
-from web3.datastructures import AttributeDict
-
 from web3 import Web3
+from web3.datastructures import AttributeDict
 
 from tellor_disputables.alerts import get_twilio_client
 
-load_dotenv()        
+load_dotenv()
+
 
 @pytest.fixture
 def log():
@@ -46,14 +47,15 @@ def disputer_account():
 
     disputer = find_accounts(account_name, 1337)[0]
 
-    w3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+    w3 = Web3(Web3.HTTPProvider("http://localhost:8545"))
 
-    w3.eth.send_transaction({
-        "from": "0x31A47094C6325D357c7331c621d6768Ba041916e",
-        "to": Web3.toChecksumAddress(disputer.address),
-        "value": int(1e20)
-    })
-
+    w3.eth.send_transaction(
+        {
+            "from": "0x31A47094C6325D357c7331c621d6768Ba041916e",
+            "to": Web3.toChecksumAddress(disputer.address),
+            "value": int(1e20),
+        }
+    )
 
     return disputer
 

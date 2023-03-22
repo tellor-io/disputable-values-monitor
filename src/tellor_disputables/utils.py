@@ -4,11 +4,12 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 from typing import Union
+
 import click
-
+from chained_accounts import ChainedAccount
 from telliot_core.apps.telliot_config import TelliotConfig
-
-from telliot_feeds.utils.cfg import check_accounts, setup_account
+from telliot_feeds.utils.cfg import check_accounts
+from telliot_feeds.utils.cfg import setup_account
 
 
 def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:
@@ -41,7 +42,7 @@ class NewReport:
     """NewReport event."""
 
     tx_hash: str = ""
-    submission_timestamp: int = 0 # timestamp attached to NewReport event (NOT the time retrieved by the DVM)
+    submission_timestamp: int = 0  # timestamp attached to NewReport event (NOT the time retrieved by the DVM)
     chain_id: int = 0
     link: str = ""
     query_type: str = ""
@@ -70,16 +71,18 @@ def clear_console() -> None:
         _ = os.system("clear")
 
 
-def select_account(cfg: TelliotConfig, account: str):
-        accounts = check_accounts(cfg, account)
-        click.echo(f"Your account name: {accounts[0].name if accounts else None}")
-        new_account = setup_account(cfg.main.chain_id)
-        if new_account is not None:
-            click.echo(f"{new_account.name} selected!")
-        else:
-            click.echo("Missing an account to send disputes. Running alerts only!")
+def select_account(cfg: TelliotConfig, account: str) -> Optional[ChainedAccount]:
+    accounts = check_accounts(cfg, account)
+    click.echo(f"Your account name: {accounts[0].name if accounts else None}")
+    new_account = setup_account(cfg.main.chain_id)
+    if new_account is not None:
+        click.echo(f"{new_account.name} selected!")
+    else:
+        click.echo("Missing an account to send disputes. Running alerts only!")
+        return None
 
-        return new_account
+    return new_account
+
 
 def get_logger(name: str) -> logging.Logger:
     """DVM logger
