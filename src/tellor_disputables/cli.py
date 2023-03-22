@@ -4,8 +4,8 @@ import warnings
 from time import sleep
 
 import click
-
 import pandas as pd
+from chained_accounts import ChainedAccount
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
@@ -19,9 +19,10 @@ from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.disputer import dispute
-from tellor_disputables.utils import clear_console, select_account
+from tellor_disputables.utils import clear_console
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
+from tellor_disputables.utils import select_account
 from tellor_disputables.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
@@ -42,33 +43,34 @@ def print_title_info() -> None:
 @click.option(
     "-av", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
 )
-@click.option(
-    "-a", "--account", help="the name of a ChainedAccount to dispute with", type=str
-)
+@click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
 @async_run
-async def main(all_values: bool, wait: int, account: str, is_disputing: bool) -> None:
+async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, account=account, is_disputing=is_disputing)
+    await start(all_values=all_values, wait=wait, account_name=account_name, is_disputing=is_disputing)
 
 
-async def start(all_values: bool, wait: int, account: str, is_disputing: bool) -> None:
+async def start(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
     """Start the CLI dashboard."""
+    cfg = TelliotConfig()
+    disp_cfg = AutoDisputerConfig()
     print_title_info()
-
-    if account and is_disputing:
-        click.echo("...Now with auto-disputing!")
 
     from_number, recipients = get_twilio_info()
     if from_number is None or recipients is None:
         logger.error("Missing phone numbers. See README for required environment variables. Exiting.")
         return
-    
-    cfg = TelliotConfig()
-    disp_cfg = AutoDisputerConfig()
 
-    account = select_account(cfg, account)
+    if not disp_cfg.monitored_feeds:
+        logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
+        return
+
+    if account_name and is_disputing:
+        click.echo("...Now with auto-disputing!")
+
+    account: ChainedAccount = select_account(cfg, account_name)
 
     display_rows = []
     displayed_events = set()
@@ -117,7 +119,9 @@ async def start(all_values: bool, wait: int, account: str, is_disputing: bool) -
                     continue
 
                 try:
-                    new_report = await parse_new_report_event(cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event)
+                    new_report = await parse_new_report_event(
+                        cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event
+                    )
                 except Exception as e:
                     logger.error("unable to parse new report event! " + str(e))
                     continue
