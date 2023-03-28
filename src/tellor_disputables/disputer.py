@@ -65,7 +65,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         logger.error("unable to approve tokens for dispute fee: " + status.error)
         return None
 
-    logger.info("Approval Tx Hash: " + cfg.get_endpoint().explorer + str(tx_receipt.transactionHash.hex()))
+    logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
 
     tx_receipt, status = await governance.write(
         func_name="beginDispute",
