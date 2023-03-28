@@ -1,16 +1,18 @@
-import asyncio
 import os
-from chained_accounts import ChainedAccount, find_accounts
+
 import pytest
+from chained_accounts import ChainedAccount
+from chained_accounts import find_accounts
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.gas.legacy_gas import fetch_gas_price
-
 from web3 import Web3
+
 from tellor_disputables.data import get_contract
+
 
 @pytest.mark.skip("for demo only")
 @pytest.mark.asyncio
-async def test_demo(setup: TelliotConfig, disputer_account: ChainedAccount):
+async def test_demo(setup: TelliotConfig):
 
     account_name = "disputer-test-acct"
 
@@ -20,11 +22,11 @@ async def test_demo(setup: TelliotConfig, disputer_account: ChainedAccount):
     disputer = find_accounts(account_name, 1337)[0]
 
     cfg = setup
-    
+
     cfg.main.chain_id = 80001
-    
-    oracle = get_contract(cfg, disputer_account, "tellor360-oracle")
-    token = get_contract(cfg, disputer_account, "trb-token")
+
+    oracle = get_contract(cfg, disputer, "tellor360-oracle")
+    token = get_contract(cfg, disputer, "trb-token")
     oracle.connect()
     token.connect()
 
