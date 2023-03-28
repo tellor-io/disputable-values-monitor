@@ -58,7 +58,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()
     tx_receipt, status = await token.write(
-        "approve", spender=governance.address, amount=dispute_fee, gas_limit=60000, legacy_gas_price=gas_price
+        "approve", spender=governance.address, amount=dispute_fee * 100, gas_limit=60000, legacy_gas_price=gas_price
     )
 
     if not status.ok:
