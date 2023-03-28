@@ -6,6 +6,10 @@ from chained_accounts import ChainedAccount
 from chained_accounts import find_accounts
 from dotenv import load_dotenv
 from hexbytes import HexBytes
+from telliot_core.apps.core import TelliotConfig
+from telliot_core.directory import contract_directory
+from telliot_core.directory import ContractInfo
+from telliot_core.model.endpoints import RPCEndpoint
 from twilio.base.exceptions import TwilioException
 from web3 import Web3
 from web3.datastructures import AttributeDict
@@ -49,11 +53,15 @@ def disputer_account():
 
     w3 = Web3(Web3.HTTPProvider("http://localhost:8545"))
 
+    multisig = Web3.toChecksumAddress("0x39e419ba25196794b595b2a595ea8e527ddc9856")
+
     w3.eth.send_transaction(
         {
-            "from": "0x31A47094C6325D357c7331c621d6768Ba041916e",
+            "chainId": 1337,
+            "gasPrice": w3.eth.gas_price,
+            "from": multisig,
             "to": Web3.toChecksumAddress(disputer.address),
-            "value": int(1e20),
+            "value": int(1e19),
         }
     )
 
@@ -67,3 +75,36 @@ def check_twilio_configured() -> None:
     except TwilioException as e:
         warnings.warn(str(e), stacklevel=2)
         pytest.skip(str(e))
+
+
+@pytest.fixture
+def setup():
+
+    token_contract_info = contract_directory.find(name="trb-token", chain_id=1)[0]
+    governance_contract_info = contract_directory.find(name="tellor-governance", chain_id=1)[0]
+    oracle_contract_info = contract_directory.find(name="tellor360-oracle", chain_id=1)[0]
+
+    contract_directory.entries["tellor360-oracle"].address[1337] = oracle_contract_info.address[1]
+
+    forked_token = ContractInfo(
+        "trb-token-fork", "Ganache", {1337: token_contract_info.address[1]}, token_contract_info.abi_file
+    )
+    forked_governance = ContractInfo(
+        "tellor-governance-fork",
+        "Ganache",
+        {1337: governance_contract_info.address[1]},
+        governance_contract_info.abi_file,
+    )
+
+    contract_directory.add_entry(forked_token)
+    contract_directory.add_entry(forked_governance)
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 1337
+    ganache_endpoint = RPCEndpoint(1337, url="http://localhost:8545")
+    cfg.endpoints.endpoints.append(ganache_endpoint)
+
+    yield cfg
+
+    del contract_directory.entries["trb-token-fork"], contract_directory.entries["tellor-governance-fork"]
+    cfg.endpoints.endpoints.remove(ganache_endpoint)

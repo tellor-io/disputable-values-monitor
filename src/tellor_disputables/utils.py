@@ -72,16 +72,22 @@ def clear_console() -> None:
 
 
 def select_account(cfg: TelliotConfig, account: str) -> Optional[ChainedAccount]:
-    accounts = check_accounts(cfg, account)
-    click.echo(f"Your account name: {accounts[0].name if accounts else None}")
-    new_account = setup_account(cfg.main.chain_id)
-    if new_account is not None:
-        click.echo(f"{new_account.name} selected!")
-    else:
-        click.echo("Missing an account to send disputes. Running alerts only!")
-        return None
 
-    return new_account
+    cfg.main.chain_id = 1
+
+    if account is not None:
+        accounts = check_accounts(cfg, account)
+        click.echo(f"Your account name: {accounts[0].name if accounts else None}")
+    else:
+        account = setup_account(cfg.main.chain_id)
+        if account is not None:
+            click.echo(f"{account.name} selected!")
+            return account
+        else:
+            click.echo("Missing an account to send disputes. Running alerts only!")
+            return None
+
+    return accounts[0]
 
 
 def get_logger(name: str) -> logging.Logger:

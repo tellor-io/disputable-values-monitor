@@ -67,10 +67,10 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
         logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
         return
 
-    if account_name and is_disputing:
-        click.echo("...Now with auto-disputing!")
-
     account: ChainedAccount = select_account(cfg, account_name)
+
+    if account and is_disputing:
+        click.echo("...Now with auto-disputing!")
 
     display_rows = []
     displayed_events = set()
@@ -140,7 +140,7 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
 
                 alert(all_values, new_report, recipients, from_number)
 
-                if is_disputing:
+                if is_disputing and account and new_report.disputable:
                     await dispute(cfg, account, new_report)
 
                 display_rows.append(
