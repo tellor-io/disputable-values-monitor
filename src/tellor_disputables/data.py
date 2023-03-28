@@ -143,6 +143,7 @@ async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
 
 def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional[str]]:
     """Get the contract address and ABI for the given chain ID."""
+
     contracts = contract_directory.find(chain_id=chain_id, name=name)
 
     if len(contracts) > 0:
@@ -152,7 +153,7 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
         return addr, abi
 
     else:
-        logger.info(f"Could not find contract info for chain_id {chain_id}")
+        logger.info(f"Could not find contract info for contract {name} chain_id {chain_id}")
         return None, None
 
 

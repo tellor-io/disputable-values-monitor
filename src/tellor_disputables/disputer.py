@@ -1,4 +1,6 @@
 """Utilities for the auto-disputer on Tellor on any EVM network"""
+from typing import Optional
+
 from chained_accounts import ChainedAccount
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.gas.legacy_gas import fetch_gas_price
@@ -20,7 +22,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
 
     cfg.main.chain_id = new_report.chain_id
 
-    token = get_contract(cfg, name="trb-token", account=account)  # TODO test
+    token = get_contract(cfg, name="trb-token", account=account)
     governance = get_contract(cfg, name="tellor-governance", account=account)
 
     if token is None:
@@ -40,11 +42,10 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
 
     logger.info(f"Disputer ({account.address}) balance: " + str(user_token_balance))
 
-    # read dispute fee and log it
-    dispute_fee, status = await governance.read(func_name="getDisputeFee")
+    dispute_fee = await get_dispute_fee(cfg, new_report)
 
-    if not status.ok:
-        logger.error("Unable to retrieve Dispute Fee")
+    if dispute_fee is None:
+        logger.error("Unable to calculate Dispute Fee from contracts")
         return None
 
     logger.info("Dispute Fee: " + str(dispute_fee / 1e18) + " TRB")
@@ -54,16 +55,6 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         logger.info("User balance is below dispute fee: need more tokens to initiate dispute")
         return None
 
-    # TODO dry run call of begin dispute before approval
-    tx_receipt, status = await governance.read(
-        func_name="beginDispute", _queryId=new_report.query_id, _timestamp=new_report.submission_timestamp
-    )
-
-    if not status.ok:
-        msg = f"Disputing {new_report.link} would violate contract logic, skipping {str(status.e) if status.e else ''}"
-        logger.warning(msg=msg)
-        return None
-
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()
     tx_receipt, status = await token.write(
@@ -71,7 +62,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
     )
 
     if not status.ok:
-        logger.error("unable to approve tokens for dispute fee:" + status.error)
+        logger.error("unable to approve tokens for dispute fee: " + status.error)
         return None
 
     logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
@@ -80,7 +71,7 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         func_name="beginDispute",
         _queryId=new_report.query_id,
         _timestamp=new_report.submission_timestamp,
-        gas_limit=300000,
+        gas_limit=800000,
         legacy_gas_price=gas_price,
     )
 
@@ -92,4 +83,59 @@ async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewRe
         )
         return None
 
+    new_report.status_str += ": disputed!"
     logger.info("Dispute Tx Hash: " + str(tx_receipt.transactionHash.hex()))
+
+
+async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional[int]:
+    """Calculate dispute fee on a Tellor network"""
+
+    governance = get_contract(cfg, name="tellor-governance", account=None)
+    oracle = get_contract(cfg, name="tellor360-oracle", account=None)
+
+    if governance is None:
+        logger.error("Unable to find governance contract")
+        return None
+
+    if oracle is None:
+        logger.error("Unable to find oracle contract")
+        return None
+
+    # simple dispute fee
+    dispute_fee, status = await governance.read(func_name="getDisputeFee")
+
+    if not status.ok:
+        logger.error("Unable to retrieve Dispute Fee")
+        return None
+
+    vote_rounds, status = await governance.read("getVoteRounds", _hash=new_report.query_id)
+
+    if not status.ok:
+        logger.error("Unable to count Vote Rounds on query id " + new_report.query_id)
+
+    if len(vote_rounds) == 1:
+        # dispute fee with open disputes on the ID
+        open_disputes_on_id, status = await governance.read(
+            func_name="getOpenDisputesOnId", _queryId=new_report.query_id
+        )
+
+        if not status.ok:
+            logger.error("Unable to count open disputes on query id " + new_report.query_id)
+            return None
+
+        multiplier = open_disputes_on_id - 1 if open_disputes_on_id > 0 else 0
+        dispute_fee = dispute_fee * 2 ** (multiplier)
+    else:
+        multiplier = len(vote_rounds) - 1 if len(vote_rounds) > 0 else 0
+        dispute_fee = dispute_fee * 2 ** (multiplier)
+
+    stake_amount, status = await oracle.read(func_name="getStakeAmount")
+
+    if not status.ok:
+        logger.error("Unable to retrieve Stake Amount")
+        return None
+
+    if dispute_fee > stake_amount:
+        dispute_fee = stake_amount
+
+    return int(dispute_fee)

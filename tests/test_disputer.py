@@ -6,8 +6,6 @@ from unittest import mock
 import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
-from telliot_core.directory import contract_directory
-from telliot_core.directory import ContractInfo
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
@@ -18,35 +16,18 @@ from tellor_disputables.data import MonitoredFeed
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.data import Threshold
 from tellor_disputables.disputer import dispute
+from tellor_disputables.disputer import get_dispute_fee
 from tellor_disputables.utils import NewReport
 
 
 @pytest.mark.asyncio
-async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
+async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, disputer_account: ChainedAccount):
     """
     test typical dispute with a timestamp that doesn't contain a value.
     it will revert on chain
     """
 
-    token_contract_info = contract_directory.find(name="trb-token", chain_id=1)[0]
-    governance_contract_info = contract_directory.find(name="tellor-governance", chain_id=1)[0]
-
-    forked_token = ContractInfo(
-        "trb-token-fork", "Ganache", {1337: token_contract_info.address[1]}, token_contract_info.abi_file
-    )
-    forked_governance = ContractInfo(
-        "tellor-governance-fork",
-        "Ganache",
-        {1337: governance_contract_info.address[1]},
-        governance_contract_info.abi_file,
-    )
-
-    contract_directory.add_entry(forked_token)
-    contract_directory.add_entry(forked_governance)
-
-    cfg = TelliotConfig()
-    cfg.main.chain_id = 1337
-    cfg.endpoints.endpoints.append(RPCEndpoint(1337, url="http://localhost:8545"))
+    cfg = setup
 
     report = NewReport(
         "0xabc123",
@@ -64,22 +45,15 @@ async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
 
     await dispute(cfg, disputer_account, report)
 
-    expected_success_logs = ["balance", "Dispute Fee", "would violate contract logic, skipping"]
+    expected_success_logs = ["balance", "Dispute Fee", "no value exists at given timestamp"]
 
     for i in expected_success_logs:
         assert i in caplog.text
 
     # missing query id
-    report.query_id = None
 
     mock_approve_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
     mock_dispute_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
-
-    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
-        await dispute(cfg, disputer_account, report)
-
-    for i in expected_success_logs:
-        assert i in caplog.text
 
     report.query_id = ""
 
@@ -100,11 +74,65 @@ async def test_dispute_on_empty_block(caplog, disputer_account: ChainedAccount):
 
 
 @pytest.mark.asyncio
-async def test_dispute_using_sample_log(caplog, log, disputer_account):
+async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixture, disputer_account: ChainedAccount):
+    """
+    test typical dispute with a timestamp that contains a value.
+    it will submit to chain
+    """
+
+    cfg = setup
+
+    report = NewReport(
+        "0xabc123",
+        1679497091,
+        1337,
+        "etherscan.io/",
+        "SpotPrice",
+        15.5,
+        "eth",
+        "usd",
+        "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",  # eth/usd query id
+        True,
+        "status ",
+    )
+
+    await dispute(cfg, disputer_account, report)
+
+    expected_success_logs = ["balance", "Dispute Fee", "Approval Tx Hash:", "Dispute Tx Hash:"]
+
+    for i in expected_success_logs:
+        assert i in caplog.text
+
+    # missing query id
+    mock_approve_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
+    mock_dispute_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
+
+    report.query_id = ""
+
+    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
+        await dispute(cfg, disputer_account, report)
+
+    for i in expected_success_logs:
+        assert i in caplog.text
+
+    # query id is inactive
+    report.query_id = "0x7af670d5ad732a520e49b33749a97d58de18c234d5b0834415fb19647e03a2cb"  # abc/usd
+
+    with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
+        await dispute(cfg, disputer_account, report)
+
+    for i in expected_success_logs:
+        assert i in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture, log, disputer_account: ChainedAccount):
     """
     Send a dispute using a sample log fixture after parsing a new report event.
     The log is mocked to be disputable
     """
+
+    cfg = setup
 
     threshold = Threshold(Metrics.Percentage, 0.50)
     monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
@@ -113,13 +141,10 @@ async def test_dispute_using_sample_log(caplog, log, disputer_account):
     mock_approve_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
     mock_dispute_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))
 
-    cfg = TelliotConfig()
-    cfg.main.chain_id = 5
-
-    for endpoint in cfg.endpoints.find(chain_id=5):
+    for endpoint in cfg.endpoints.find(chain_id=1):
         cfg.endpoints.endpoints.remove(endpoint)
 
-    endpoint = RPCEndpoint(5, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
+    endpoint = RPCEndpoint(1, "Goerli", "Infura", os.getenv("NODE_URL"), "etherscan.io")
     cfg.endpoints.endpoints.append(endpoint)
 
     with mock.patch(
@@ -132,16 +157,31 @@ async def test_dispute_using_sample_log(caplog, log, disputer_account):
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
         await dispute(cfg, disputer_account, new_report)
 
-    expected_logs = ["balance", "Dispute Fee", "balance is below dispute fee"]
+    expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "Dispute Tx Hash"]
 
     for i in expected_logs:
         assert i in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_response_to_bad_report():
+async def test_get_dispute_fee():
 
-    """
-    stake reporter
-    submit report
-    """
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 80001
+
+    report = NewReport(
+        "0xabc123",
+        1679497091,
+        1337,
+        "etherscan.io/",
+        "SpotPrice",
+        15.5,
+        "eth",
+        "usd",
+        "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",  # eth/usd query id
+        True,
+        "status ",
+    )
+
+    dispute_fee = await get_dispute_fee(cfg, report)
+    assert dispute_fee == int(1e18)
