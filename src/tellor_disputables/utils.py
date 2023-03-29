@@ -87,6 +87,7 @@ def select_account(cfg: TelliotConfig, account: str) -> Optional[ChainedAccount]
             click.echo("Missing an account to send disputes. Running alerts only!")
             return None
 
+    accounts[0].unlock()
     return accounts[0]
 
 
