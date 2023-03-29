@@ -3,9 +3,9 @@ name: typing
 
 on:
   push:
-    branches: ["dvm-main", "auto-disputer-main"]
+    branches: ["dvm-main", "auto-disputer-main", "main"]
   pull_request:
-    branches: ["dvm-main", "auto-disputer-main"]
+    branches: ["dvm-main", "auto-disputer-main", "main"]
   workflow_dispatch:
 
 jobs:
