@@ -6,7 +6,7 @@ from typing import Optional
 from typing import Union
 
 import click
-from chained_accounts import ChainedAccount
+from chained_accounts import ChainedAccount, find_accounts
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_feeds.utils.cfg import check_accounts
 from telliot_feeds.utils.cfg import setup_account
@@ -71,20 +71,21 @@ def clear_console() -> None:
         _ = os.system("clear")
 
 
-def select_account(cfg: TelliotConfig, account: str) -> Optional[ChainedAccount]:
-
-    cfg.main.chain_id = 1
+def select_account(cfg: TelliotConfig, account: Optional[str]) -> Optional[ChainedAccount]:
+    """Select an account for disputing, allow no account to be chosen."""
 
     if account is not None:
-        accounts = check_accounts(cfg, account)
+        accounts = find_accounts(name=account)  # type: ignore
         click.echo(f"Your account name: {accounts[0].name if accounts else None}")
     else:
-        account = setup_account(cfg.main.chain_id)
-        if account is not None:
-            click.echo(f"{account.name} selected!")
-            return account
+        add_account = click.confirm("Missing an account to send disputes. Run alerts only?")
+        if add_account:
+            account = setup_account(cfg.main.chain_id)
+            if account is not None:
+                click.echo(f"{account.name} selected!")
+                return account
+            return None
         else:
-            click.echo("Missing an account to send disputes. Running alerts only!")
             return None
 
     accounts[0].unlock()
