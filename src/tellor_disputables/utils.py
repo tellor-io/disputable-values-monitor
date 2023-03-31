@@ -75,15 +75,15 @@ def select_account(cfg: TelliotConfig, account: Optional[str]) -> Optional[Chain
     """Select an account for disputing, allow no account to be chosen."""
 
     if account is not None:
-        accounts = find_accounts(name=account)  # type: ignore
+        accounts = find_accounts(name=account)
         click.echo(f"Your account name: {accounts[0].name if accounts else None}")
     else:
         add_account = click.confirm("Missing an account to send disputes. Run alerts only?")
         if add_account:
-            account = setup_account(cfg.main.chain_id)
-            if account is not None:
-                click.echo(f"{account.name} selected!")
-                return account
+            new_account = setup_account(cfg.main.chain_id)
+            if new_account is not None:
+                click.echo(f"{new_account.name} selected!")
+                return new_account
             return None
         else:
             return None
