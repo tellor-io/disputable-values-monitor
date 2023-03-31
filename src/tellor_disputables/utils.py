@@ -6,9 +6,9 @@ from typing import Optional
 from typing import Union
 
 import click
-from chained_accounts import ChainedAccount, find_accounts
+from chained_accounts import ChainedAccount
+from chained_accounts import find_accounts
 from telliot_core.apps.telliot_config import TelliotConfig
-from telliot_feeds.utils.cfg import check_accounts
 from telliot_feeds.utils.cfg import setup_account
 
 
