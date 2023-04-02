@@ -107,6 +107,7 @@ async def test_get_events():
 
     assert len(events) > 0
 
+
 @pytest.mark.asyncio
 async def test_get_events_bad_endpoint_is_skipped(caplog):
 
@@ -118,6 +119,7 @@ async def test_get_events_bad_endpoint_is_skipped(caplog):
 
     assert not events
     assert "unable to connect to endpoint" in caplog.text
+
 
 def test_get_contract_info():
 
