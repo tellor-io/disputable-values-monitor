@@ -1,4 +1,9 @@
 """Test helper functions."""
+import os
+from unittest import mock
+
+from chained_accounts import ChainedAccount
+from chained_accounts import find_accounts
 from telliot_core.apps.telliot_config import TelliotConfig
 
 from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
@@ -6,6 +11,7 @@ from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
 from src.tellor_disputables.utils import disputable_str
 from src.tellor_disputables.utils import get_logger
 from src.tellor_disputables.utils import get_tx_explorer_url
+from src.tellor_disputables.utils import select_account
 
 
 def test_get_tx_explorer_url():
@@ -41,3 +47,17 @@ def test_logger():
         contents = f.readlines()[-1]
 
     assert "test message that writes to log.txt" in contents
+
+
+def test_select_account():
+    """test that accounts are not neccesary for running the DVM"""
+
+    cfg = TelliotConfig()
+
+    if not find_accounts("disputer-test-acct"):
+        ChainedAccount.add("disputer-test-acct1", [1, 5, 4, 1337, 80001], os.getenv("PRIVATE_KEY"), "")
+
+    with mock.patch("click.confirm", return_value=False):
+        account = select_account(cfg, None)
+
+    assert not account
