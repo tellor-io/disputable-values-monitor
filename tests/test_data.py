@@ -108,6 +108,19 @@ async def test_get_events():
     assert len(events) > 0
 
 
+@pytest.mark.asyncio
+async def test_get_events_bad_endpoint_is_skipped(caplog):
+
+    cfg = TelliotConfig()
+
+    cfg.endpoints.endpoints = [RPCEndpoint(1, "Mainnet", "Infura", "badurl.com", "etherscan.io")]
+
+    events = await get_events(cfg, "tellor360-oracle,", [], 0)
+
+    assert not events
+    assert "unable to connect to endpoint" in caplog.text
+
+
 def test_get_contract_info():
 
     addr, abi = get_contract_info(5, "tellor360")

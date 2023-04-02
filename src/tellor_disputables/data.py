@@ -279,6 +279,7 @@ async def get_events(
             endpoint.connect()
         except Exception as e:
             logger.warning("unable to connect to endpoint: " + str(e))
+            continue
 
         w3 = endpoint.web3
 
