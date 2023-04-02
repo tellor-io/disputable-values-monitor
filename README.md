@@ -115,7 +115,7 @@ In order to auto-dispute, users need to define what a "disputable value" is. To 
 Ex. If the reported value is 250, and the telliot value is 1000, and the monitoring threshold is a range of 500, then the difference is 750 (it is >= to the range amount of 500), and the value is disputable! Therefore, a reported value of 501, in this case, would **not** be disputable.
 
 ### Percentage
-**Percentage** -- if the difference between the telliot value and the reported value is greater than or equal to a set percentage of the telliot value, dispute! 
+**Percentage** -- if the difference between the telliot value and the reported value is greater than or equal to a set percentage of the telliot value, dispute!
 
 Ex. If the reported value is 250, and the telliot value is 1000, and the percentage threshold is 0.50 (50%), then the percent difference is 75% of the telliot value (1000), and the value is disputable! Therefore, a reported value of 750, in this case, would **not** be disputable.
 
