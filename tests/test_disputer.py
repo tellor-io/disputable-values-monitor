@@ -57,6 +57,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
     """
 
     cfg = setup
+    disp_config = AutoDisputerConfig()
 
     report = NewReport(
         "0xabc123",
@@ -72,7 +73,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
         "status ",
     )
 
-    await dispute(cfg, disputer_account, report)
+    await dispute(cfg, disp_config, disputer_account, report)
 
     expected_success_logs = ["balance", "Dispute Fee", "no value exists at given timestamp"]
 
@@ -87,7 +88,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
     report.query_id = ""
 
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
-        await dispute(cfg, disputer_account, report)
+        await dispute(cfg, disp_config, disputer_account, report)
 
     for i in expected_success_logs:
         assert i in caplog.text
@@ -96,7 +97,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
     report.query_id = "0x7af670d5ad732a520e49b33749a97d58de18c234d5b0834415fb19647e03a2cb"  # abc/usd
 
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
-        await dispute(cfg, disputer_account, report)
+        await dispute(cfg, disp_config, disputer_account, report)
 
     for i in expected_success_logs:
         assert i in caplog.text
@@ -110,6 +111,7 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
     """
 
     cfg = setup
+    disp_config = AutoDisputerConfig()
 
     report = NewReport(
         "0xabc123",
@@ -125,7 +127,7 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
         "status ",
     )
 
-    await dispute(cfg, disputer_account, report)
+    await dispute(cfg, disp_config, disputer_account, report)
 
     expected_success_logs = ["balance", "Dispute Fee", "Approval Tx Hash:", "Dispute Tx Hash:"]
 
@@ -162,6 +164,7 @@ async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture,
     """
 
     cfg = setup
+    disp_config = AutoDisputerConfig()
 
     threshold = Threshold(Metrics.Percentage, 0.50)
     monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
@@ -184,7 +187,7 @@ async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture,
     assert new_report.disputable
 
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
-        await dispute(cfg, disputer_account, new_report)
+        await dispute(cfg, disp_config, disputer_account, new_report)
 
     expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "Dispute Tx Hash"]
 
