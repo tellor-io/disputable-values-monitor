@@ -11,6 +11,7 @@ from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
 from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
+from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import Metrics
 from tellor_disputables.data import MonitoredFeed
 from tellor_disputables.data import parse_new_report_event
@@ -18,6 +19,34 @@ from tellor_disputables.data import Threshold
 from tellor_disputables.disputer import dispute
 from tellor_disputables.disputer import get_dispute_fee
 from tellor_disputables.utils import NewReport
+
+
+@pytest.mark.asyncio
+async def test_not_meant_to_dispute(caplog, disputer_account):
+    """test when dispute() is called but a dispute is not meant to be sent"""
+
+    report = NewReport(
+        "0xabc123",
+        1679425719,  # this eth block does not have a tellor value on the eth/usd query id
+        1337,
+        "etherscan.io/",
+        "SpotPrice",
+        15.5,
+        "eth",
+        "usd",
+        "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",  # eth/usd query id
+        True,
+        "status ",
+    )
+
+    cfg = TelliotConfig()
+    disp_config = AutoDisputerConfig()
+
+    report.query_id = "hi how are you"
+
+    await dispute(cfg, disp_config, account=disputer_account, new_report=report)
+
+    assert "Found disputable new report outside selected Monitored Feeds, skipping dispute" in caplog.text
 
 
 @pytest.mark.asyncio
