@@ -55,6 +55,7 @@ async def main(all_values: bool, wait: int, account_name: str, is_disputing: boo
 async def start(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
+    cfg.main.chain_id = 1
     disp_cfg = AutoDisputerConfig()
     print_title_info()
 
@@ -140,8 +141,8 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
 
                 alert(all_values, new_report, recipients, from_number)
 
-                if is_disputing and account and new_report.disputable:
-                    await dispute(cfg, account, new_report)
+                if is_disputing and new_report.disputable:
+                    await dispute(cfg, disp_cfg, account, new_report)
 
                 display_rows.append(
                     (
