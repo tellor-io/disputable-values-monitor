@@ -23,6 +23,7 @@ from web3._utils.events import get_event_data
 from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
+from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import disputable_str
@@ -316,7 +317,7 @@ async def parse_new_report_event(
     """Parse a NewReport event."""
 
     q_ids_to_monitored_feeds = {
-        "0x" + monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
+        monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
     }
 
     chain_id = cfg.main.chain_id
@@ -358,8 +359,10 @@ async def parse_new_report_event(
         return new_report
 
     if new_report.query_id not in q_ids_to_monitored_feeds:  # TODO ensure both has 0x or none have 0x
-        logger.info("skipping undesired NewReport event")
-        return None
+
+        # build a monitored feed for all feeds not auto-disputing for
+        threshold = Threshold(metric=Metrics.Percentage, amount=0.9)
+        monitored_feed = MonitoredFeed(DATAFEED_LOOKUP[new_report.query_id[2:]], threshold)
     else:
         monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]
 

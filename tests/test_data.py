@@ -135,7 +135,7 @@ def test_get_contract_info():
 
 
 @pytest.mark.asyncio
-async def test_feed_filter(caplog, log):
+async def test_monitor_all_feeds(caplog, log):
     """test that, if the user wants to monitor only one feed, all other feeds are ignored and skipped"""
 
     caplog.set_level(logging.INFO)
@@ -155,8 +155,8 @@ async def test_feed_filter(caplog, log):
     res = await parse_new_report_event(cfg, monitored_feeds=[monitored_feed], log=log)
 
     # parser should return None
-    assert not res
-    assert "skipping undesired NewReport event" in caplog.text
+    assert res
+    assert not res.disputable
 
     cfg.endpoints.endpoints.remove(endpoint)
 
