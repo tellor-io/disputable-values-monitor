@@ -6,6 +6,7 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.gas.legacy_gas import fetch_gas_price
 from web3 import Web3
 
+from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import get_contract
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import NewReport
@@ -13,8 +14,20 @@ from tellor_disputables.utils import NewReport
 logger = get_logger(__name__)
 
 
-async def dispute(cfg: TelliotConfig, account: ChainedAccount, new_report: NewReport) -> None:
+async def dispute(
+    cfg: TelliotConfig, disp_cfg: AutoDisputerConfig, account: Optional[ChainedAccount], new_report: NewReport
+) -> None:
     """Main dispute logic for auto-disputer"""
+
+    if not disp_cfg.monitored_feeds:
+        logger.info("Currently not auto-dispuing on any feeds. See ./disputer-config.yaml")
+        return None
+
+    meant_to_dispute = new_report.query_id[2:] in [feed.feed.query.query_id.hex() for feed in disp_cfg.monitored_feeds]
+
+    if not meant_to_dispute:
+        logger.info("Found disputable new report outside selected Monitored Feeds, skipping dispute")
+        return None
 
     if account is None:
         logger.info("No account provided, skipping eligible dispute")

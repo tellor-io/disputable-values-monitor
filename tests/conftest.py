@@ -51,7 +51,7 @@ def disputer_account():
 
     disputer = find_accounts(account_name, 1337)[0]
 
-    w3 = Web3(Web3.HTTPProvider("http://localhost:8545"))
+    w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
 
     multisig = Web3.toChecksumAddress("0x39e419ba25196794b595b2a595ea8e527ddc9856")
 

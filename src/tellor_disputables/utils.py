@@ -78,8 +78,8 @@ def select_account(cfg: TelliotConfig, account: Optional[str]) -> Optional[Chain
         accounts = find_accounts(name=account)
         click.echo(f"Your account name: {accounts[0].name if accounts else None}")
     else:
-        add_account = click.confirm("Missing an account to send disputes. Run alerts only?")
-        if add_account:
+        run_alerts_only = click.confirm("Missing an account to send disputes. Run alerts only?")
+        if not run_alerts_only:
             new_account = setup_account(cfg.main.chain_id)
             if new_account is not None:
                 click.echo(f"{new_account.name} selected!")

@@ -57,7 +57,7 @@ def test_select_account():
     if not find_accounts("disputer-test-acct"):
         ChainedAccount.add("disputer-test-acct1", [1, 5, 4, 1337, 80001], os.getenv("PRIVATE_KEY"), "")
 
-    with mock.patch("click.confirm", return_value=False):
+    with mock.patch("click.confirm", return_value=True):
         account = select_account(cfg, None)
 
     assert not account
