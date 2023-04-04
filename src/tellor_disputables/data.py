@@ -368,7 +368,7 @@ async def parse_new_report_event(
 
     if isinstance(q, QUERY_TYPES):
         for attr_name, attr_value in vars(q).items():
-            setattr(new_report, attr_name, attr_value.upper())
+            setattr(new_report, attr_name, str(attr_value).upper())
     else:
         logger.error("unsupported query type")
         return None
