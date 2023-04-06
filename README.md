@@ -112,23 +112,23 @@ In order to auto-dispute, users need to define what a "disputable value" is. To 
 ### Range
 **Range** -- if the difference between the reported value and the telliot value is greater than or equal to a set amount, dispute!
 
-Ex. If the reported value is 250, and the telliot value is 1000, and the monitoring threshold is a range of 500, then the difference is 750 (it is >= to the range amount of 500), and the value is disputable! Therefore, a reported value of 501, in this case, would **not** be disputable.
+Ex. If the reported value is 250, and the telliot value is 1000, and the monitoring threshold is a range of 500, then the difference is 750 (it is >= to the range amount of 500), and the value is disputable! Therefore, a reported value of 501, in this case, would **not** be disputable. The smaller the range, the more strict the threshold.
 
 ### Percentage
-**Percentage** -- if the difference between the telliot value and the reported value is greater than or equal to a set percentage of the telliot value, dispute!
+**Percentage** -- if the difference between the telliot value and the reported value is greater than or equal to a set percentage of the telliot value, dispute! The smaller the percentage, the more strict the threshold.
 
 Ex. If the reported value is 250, and the telliot value is 1000, and the percentage threshold is 0.50 (50%), then the percent difference is 75% of the telliot value (1000), and the value is disputable! Therefore, a reported value of 750, in this case, would **not** be disputable.
 
 ### Equality
 **Equality** -- if there is any difference between the reported value and the telliot value, send a dispute!
 
-Ex. If the reported value is "abc123", and the telliot value is "abc1234", then the value is disputable! However, to prevent false disputes due to checksummed addresses, the equality threshold sees "0xABC" and "0xabc" as equal.
+Ex. If the reported value is "abc123", and the telliot value is "abc1234", then the value is disputable! However, to prevent false disputes due to checksummed addresses, the equality threshold sees "0xABC" and "0xabc" as equal. 
 
 ## Considerations
 
 **Range** thresholds best monitor high variance price feeds where the percent difference in price between sources is an unreliable indicator of a bad value. They are incompatibale, however, with non-numeric data feeds.
 
-**Percentage** thresholds best monitor standard price feeds. The percentage is measured relative to the telliot value, not the reported value. In other words, if the telliot value is 1000, a 25% difference is 25% of 1000. Like range thresholds, percentage thresholds are incompatibable with non-numerica data feeds.
+**Percentage** thresholds best monitor standard price feeds. The percentage is measured relative to the telliot value, not the reported value. In other words, if the telliot value is 1000, a 25% difference is 25% of 1000. Like range thresholds, percentage thresholds are incompatibable with non-numeric data feeds.
 
 **Equality** thresholds best monitor data feeds where there is only one right answer. For example, `EVMCall` requests should be exactly equal to their expected telliot response. They aren't very useful for price feeds, though.
 
