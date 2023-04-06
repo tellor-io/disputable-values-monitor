@@ -11,7 +11,8 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 
 from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.alerts import alert, dispute_alert
+from tellor_disputables.alerts import alert
+from tellor_disputables.alerts import dispute_alert
 from tellor_disputables.alerts import generic_alert
 from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.config import AutoDisputerConfig
@@ -139,7 +140,7 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
                 if is_disputing:
                     click.echo("...Now with auto-disputing!")
 
-                alert(all_values, new_report, recipients, from_number, is_dispute_alert=False)
+                alert(all_values, new_report, recipients, from_number)
 
                 if is_disputing and new_report.disputable:
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)

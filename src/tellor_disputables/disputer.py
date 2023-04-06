@@ -97,10 +97,15 @@ async def dispute(
         return ""
 
     new_report.status_str += ": disputed!"
-    dispute_tx_link = cfg.get_endpoint().explorer + str(tx_receipt.transactionHash.hex())
+    explorer = cfg.get_endpoint().explorer
+    if not explorer:
+        dispute_tx_link = str(tx_receipt.transactionHash.hex())
+    else:
+        dispute_tx_link = explorer + str(tx_receipt.transactionHash.hex())
 
     logger.info("Dispute Tx Link: " + dispute_tx_link)
     return "Dispute Tx Link: " + dispute_tx_link
+
 
 async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional[int]:
     """Calculate dispute fee on a Tellor network"""

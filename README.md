@@ -122,7 +122,7 @@ Ex. If the reported value is 250, and the telliot value is 1000, and the percent
 ### Equality
 **Equality** -- if there is any difference between the reported value and the telliot value, send a dispute!
 
-Ex. If the reported value is "abc123", and the telliot value is "abc1234", then the value is disputable! However, to prevent false disputes due to checksummed addresses, the equality threshold sees "0xABC" and "0xabc" as equal. 
+Ex. If the reported value is "abc123", and the telliot value is "abc1234", then the value is disputable! However, to prevent false disputes due to checksummed addresses, the equality threshold sees "0xABC" and "0xabc" as equal.
 
 ## Considerations
 
