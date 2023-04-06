@@ -59,7 +59,7 @@ You can list as many chains as you'd like.
 
 ### Configuring Tresholds
 
-Monitored Feeds and their Thresholds are defined in the `disputer-config.yaml` file. You can move the config file to your current directory with 
+Monitored Feeds and their Thresholds are defined in the `disputer-config.yaml` file. You can move the config file to your current directory with
 ```
 mv venv/lib/python3.9/site-packages/disputer-config.yaml disputer-config.yaml
 ```
