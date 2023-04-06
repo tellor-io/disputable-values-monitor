@@ -129,7 +129,7 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
 
     await dispute(cfg, disp_config, disputer_account, report)
 
-    expected_success_logs = ["balance", "Dispute Fee", "Approval Tx Hash:", "Dispute Tx Hash:"]
+    expected_success_logs = ["balance", "Dispute Fee", "Approval Tx Hash:", "Dispute Tx Link:"]
 
     for i in expected_success_logs:
         assert i in caplog.text
@@ -189,7 +189,7 @@ async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture,
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
         await dispute(cfg, disp_config, disputer_account, new_report)
 
-    expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "Dispute Tx Hash"]
+    expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "Dispute Tx Link"]
 
     for i in expected_logs:
         assert i in caplog.text
