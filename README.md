@@ -90,6 +90,8 @@ cli -d
 ### Options
 The available cli options are `-a`, `-av`, and `--wait`. You can use these options in any combination.
 
+Use `-c` or `--confidence-threshold` to specify a universal percentage confidence threshold for monitoriting ONLY.
+
 Use `-a` or `--account-name` to specify a `chained` account to use for disputing.
 ```bash
 cli -a <your account name without quotes>

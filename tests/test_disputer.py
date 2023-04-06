@@ -182,7 +182,7 @@ async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture,
     with mock.patch(
         "tellor_disputables.data.general_fetch_new_datapoint", return_value=(mock_telliot_val, int(time.time()))
     ):
-        new_report = await parse_new_report_event(cfg, log, monitored_feeds)
+        new_report = await parse_new_report_event(cfg, log, monitored_feeds=monitored_feeds, confidence_threshold=0.1)
 
     assert new_report.disputable
 

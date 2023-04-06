@@ -311,6 +311,7 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
 async def parse_new_report_event(
     cfg: TelliotConfig,
     log: LogReceipt,
+    confidence_threshold: float,
     monitored_feeds: List[MonitoredFeed],
     see_all_values: bool = False,
 ) -> Optional[NewReport]:
@@ -361,7 +362,7 @@ async def parse_new_report_event(
     if new_report.query_id not in q_ids_to_monitored_feeds:  # TODO ensure both has 0x or none have 0x
 
         # build a monitored feed for all feeds not auto-disputing for
-        threshold = Threshold(metric=Metrics.Percentage, amount=0.9)
+        threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)
         monitored_feed = MonitoredFeed(DATAFEED_LOOKUP[new_report.query_id[2:]], threshold)
     else:
         monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]
