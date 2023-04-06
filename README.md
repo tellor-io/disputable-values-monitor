@@ -59,7 +59,11 @@ You can list as many chains as you'd like.
 
 ### Configuring Tresholds
 
-Monitored Feeds and their Thresholds are defined in the `disputer-config.yaml` file.
+Monitored Feeds and their Thresholds are defined in the `disputer-config.yaml` file. You can move the config file to your current directory with 
+```
+mv venv/lib/python3.9/site-packages/disputer-config.yaml disputer-config.yaml
+```
+
 
 By default, the auto-disputer will monitor the ETH/USD feed on any chain id with a threshold Percentage threshold of 75%. In the default `dipsuter-config.yaml`, attached to the project, this is represented as:
 
