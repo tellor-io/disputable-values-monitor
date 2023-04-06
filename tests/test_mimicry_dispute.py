@@ -32,6 +32,8 @@ async def test_disputability_mimicry_nft_index_type(setup, disputer_account):
     snapshot_id = take_snapshot()
     cfg = setup
     cfg.main.chain_id = 1
+    cfg.endpoints.endpoints[0].url = "http://127.0.0.1:8545"
+
     oracle = get_contract(cfg, name="tellor360-oracle", account=disputer_account)
     token = get_contract(cfg, name="trb-token", account=disputer_account)
 
