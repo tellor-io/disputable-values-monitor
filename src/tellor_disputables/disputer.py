@@ -78,7 +78,7 @@ async def dispute(
         logger.error("unable to approve tokens for dispute fee: " + status.error)
         return ""
 
-    logger.info("Approval Tx Link: " + str(tx_receipt.transactionHash.hex()))
+    logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
 
     tx_receipt, status = await governance.write(
         func_name="beginDispute",
