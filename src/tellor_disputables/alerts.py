@@ -22,6 +22,13 @@ def get_twilio_info() -> Tuple[Optional[str], Optional[List[str]]]:
     phone_numbers = os.environ.get("ALERT_RECIPIENTS")
     return twilio_from, phone_numbers.split(",") if phone_numbers is not None else None
 
+def dispute_alert(msg: str, recipients: List[str], from_number: str) -> None:
+    """send an alert that the dispute was successful to the user"""
+
+    twilio_client = get_twilio_client()
+    send_text_msg(twilio_client, recipients, from_number, msg)
+
+    return
 
 def alert(all_values: bool, new_report: NewReport, recipients: List[str], from_number: str) -> None:
 

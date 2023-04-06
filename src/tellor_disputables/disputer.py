@@ -16,22 +16,22 @@ logger = get_logger(__name__)
 
 async def dispute(
     cfg: TelliotConfig, disp_cfg: AutoDisputerConfig, account: Optional[ChainedAccount], new_report: NewReport
-) -> None:
+) -> str:
     """Main dispute logic for auto-disputer"""
 
     if not disp_cfg.monitored_feeds:
         logger.info("Currently not auto-dispuing on any feeds. See ./disputer-config.yaml")
-        return None
+        return ""
 
     meant_to_dispute = new_report.query_id[2:] in [feed.feed.query.query_id.hex() for feed in disp_cfg.monitored_feeds]
 
     if not meant_to_dispute:
         logger.info("Found disputable new report outside selected Monitored Feeds, skipping dispute")
-        return None
+        return ""
 
     if account is None:
         logger.info("No account provided, skipping eligible dispute")
-        return None
+        return ""
 
     cfg.main.chain_id = new_report.chain_id
 
@@ -40,18 +40,18 @@ async def dispute(
 
     if token is None:
         logger.error("Unable to find token contract")
-        return None
+        return ""
 
     if governance is None:
         logger.error("Unable to find governance contract")
-        return None
+        return ""
 
     # read balance of user and log it
     user_token_balance, status = await token.read("balanceOf", Web3.toChecksumAddress(account.address))
 
     if not status.ok:
         logger.error("Unable to retrieve Disputer account balance")
-        return None
+        return ""
 
     logger.info(f"Disputer ({account.address}) balance: " + str(user_token_balance))
 
@@ -59,14 +59,14 @@ async def dispute(
 
     if dispute_fee is None:
         logger.error("Unable to calculate Dispute Fee from contracts")
-        return None
+        return ""
 
     logger.info("Dispute Fee: " + str(dispute_fee / 1e18) + " TRB")
 
     # if balanceOf(user) < disputeFee, log "need more tokens to initiate dispute"
     if user_token_balance < dispute_fee:
         logger.info("User balance is below dispute fee: need more tokens to initiate dispute")
-        return None
+        return ""
 
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()
@@ -76,9 +76,9 @@ async def dispute(
 
     if not status.ok:
         logger.error("unable to approve tokens for dispute fee: " + status.error)
-        return None
+        return ""
 
-    logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
+    logger.info("Approval Tx Link: " + str(tx_receipt.transactionHash.hex()))
 
     tx_receipt, status = await governance.write(
         func_name="beginDispute",
@@ -94,11 +94,13 @@ async def dispute(
             + f"at submission timestamp {new_report.submission_timestamp}:"
             + status.error
         )
-        return None
+        return ""
 
     new_report.status_str += ": disputed!"
-    logger.info("Dispute Tx Hash: " + str(tx_receipt.transactionHash.hex()))
+    dispute_tx_link = cfg.get_endpoint().explorer + str(tx_receipt.transactionHash.hex())
 
+    logger.info("Dispute Tx Link: " + dispute_tx_link)
+    return "Dispute Tx Link: " + dispute_tx_link
 
 async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional[int]:
     """Calculate dispute fee on a Tellor network"""
