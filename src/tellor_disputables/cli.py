@@ -12,6 +12,7 @@ from telliot_core.cli.utils import async_run
 
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.alerts import alert
+from tellor_disputables.alerts import dispute_alert
 from tellor_disputables.alerts import generic_alert
 from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.config import AutoDisputerConfig
@@ -46,13 +47,28 @@ def print_title_info() -> None:
 @click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
+@click.option(
+    "-c",
+    "--confidence-threshold",
+    help="set general confidence percentage threshold for monitoring only",
+    type=float,
+    default=0.1,
+)
 @async_run
-async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
+async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
-    await start(all_values=all_values, wait=wait, account_name=account_name, is_disputing=is_disputing)
+    await start(
+        all_values=all_values,
+        wait=wait,
+        account_name=account_name,
+        is_disputing=is_disputing,
+        confidence_threshold=confidence_threshold,
+    )
 
 
-async def start(all_values: bool, wait: int, account_name: str, is_disputing: bool) -> None:
+async def start(
+    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float
+) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
@@ -121,7 +137,10 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
 
                 try:
                     new_report = await parse_new_report_event(
-                        cfg=cfg, monitored_feeds=disp_cfg.monitored_feeds, log=event
+                        cfg=cfg,
+                        monitored_feeds=disp_cfg.monitored_feeds,
+                        log=event,
+                        confidence_threshold=confidence_threshold,
                     )
                 except Exception as e:
                     logger.error("unable to parse new report event! " + str(e))
@@ -142,7 +161,9 @@ async def start(all_values: bool, wait: int, account_name: str, is_disputing: bo
                 alert(all_values, new_report, recipients, from_number)
 
                 if is_disputing and new_report.disputable:
-                    await dispute(cfg, disp_cfg, account, new_report)
+                    success_msg = await dispute(cfg, disp_cfg, account, new_report)
+                    if success_msg:
+                        dispute_alert(success_msg, recipients, from_number)
 
                 display_rows.append(
                     (
