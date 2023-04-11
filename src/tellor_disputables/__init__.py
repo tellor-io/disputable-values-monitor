@@ -2,13 +2,18 @@
 bad values reported to Tellor oracles."""
 from hexbytes import HexBytes
 from telliot_feeds import feeds
+from telliot_feeds.queries.mimicry.nft_market_index import MimicryNFTMarketIndex
+from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3.datastructures import AttributeDict
 
 WAIT_PERIOD = 7  # seconds between checks for new events
 
 ALWAYS_ALERT_QUERY_TYPES = ("AutopayAddresses", "TellorOracleAddress")
 
+QUERY_TYPES = (SpotPrice, MimicryNFTMarketIndex)
+
 DATAFEED_LOOKUP = {
+    "486e2149f25d46bb39a27f5e0c81be9b6f193abf46c0d49314b8d1dd104cd53b": feeds.mimicry_nft_market_index_usd_feed,
     "0d12ad49193163bbbeff4e6db8294ced23ff8605359fd666799d4e25a3aa0e3a": feeds.ampl_usd_vwap_feed,
     "35e083af947a4cf3bc053440c3b4f753433c76acab6c8b1911ee808104b72e85": feeds.bct_usd_feed.bct_usd_median_feed,
     "a6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac": feeds.btc_usd_feed.btc_usd_median_feed,

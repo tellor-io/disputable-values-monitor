@@ -16,7 +16,6 @@ from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
-from telliot_feeds.queries.price.spot_price import SpotPrice
 from telliot_feeds.queries.query import OracleQuery
 from web3 import Web3
 from web3._utils.events import get_event_data
@@ -25,6 +24,7 @@ from web3.types import LogReceipt
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
+from tellor_disputables import QUERY_TYPES
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
@@ -367,9 +367,9 @@ async def parse_new_report_event(
     else:
         monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]
 
-    if isinstance(q, SpotPrice):
-        new_report.asset = q.asset.upper()
-        new_report.currency = q.currency.upper()
+    if isinstance(q, QUERY_TYPES):
+        for attr_name, attr_value in vars(q).items():
+            setattr(new_report, attr_name, str(attr_value).upper())
     else:
         logger.error("unsupported query type")
         return None
