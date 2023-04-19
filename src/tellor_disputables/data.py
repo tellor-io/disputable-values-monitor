@@ -77,7 +77,7 @@ class Threshold(Base):
                 raise ValueError(f"{self.metric} threshold selected, amount cannot be negative")
 
 
-Reportable = Union[str, bytes, float, int, tuple, None]
+Reportable = Union[str, bytes, float, int, tuple[Any], None]
 
 
 @dataclass
@@ -113,12 +113,14 @@ class MonitoredFeed(Base):
 
         else:
             trusted_val, _ = await general_fetch_new_datapoint(self.feed)
-            
+
             if trusted_val is None:
                 logger.warning("trusted val was " + str(trusted_val))
                 return None
 
-        if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(trusted_val, (str, bytes, float, int, tuple)):
+        if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
+            trusted_val, (str, bytes, float, int, tuple)
+        ):
 
             if self.threshold.metric == Metrics.Percentage:
 
@@ -407,7 +409,6 @@ async def parse_new_report_event(
         new_report.value = q.value_type.decode(event_data.args._value)
     except eth_abi.exceptions.DecodingError:
         new_report.value = event_data.args._value
-        
 
     # if query of event matches a query type of the monitored feeds, fill the query parameters
 
@@ -415,9 +416,7 @@ async def parse_new_report_event(
 
         if get_query_type(mf.feed.query) == new_report.query_type:
 
-
             if new_report.query_type == "SpotPrice":
-
 
                 mf.feed = DATAFEED_LOOKUP[new_report.query_id[2:]]
 
