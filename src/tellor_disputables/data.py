@@ -124,6 +124,13 @@ class MonitoredFeed(Base):
 
             if self.threshold.metric == Metrics.Percentage:
 
+                if not trusted_val:
+                    logger.warning(
+                        f"Telliot val for {self.feed.query} found to be 0. Reported value was {reported_val}"
+                        "Please double check telliot value before disputing."
+                    )
+                    return None
+
                 if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate percent difference on text/addresses/bytes")
                     return None
@@ -431,22 +438,22 @@ async def parse_new_report_event(
                 mf.feed = DataFeed(query=q, source=source)
 
             monitored_feed = mf
-
+        
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
+    
+    # q_ids_to_monitored_feeds = {
+    #     monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
+    # }
 
-    q_ids_to_monitored_feeds = {
-        monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
-    }
+    # query_types_to_monitored_feeds = {
+    #     get_query_type(monitored_feed.feed.query): monitored_feed for monitored_feed in monitored_feeds
+    # }
 
-    query_types_to_monitored_feeds = {
-        get_query_type(monitored_feed.feed.query): monitored_feed for monitored_feed in monitored_feeds
-    }
+    monitored_query_id = monitored_feed.feed.query.query_id.hex()
 
-    if (new_report.query_id not in q_ids_to_monitored_feeds) and (
-        new_report.query_type not in query_types_to_monitored_feeds
-    ):
+    if (new_report.query_id[2:] != monitored_query_id):
 
         # build a monitored feed for all feeds not auto-disputing for
         threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)

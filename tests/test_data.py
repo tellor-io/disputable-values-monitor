@@ -526,8 +526,3 @@ async def test_get_evm_call_datapoint_with_block_number():
 
     assert curr_returned_bytes_data != prev_returned_bytes_data
     assert curr_timestamp != prev_timestamp
-
-
-@pytest.mark.asyncio
-async def test_disputability_evm_call():
-    pass
