@@ -11,6 +11,8 @@ from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_feeds.dtypes.value_type import ValueType
+from telliot_feeds.feeds import evm_call_feed
+from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.feeds.btc_usd_feed import btc_usd_median_feed
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 from telliot_feeds.queries.abi_query import AbiQuery
@@ -18,6 +20,7 @@ from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
+from tellor_disputables.data import general_fetch_new_datapoint
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import get_contract_info
 from tellor_disputables.data import get_events
@@ -65,7 +68,7 @@ def test_get_query_from_data():
 
 
 @pytest.mark.asyncio
-async def test_parse_new_report_event(log):
+async def test_parse_new_report_event(eth_usd_report_log):
 
     threshold = Threshold(Metrics.Percentage, 0.50)
     monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
@@ -81,18 +84,19 @@ async def test_parse_new_report_event(log):
 
     # NON-DISPUTABLE EVENT
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(1293, time.time())):
-        new_report = await parse_new_report_event(cfg, log, dvm_threshold, [monitored_feed])
+        new_report = await parse_new_report_event(cfg, eth_usd_report_log, dvm_threshold, [monitored_feed])
 
     assert new_report
 
     assert new_report.chain_id == 5
-    assert new_report.tx_hash == log.transactionHash.hex()
+    assert new_report.tx_hash == eth_usd_report_log.transactionHash.hex()
     assert "etherscan" in new_report.link
+    assert new_report.disputable is not None
     assert not new_report.disputable
 
     # DISPUTABLE EVENT
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(0.000001, time.time())):
-        new_report = await parse_new_report_event(cfg, log, dvm_threshold, [monitored_feed])
+        new_report = await parse_new_report_event(cfg, eth_usd_report_log, dvm_threshold, [monitored_feed])
 
         assert new_report.disputable
 
@@ -240,22 +244,26 @@ async def test_percentage():
     reported_val = 750
     telliot_val = 1000
     percentage = 0.25
+
+    cfg = TelliotConfig()
     threshold = Threshold(Metrics.Percentage, percentage)
     mf = MonitoredFeed(eth_usd_median_feed, threshold)
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+        disputable = await mf.is_disputable(cfg, reported_val)
         assert disputable
 
     telliot_val = 751
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await mf.is_disputable(reported_val)
+        disputable = await mf.is_disputable(cfg, reported_val)
         assert not disputable
 
 
 @pytest.mark.asyncio
 async def test_range():
     """test example range calculation"""
+
+    cfg = TelliotConfig()
 
     reported_val = 500
     telliot_val = 1000
@@ -264,18 +272,20 @@ async def test_range():
     monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feed.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(cfg, reported_val)
         assert disputable
 
     telliot_val = 501
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feed.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(cfg, reported_val)
         assert not disputable
 
 
 @pytest.mark.asyncio
 async def test_equality():
     """test example equality calculation"""
+
+    cfg = TelliotConfig()
 
     reported_val = "0xa7654E313FbB25b2cF367730CB5c2759fAf831a1"  # checksummed
     telliot_val = "0xa7654e313fbb25b2cf367730cb5c2759faf831a1"  # not checksummed
@@ -286,18 +296,20 @@ async def test_equality():
     monitored_feed = MonitoredFeed(eth_usd_median_feed, threshold)
 
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feed.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(cfg, reported_val)
         assert not disputable
 
     telliot_val = 501  # throw a completely different data type at the equality operator
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, time.time())):
-        disputable = await monitored_feed.is_disputable(reported_val)
+        disputable = await monitored_feed.is_disputable(cfg, reported_val)
         assert disputable
 
 
 @pytest.mark.asyncio
 async def test_is_disputable(caplog):
     """test check for disputability for a float value"""
+
+    cfg = TelliotConfig()
     val = 1000.0
     threshold = Threshold(metric=Metrics.Percentage, amount=0.05)
 
@@ -305,18 +317,18 @@ async def test_is_disputable(caplog):
     mf = MonitoredFeed(eth_usd_median_feed, threshold)
 
     # Is disputable
-    disputable = await mf.is_disputable(val)
+    disputable = await mf.is_disputable(cfg, val)
     assert isinstance(disputable, bool)
     assert disputable
 
     # No reported value
-    disputable = await mf.is_disputable(reported_val=None)
+    disputable = await mf.is_disputable(cfg, reported_val=None)
     assert disputable is None
     assert "Need reported value to check disputability" in caplog.text
 
     # Unable to fetch price
     with patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(None, None)):
-        disputable = await mf.is_disputable(val)
+        disputable = await mf.is_disputable(cfg, val)
         assert disputable is None
 
 
@@ -324,19 +336,21 @@ async def test_is_disputable(caplog):
 async def test_different_conf_thresholds():
     """test if a value is dispuable under different confindence thresholds"""
 
+    cfg = TelliotConfig()
+
     # ETH/USD
     threshold = Threshold(Metrics.Percentage, 0.05)
     mf = MonitoredFeed(eth_usd_median_feed, threshold)
     val = 666
 
     # Is disputable
-    disputable = await mf.is_disputable(val)
+    disputable = await mf.is_disputable(cfg, val)
     assert isinstance(disputable, bool)
     assert disputable
 
     mf.threshold.amount = 2.0
     # Is now not disputable
-    disputable = await mf.is_disputable(val)
+    disputable = await mf.is_disputable(cfg, val)
     assert isinstance(disputable, bool)
     assert not disputable
 
@@ -399,7 +413,7 @@ def test_multiple_thresholds_for_one_feed():
 
 
 @pytest.mark.asyncio
-async def test_NaN_value(log):
+async def test_NaN_value(eth_usd_report_log):
     """test disputability when the Telliot value returns 0 or NaN or None"""
 
     cfg = TelliotConfig()
@@ -414,13 +428,13 @@ async def test_NaN_value(log):
 
     for telliot_val in unusable_telliot_vals:
         with mock.patch("tellor_disputables.data.general_fetch_new_datapoint", return_value=(telliot_val, None)):
-            new_report = await parse_new_report_event(cfg, log, dvm_threshold, monitored_feeds)
+            new_report = await parse_new_report_event(cfg, eth_usd_report_log, dvm_threshold, monitored_feeds)
 
         assert not new_report
 
 
 @pytest.mark.asyncio
-async def test_parsing_with_dvm_treshold(log):
+async def test_parsing_with_dvm_threshold(eth_usd_report_log):
     """parse a new report event with a query id that isn't in monitored in disputer-config.yaml"""
 
     cfg = TelliotConfig()
@@ -436,6 +450,84 @@ async def test_parsing_with_dvm_treshold(log):
     with mock.patch(
         "tellor_disputables.data.general_fetch_new_datapoint", return_value=(disputable_value, time.time())
     ):
-        new_report = await parse_new_report_event(cfg, log, dvm_threshold, monitored_feeds)
+        new_report = await parse_new_report_event(cfg, eth_usd_report_log, dvm_threshold, monitored_feeds)
 
     assert new_report.disputable
+
+
+@pytest.mark.asyncio
+async def test_parsing_evm_call(evm_call_log, caplog):
+
+    cfg = TelliotConfig()
+    cfg.main.chain_id = 80001
+
+    endpoint = RPCEndpoint(80001, "Mumbai", "Matic", "https://rpc.ankr.com/polygon_mumbai", "mumbai.polygonscan.com")
+    cfg.endpoints.endpoints.insert(0, endpoint)
+
+    threshold = Threshold(Metrics.Equality, amount=None)
+    monitored_feeds = [MonitoredFeed(evm_call_feed, threshold=threshold)]
+
+    # A DISPUTABLE VALUE
+
+    disputable_value = (HexBytes("0xabc123"), 12345678)
+
+    with mock.patch(
+        "tellor_disputables.data.general_fetch_new_datapoint", return_value=(disputable_value, time.time())
+    ):
+        new_report = await parse_new_report_event(cfg, evm_call_log, dvm_threshold, monitored_feeds)
+
+    assert new_report.disputable
+
+    disputable_value = b"abc123"
+
+    with mock.patch(
+        "tellor_disputables.data.general_fetch_new_datapoint", return_value=(disputable_value, time.time())
+    ):
+        new_report = await parse_new_report_event(cfg, evm_call_log, dvm_threshold, monitored_feeds)
+
+    assert new_report.disputable
+
+    # A NON-DISPUTABLE VALUE
+
+    non_disputable_value = (
+        b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+        b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x0cJ\xbd h'\xe8\x19\tU",
+        1681397830,
+    )
+
+    with mock.patch(
+        "tellor_disputables.data.general_fetch_new_datapoint", return_value=(non_disputable_value, time.time())
+    ):
+        new_report = await parse_new_report_event(cfg, evm_call_log, dvm_threshold, monitored_feeds)
+
+    assert not new_report.disputable
+
+
+@pytest.mark.asyncio
+async def test_get_evm_call_datapoint_with_block_number():
+
+    block_number = 17070143
+    feed = evm_call_feed_example
+
+    v, t = await general_fetch_new_datapoint(feed, block_number)
+
+    assert v
+    assert t
+
+    curr_returned_bytes_data = v[0]
+    curr_timestamp = v[1]
+
+    block_number -= 5000
+
+    v, t = await general_fetch_new_datapoint(feed, block_number)
+
+    prev_returned_bytes_data = v[0]
+    prev_timestamp = v[1]
+
+    assert curr_returned_bytes_data != prev_returned_bytes_data
+    assert curr_timestamp != prev_timestamp
+
+
+@pytest.mark.asyncio
+async def test_disputability_evm_call():
+    pass

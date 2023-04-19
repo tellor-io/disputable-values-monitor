@@ -4,3 +4,6 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
     threshold:
       type: Percentage
       amount: 0.75 # 75%
+  - query_type: EVMCall
+    threshold:
+      type: Equality

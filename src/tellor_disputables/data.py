@@ -1,5 +1,6 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -8,12 +9,16 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import eth_abi
 from chained_accounts import ChainedAccount
+from clamfig import deserialize
+from clamfig.base import Registry
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
 from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
+from telliot_feeds.datasource import DataSource
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.query import OracleQuery
@@ -24,7 +29,6 @@ from web3.types import LogReceipt
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
-from tellor_disputables import QUERY_TYPES
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
@@ -73,31 +77,52 @@ class Threshold(Base):
                 raise ValueError(f"{self.metric} threshold selected, amount cannot be negative")
 
 
+Reportable = Union[str, bytes, float, int, tuple, None]
+
+
 @dataclass
 class MonitoredFeed(Base):
     feed: DataFeed[Any]
     threshold: Threshold
-    query_id: Optional[str] = None
 
     async def is_disputable(
         self,
-        reported_val: Union[str, bytes, float, int, None],
+        cfg: TelliotConfig,
+        reported_val: Reportable,
     ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
             logger.error("Need reported value to check disputability")
             return None
 
-        trusted_val, _ = await general_fetch_new_datapoint(self.feed)
-        if not trusted_val:
-            logger.warning("trusted val was " + str(trusted_val))
-            return None
+        if get_query_type(self.feed.query) == "EVMCall":
 
-        if isinstance(trusted_val, (str, int, float, bytes)):
+            if not isinstance(reported_val, tuple):
+                return True
+
+            block_timestamp = reported_val[1]
+            cfg.main.chain_id = self.feed.query.chainId
+
+            block_number = get_block_number_at_timestamp(cfg, block_timestamp)
+
+            trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
+
+            if trusted_val is None:
+                logger.warning("trusted val was " + str(trusted_val))
+                return None
+
+        else:
+            trusted_val, _ = await general_fetch_new_datapoint(self.feed)
+            
+            if trusted_val is None:
+                logger.warning("trusted val was " + str(trusted_val))
+                return None
+
+        if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(trusted_val, (str, bytes, float, int, tuple)):
 
             if self.threshold.metric == Metrics.Percentage:
 
-                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
+                if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate percent difference on text/addresses/bytes")
                     return None
                 if self.threshold.amount is None:
@@ -108,7 +133,7 @@ class MonitoredFeed(Base):
 
             elif self.threshold.metric == Metrics.Range:
 
-                if isinstance(trusted_val, (str, bytes)) or isinstance(reported_val, (str, bytes)):
+                if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate range on text/addresses/bytes")
 
                 if self.threshold.amount is None:
@@ -127,19 +152,22 @@ class MonitoredFeed(Base):
                     and trusted_val.startswith("0x")
                 ):
                     return trusted_val.lower() != reported_val.lower()
-                return trusted_val != reported_val
+                return bool(trusted_val != reported_val)
 
             else:
                 logger.error("Attemping comparison with unknown threshold metric")
                 return None
         else:
-            logger.error("Unable to fetch new datapoint from feed")
+            logger.error(
+                f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
+                f"with reported val {reported_val!r} of type {type(reported_val)}"
+            )
             return None
 
 
-async def general_fetch_new_datapoint(feed: DataFeed) -> Optional[Any]:
+async def general_fetch_new_datapoint(feed: DataFeed, *args: Any) -> Optional[Any]:
     """Fetch a new datapoint from a datafeed."""
-    return await feed.source.fetch_new_datapoint()
+    return await feed.source.fetch_new_datapoint(*args)
 
 
 def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional[str]]:
@@ -308,6 +336,31 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
     return None
 
 
+def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
+    """Recreate an oracle query from the `query_data` field"""
+    try:
+        query_type, encoded_param_values = eth_abi.decode_abi(["string", "bytes"], query_data)
+    except OverflowError:
+        logger.error("OverflowError while decoding query data.")
+        return None
+    try:
+        cls = Registry.registry[query_type]
+    except KeyError:
+        logger.error(f"Unsupported query type: {query_type}")
+        return None
+    params_abi = cls.abi
+    param_names = [p["name"] for p in params_abi]
+    param_types = [p["type"] for p in params_abi]
+    param_values = eth_abi.decode_abi(param_types, encoded_param_values)
+
+    params = dict(zip(param_names, param_values))
+
+    if query_type != "SpotPrice":
+        query_type += "Source"
+
+    return deserialize({"type": query_type, **params})
+
+
 async def parse_new_report_event(
     cfg: TelliotConfig,
     log: LogReceipt,
@@ -316,10 +369,6 @@ async def parse_new_report_event(
     see_all_values: bool = False,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
-
-    q_ids_to_monitored_feeds = {
-        monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
-    }
 
     chain_id = cfg.main.chain_id
     endpoint = cfg.endpoints.find(chain_id=chain_id)[0]
@@ -344,37 +393,67 @@ async def parse_new_report_event(
     q = get_query_from_data(event_data.args._queryData)
 
     if q is None:
-        logger.error("Unable to form query from query data")
+        logger.error("Unable to form query from queryData of query type" + new_report.query_type)
         return None
 
     new_report.tx_hash = event_data.transactionHash.hex()
     new_report.chain_id = endpoint.web3.eth.chain_id
     new_report.query_id = "0x" + event_data.args._queryId.hex()
     new_report.query_type = get_query_type(q)
-    new_report.value = q.value_type.decode(event_data.args._value)
     new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
     new_report.submission_timestamp = event_data.args._time  # in unix time
+
+    try:
+        new_report.value = q.value_type.decode(event_data.args._value)
+    except eth_abi.exceptions.DecodingError:
+        new_report.value = event_data.args._value
+        
+
+    # if query of event matches a query type of the monitored feeds, fill the query parameters
+
+    for mf in monitored_feeds:
+
+        if get_query_type(mf.feed.query) == new_report.query_type:
+
+
+            if new_report.query_type == "SpotPrice":
+
+
+                mf.feed = DATAFEED_LOOKUP[new_report.query_id[2:]]
+
+            else:
+
+                source = get_source_from_data(event_data.args._queryData)
+
+                if source is None:
+                    logger.error("Unable to form source from queryData of query type" + new_report.query_type)
+                    return None
+
+                mf.feed = DataFeed(query=q, source=source)
+
+            monitored_feed = mf
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
 
-    if new_report.query_id not in q_ids_to_monitored_feeds:  # TODO ensure both has 0x or none have 0x
+    q_ids_to_monitored_feeds = {
+        monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
+    }
+
+    query_types_to_monitored_feeds = {
+        get_query_type(monitored_feed.feed.query): monitored_feed for monitored_feed in monitored_feeds
+    }
+
+    if (new_report.query_id not in q_ids_to_monitored_feeds) and (
+        new_report.query_type not in query_types_to_monitored_feeds
+    ):
 
         # build a monitored feed for all feeds not auto-disputing for
         threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)
         monitored_feed = MonitoredFeed(DATAFEED_LOOKUP[new_report.query_id[2:]], threshold)
-    else:
-        monitored_feed = q_ids_to_monitored_feeds[new_report.query_id]
 
-    if isinstance(q, QUERY_TYPES):
-        for attr_name, attr_value in vars(q).items():
-            setattr(new_report, attr_name, str(attr_value).upper())
-    else:
-        logger.error("unsupported query type")
-        return None
-
-    disputable = await monitored_feed.is_disputable(new_report.value)
+    disputable = await monitored_feed.is_disputable(cfg, new_report.value)
     if disputable is None:
 
         if see_all_values:
@@ -391,3 +470,43 @@ async def parse_new_report_event(
         new_report.disputable = disputable
 
         return new_report
+
+
+def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Optional[int]:
+
+    try:
+        endpoint = cfg.get_endpoint()
+        endpoint.connect()
+    except ValueError as e:
+        logger.error(f"Unable to connect to endpoint on chain_id {cfg.main.chain_id}: " + str(e))
+        return None
+
+    w3 = endpoint.web3
+
+    current_block = w3.eth.block_number
+    start_block = 0
+    end_block = current_block
+
+    while start_block <= end_block:
+        midpoint = math.floor((start_block + end_block) / 2)
+        block = w3.eth.get_block(midpoint)
+
+        if block.timestamp == timestamp:
+            return midpoint
+        elif block.timestamp < timestamp:
+            start_block = midpoint + 1
+        else:
+            end_block = midpoint - 1
+
+    # If we haven't found an exact match, interpolate between adjacent blocks
+    block_a = w3.eth.get_block(end_block)
+    block_b = w3.eth.get_block(start_block)
+
+    block_delta = block_b.number - block_a.number
+    timestamp_delta = block_b.timestamp - block_a.timestamp
+    target_delta = timestamp - block_a.timestamp
+
+    estimated_block_delta = target_delta * block_delta / timestamp_delta
+    estimated_block_number = block_a.number + estimated_block_delta
+
+    return int(estimated_block_number)
