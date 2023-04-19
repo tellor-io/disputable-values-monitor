@@ -23,7 +23,9 @@ async def dispute(
         logger.info("Currently not auto-dispuing on any feeds. See ./disputer-config.yaml")
         return ""
 
-    meant_to_dispute = new_report.query_id[2:] in [feed.feed.query.query_id.hex() for feed in disp_cfg.monitored_feeds if feed.feed.query]
+    meant_to_dispute = new_report.query_id[2:] in [
+        feed.feed.query.query_id.hex() for feed in disp_cfg.monitored_feeds if feed.feed.query
+    ]
 
     if not meant_to_dispute:
         logger.info("Found disputable new report outside selected Monitored Feeds, skipping dispute")

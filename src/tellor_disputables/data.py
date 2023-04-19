@@ -126,7 +126,7 @@ class MonitoredFeed(Base):
 
                 if not trusted_val:
                     logger.warning(
-                        f"Telliot val for {self.feed.query} found to be 0. Reported value was {reported_val}"
+                        f"Telliot val for {self.feed.query} found to be 0. Reported value was {reported_val!r}"
                         "Please double check telliot value before disputing."
                     )
                     return None
@@ -438,11 +438,11 @@ async def parse_new_report_event(
                 mf.feed = DataFeed(query=q, source=source)
 
             monitored_feed = mf
-        
+
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
-    
+
     # q_ids_to_monitored_feeds = {
     #     monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
     # }
@@ -453,7 +453,7 @@ async def parse_new_report_event(
 
     monitored_query_id = monitored_feed.feed.query.query_id.hex()
 
-    if (new_report.query_id[2:] != monitored_query_id):
+    if new_report.query_id[2:] != monitored_query_id:
 
         # build a monitored feed for all feeds not auto-disputing for
         threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)

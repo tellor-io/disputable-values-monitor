@@ -10,7 +10,7 @@ from web3 import Web3
 from tellor_disputables.data import get_contract
 
 
-# @pytest.mark.skip("for demo only")
+@pytest.mark.skip("for demo only")
 @pytest.mark.asyncio
 async def test_demo(setup: TelliotConfig):
 
@@ -59,7 +59,7 @@ async def test_demo(setup: TelliotConfig):
     assert status.ok
 
 
-# @pytest.mark.skip("for demo only")
+@pytest.mark.skip("for demo only")
 @pytest.mark.asyncio
 async def test_evm_call_demo(setup: TelliotConfig):
 
