@@ -8,11 +8,15 @@ from typing import Optional
 import yaml
 from box import Box
 from telliot_feeds.feeds import DataFeed
+from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables.data import Metrics
 from tellor_disputables.data import MonitoredFeed
 from tellor_disputables.data import Threshold
+from tellor_disputables.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -60,24 +64,33 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    query_id = self.box.feeds[i].query_id[2:]
+                    if hasattr(self.box.feeds[i], "query_id"):
+                        query_id = self.box.feeds[i].query_id[2:]
+                        datafeed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
+                    elif hasattr(self.box.feeds[i], "query_type"):
+                        query_type = self.box.feeds[i].query_type
+                        datafeed = DATAFEED_BUILDER_MAPPING[query_type]
+                    else:
+                        logger.error("Invalid query id or query type provided in disputer-config.yaml")
                 except AttributeError as e:
-                    logging.error(f"Python Box attribute error: {e}")
+                    logger.error(f"Python Box attribute error: {e}")
                     return None
                 except TypeError as e:
-                    logging.error(f"Python Box attribute error: {e}")
+                    logger.error(f"Python Box type error: {e}")
                     return None
 
-                datafeed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
             except KeyError:
-                logging.error(f"No corresponding datafeed found for query id: {query_id}\n")
+                logger.error(f"No corresponding datafeed found for query id: {query_id}\n")
                 return None
 
             try:
                 # parse query type from YAML
                 try:
                     threshold_type = self.box.feeds[i].threshold.type
-                    threshold_amount = self.box.feeds[i].threshold.amount
+                    if threshold_type.lower() == "equality":
+                        threshold_amount = None
+                    else:
+                        threshold_amount = self.box.feeds[i].threshold.amount
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -90,7 +103,7 @@ class AutoDisputerConfig:
                 logging.error(f"Unsupported threshold: {threshold}\n")
                 return None
 
-            monitored_feeds.append(MonitoredFeed(datafeed, threshold, query_id))
+            monitored_feeds.append(MonitoredFeed(datafeed, threshold))
 
         return monitored_feeds
 

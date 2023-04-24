@@ -129,7 +129,13 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
 
     await dispute(cfg, disp_config, disputer_account, report)
 
-    expected_success_logs = ["balance", "Dispute Fee", "Approval Tx Hash:", "Dispute Tx Link:"]
+    expected_success_logs = [
+        "Equality threshold selected",
+        "balance",
+        "Dispute Fee",
+        "Approval Tx Hash:",
+        "Dispute Tx Link:",
+    ]
 
     for i in expected_success_logs:
         assert i in caplog.text
@@ -157,7 +163,9 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
 
 
 @pytest.mark.asyncio
-async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture, log, disputer_account: ChainedAccount):
+async def test_dispute_using_sample_log(
+    setup, caplog: pytest.LogCaptureFixture, eth_usd_report_log, disputer_account: ChainedAccount
+):
     """
     Send a dispute using a sample log fixture after parsing a new report event.
     The log is mocked to be disputable
@@ -182,7 +190,9 @@ async def test_dispute_using_sample_log(setup, caplog: pytest.LogCaptureFixture,
     with mock.patch(
         "tellor_disputables.data.general_fetch_new_datapoint", return_value=(mock_telliot_val, int(time.time()))
     ):
-        new_report = await parse_new_report_event(cfg, log, monitored_feeds=monitored_feeds, confidence_threshold=0.1)
+        new_report = await parse_new_report_event(
+            cfg, eth_usd_report_log, monitored_feeds=monitored_feeds, confidence_threshold=0.1
+        )
 
     assert new_report.disputable
 
