@@ -43,6 +43,18 @@ async def dispute(
 
     cfg.main.chain_id = new_report.chain_id
 
+    try:
+        endpoint = cfg.get_endpoint()
+    except ValueError:
+        logger.error(f"Unable to dispute: can't find an endpoint on chain id {new_report.chain_id}")
+        return ""
+
+    try:
+        endpoint.connect()
+    except ValueError:
+        logger.error(f"Unable to dispute: can't connect to endpoint on chain id {new_report.chain_id}")
+        return ""
+
     token = get_contract(cfg, name="trb-token", account=account)
     governance = get_contract(cfg, name="tellor-governance", account=account)
 
@@ -76,10 +88,21 @@ async def dispute(
         logger.info("User balance is below dispute fee: need more tokens to initiate dispute")
         return ""
 
+    try:
+        acc_nonce = endpoint.web3.eth.get_transaction_count(Web3.toChecksumAddress(account.address))
+    except Exception as e:
+        logger.error(f"Unable to dispute: could not retrieve account nonce: {e}")
+        return ""
+
     # write approve(governance contract, disputeFee) and log "token approved" if successful
     gas_price = await fetch_gas_price()
     tx_receipt, status = await token.write(
-        "approve", spender=governance.address, amount=dispute_fee * 100, gas_limit=60000, legacy_gas_price=gas_price
+        "approve",
+        spender=governance.address,
+        amount=dispute_fee * 100,
+        gas_limit=60000,
+        legacy_gas_price=gas_price,
+        acc_nonce=acc_nonce,
     )
 
     if not status.ok:
@@ -94,6 +117,7 @@ async def dispute(
         _timestamp=new_report.submission_timestamp,
         gas_limit=800000,
         legacy_gas_price=gas_price,
+        acc_nonce=acc_nonce + 1,
     )
 
     if not status.ok:
@@ -105,7 +129,7 @@ async def dispute(
         return ""
 
     new_report.status_str += ": disputed!"
-    explorer = cfg.get_endpoint().explorer
+    explorer = endpoint.explorer
     if not explorer:
         dispute_tx_link = str(tx_receipt.transactionHash.hex())
     else:
