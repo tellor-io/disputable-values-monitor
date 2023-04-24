@@ -419,6 +419,8 @@ async def parse_new_report_event(
 
     # if query of event matches a query type of the monitored feeds, fill the query parameters
 
+    monitored_feed = None
+
     for mf in monitored_feeds:
 
         if get_query_type(mf.feed.query) == new_report.query_type:
@@ -443,17 +445,12 @@ async def parse_new_report_event(
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
 
-    # q_ids_to_monitored_feeds = {
-    #     monitored_feed.feed.query.query_id.hex(): monitored_feed for monitored_feed in monitored_feeds
-    # }
+    if monitored_feed is not None:
+        monitored_query_id = monitored_feed.feed.query.query_id.hex()
+    else:
+        monitored_query_id = None
 
-    # query_types_to_monitored_feeds = {
-    #     get_query_type(monitored_feed.feed.query): monitored_feed for monitored_feed in monitored_feeds
-    # }
-
-    monitored_query_id = monitored_feed.feed.query.query_id.hex()
-
-    if new_report.query_id[2:] != monitored_query_id:
+    if (new_report.query_id[2:] != monitored_query_id) or (not monitored_feed):
 
         # build a monitored feed for all feeds not auto-disputing for
         threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)
