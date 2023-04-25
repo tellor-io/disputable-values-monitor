@@ -169,7 +169,7 @@ class MonitoredFeed(Base):
         else:
             logger.error(
                 f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
-                f"with reported val {reported_val!r} of type {type(reported_val)}"
+                f"with reported val {reported_val!r} of type {type(reported_val)} on chain_id {cfg.main.chain_id}"
             )
             return None
 
@@ -191,7 +191,7 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
         return addr, abi
 
     else:
-        logger.info(f"Could not find contract info for contract {name} chain_id {chain_id}")
+        logger.debug(f"Could not find contract info for contract {name} chain_id {chain_id}")
         return None, None
 
 
@@ -254,7 +254,7 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
         if "server rejected" in str(e):
             logger.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
         else:
-            logger.warning("unable to retrieve latest block number:" + str(e))
+            logger.warning(f"unable to retrieve latest block number from chain_id {web3.eth.chain_id}:" + str(e))
         return []
 
     event_filter = mk_filter(block_number - int(blocks), "latest", addr, topics)
@@ -264,13 +264,13 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
     except Exception as e:
         msg = str(e)
         if "unknown block" in msg:
-            logger.error("waiting for new blocks")
+            logger.error(f"waiting for new blocks on chain_id {web3.eth.chain_id}")
         elif "request failed or timed out" in msg:
-            logger.error("request for eth event logs failed")
+            logger.error(f"request for eth event logs failed on chain_id {web3.eth.chain_id}")
         elif "Too Many Requests" in msg:
             logger.info(f"Too many requests to node on chain_id {web3.eth.chain_id}")
         else:
-            logger.error("unknown RPC error gathering eth event logs \n" + msg)
+            logger.error(f"unknown RPC error gathering eth event logs on chain_id {web3.eth.chain_id}\n" + msg)
         return []
 
     unique_events_list = []

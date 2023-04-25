@@ -34,11 +34,14 @@ async def dispute(
     meant_to_dispute = new_report.query_id[2:] in disputable_query_ids
 
     if not meant_to_dispute:
-        logger.info("Found disputable new report outside selected Monitored Feeds, skipping dispute")
+        logger.info(
+            f"Found disputable new report on chain_id {new_report.chain_id}"
+            "outside selected Monitored Feeds, skipping dispute"
+        )
         return ""
 
     if account is None:
-        logger.info("No account provided, skipping eligible dispute")
+        logger.info(f"No account provided, skipping eligible dispute on chain_id {new_report.chain_id}")
         return ""
 
     cfg.main.chain_id = new_report.chain_id
@@ -59,11 +62,11 @@ async def dispute(
     governance = get_contract(cfg, name="tellor-governance", account=account)
 
     if token is None:
-        logger.error("Unable to find token contract")
+        logger.error(f"Unable to find token contract on chain_id {new_report.chain_id}")
         return ""
 
     if governance is None:
-        logger.error("Unable to find governance contract")
+        logger.error(f"Unable to find governance contract on chain_id {new_report.chain_id}")
         return ""
 
     # read balance of user and log it
@@ -73,25 +76,27 @@ async def dispute(
         logger.error("Unable to retrieve Disputer account balance")
         return ""
 
-    logger.info(f"Disputer ({account.address}) balance: " + str(user_token_balance))
+    logger.info(f"Disputer ({account.address}) balance on chain_id {new_report.chain_id}: " + str(user_token_balance))
 
     dispute_fee = await get_dispute_fee(cfg, new_report)
 
     if dispute_fee is None:
-        logger.error("Unable to calculate Dispute Fee from contracts")
+        logger.error(f"Unable to calculate Dispute Fee from contracts on chain_id {new_report.chain_id}")
         return ""
 
-    logger.info("Dispute Fee: " + str(dispute_fee / 1e18) + " TRB")
+    logger.info(f"Dispute Fee on chain_id {new_report.chain_id}: " + str(dispute_fee / 1e18) + " TRB")
 
     # if balanceOf(user) < disputeFee, log "need more tokens to initiate dispute"
     if user_token_balance < dispute_fee:
-        logger.info("User balance is below dispute fee: need more tokens to initiate dispute")
+        logger.info(
+            f"User balance on chain_id {new_report.chain_id} is below dispute fee: need more tokens to initiate dispute"
+        )
         return ""
 
     try:
         acc_nonce = endpoint.web3.eth.get_transaction_count(Web3.toChecksumAddress(account.address))
     except Exception as e:
-        logger.error(f"Unable to dispute: could not retrieve account nonce: {e}")
+        logger.error(f"Unable to dispute on chain_id {new_report.chain_id}: could not retrieve account nonce: {e}")
         return ""
 
     # write approve(governance contract, disputeFee) and log "token approved" if successful
@@ -106,7 +111,7 @@ async def dispute(
     )
 
     if not status.ok:
-        logger.error("unable to approve tokens for dispute fee: " + status.error)
+        logger.error(f"unable to approve tokens on chain_id {new_report.chain_id} for dispute fee: " + status.error)
         return ""
 
     logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
@@ -146,24 +151,26 @@ async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional
     oracle = get_contract(cfg, name="tellor360-oracle", account=None)
 
     if governance is None:
-        logger.error("Unable to find governance contract")
+        logger.error(f"Unable to find governance contract on chain_id {new_report.chain_id}")
         return None
 
     if oracle is None:
-        logger.error("Unable to find oracle contract")
+        logger.error(f"Unable to find oracle contract on chain_id {new_report.chain_id}")
         return None
 
     # simple dispute fee
     dispute_fee, status = await governance.read(func_name="getDisputeFee")
 
     if not status.ok:
-        logger.error("Unable to retrieve Dispute Fee")
+        logger.error(f"Unable to retrieve Dispute Fee on chain_id {new_report.chain_id}")
         return None
 
     vote_rounds, status = await governance.read("getVoteRounds", _hash=new_report.query_id)
 
     if not status.ok:
-        logger.error("Unable to count Vote Rounds on query id " + new_report.query_id)
+        logger.error(
+            f"Unable to count Vote Rounds on chain_id {new_report.chain_id} on query id " + new_report.query_id
+        )
 
     if len(vote_rounds) == 1:
         # dispute fee with open disputes on the ID
@@ -172,7 +179,9 @@ async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional
         )
 
         if not status.ok:
-            logger.error("Unable to count open disputes on query id " + new_report.query_id)
+            logger.error(
+                f"Unable to count open disputes on chain_id {new_report.chain_id} on query id " + new_report.query_id
+            )
             return None
 
         multiplier = open_disputes_on_id - 1 if open_disputes_on_id > 0 else 0
@@ -184,7 +193,7 @@ async def get_dispute_fee(cfg: TelliotConfig, new_report: NewReport) -> Optional
     stake_amount, status = await oracle.read(func_name="getStakeAmount")
 
     if not status.ok:
-        logger.error("Unable to retrieve Stake Amount")
+        logger.error(f"Unable to retrieve Stake Amount on chain_id {new_report.chain_id}")
         return None
 
     if dispute_fee > stake_amount:
