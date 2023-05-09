@@ -1,4 +1,3 @@
-import os
 import warnings
 
 import pytest
@@ -17,6 +16,18 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.alerts import get_twilio_client
 
 load_dotenv()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_chain():
+    """Reset the chain after each test"""
+    w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
+
+    snapshot_id = w3.provider.make_request("evm_snapshot", [])
+
+    yield
+
+    w3.provider.make_request("evm_revert", [snapshot_id["result"]])
 
 
 @pytest.fixture
@@ -69,7 +80,7 @@ def disputer_account():
     account_name = "disputer-test-acct"
 
     if not find_accounts(account_name, 1337):
-        ChainedAccount.add(account_name, 1337, os.getenv("PRIVATE_KEY"), "")
+        ChainedAccount.add(account_name, 1337, "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d", "")
 
     disputer = find_accounts(account_name, 1337)[0]
 
@@ -105,8 +116,11 @@ def setup():
     token_contract_info = contract_directory.find(name="trb-token", chain_id=1)[0]
     governance_contract_info = contract_directory.find(name="tellor-governance", chain_id=1)[0]
     oracle_contract_info = contract_directory.find(name="tellor360-oracle", chain_id=1)[0]
+    autopay_contract_info = contract_directory.find(name="tellor360-autopay", chain_id=1)[0]
 
     contract_directory.entries["tellor360-oracle"].address[1337] = oracle_contract_info.address[1]
+    contract_directory.entries["trb-token"].address[1337] = token_contract_info.address[1]
+    contract_directory.entries["tellor360-autopay"].address[1337] = autopay_contract_info.address[1]
 
     forked_token = ContractInfo(
         "trb-token-fork", "Ganache", {1337: token_contract_info.address[1]}, token_contract_info.abi_file

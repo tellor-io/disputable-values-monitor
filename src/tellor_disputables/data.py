@@ -13,6 +13,7 @@ import eth_abi
 from chained_accounts import ChainedAccount
 from clamfig import deserialize
 from clamfig.base import Registry
+from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
@@ -243,6 +244,13 @@ def mk_filter(
     }
 
 
+def are_all_attributes_none(obj: object) -> bool:
+    for attr in obj.__dict__:
+        if getattr(obj, attr) is not None:
+            return False
+    return True
+
+
 async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     # go back 20 blocks; 10 for possible reorgs, the other 10 should cover for even the fastest chains. block/sec
@@ -422,9 +430,24 @@ async def parse_new_report_event(
     monitored_feed = None
 
     for mf in monitored_feeds:
+        try:
+            feed_qid = HexBytes(mf.feed.query.query_id).hex()
+        except Exception as e:
+            logger.error(f"Error while assembling query id: {mf.feed.query.descriptor}, {e}")
+            feed_qid = None
 
-        if get_query_type(mf.feed.query) == new_report.query_type:
+        if feed_qid is None:
+            if get_query_type(mf.feed.query) == new_report.query_type:
+                # for generic queries the query params are None
+                if are_all_attributes_none(mf.feed.query):
+                    source = get_source_from_data(event_data.args._queryData)
+                    if source is None:
+                        logger.error("Unable to form source from queryData of query type" + new_report.query_type)
+                        return None
+                    mf.feed = DataFeed(query=q, source=source)
+                    monitored_feed = mf
 
+        if feed_qid == new_report.query_id:
             if new_report.query_type == "SpotPrice":
 
                 mf.feed = DATAFEED_LOOKUP[new_report.query_id[2:]]
