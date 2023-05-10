@@ -40,7 +40,7 @@ jobs:
         run: |
           apt-get update && apt-get install -y npm
           npm install -g ganache-cli
-          poetry env use 3.9 && poetry install
+          poetry env use 3.9 && poetry lock && poetry install
       - name: Start Ganache
         run: nohup ganache-cli --fork ${{ secrets.MAINNET_URL }}@16886030 -l 3000000000 -d -p 8545 -u 0x39e419ba25196794b595b2a595ea8e527ddc9856 &
       - name: "Run poetry pytest for ${{ matrix.python-version }}"
