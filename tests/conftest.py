@@ -1,3 +1,4 @@
+import os
 import warnings
 
 import pytest
@@ -139,6 +140,9 @@ def setup():
     cfg.main.chain_id = 1337
     ganache_endpoint = RPCEndpoint(1337, url="http://localhost:8545")
     cfg.endpoints.endpoints.append(ganache_endpoint)
+    mainnet_endpoint = cfg.endpoints.find(chain_id=1)
+    if mainnet_endpoint and mainnet_endpoint[0].url.endswith("{INFURA_API_KEY}"):
+        mainnet_endpoint[0].url = os.getenv("MAINNET_URL")
 
     w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
     token = w3.eth.contract(address=token_contract_info.address[1], abi=token_contract_info.get_abi(1))

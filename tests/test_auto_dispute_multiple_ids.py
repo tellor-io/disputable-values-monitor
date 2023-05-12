@@ -56,6 +56,8 @@ def increase_time_and_mine_blocks(w3: Web3, seconds: int, num_blocks: Optional[i
 @pytest.fixture(scope="function")
 async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccount):
     config = setup
+    # only configure two required endpoints cause tests take too long
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1)[0], config.endpoints.find(chain_id=1337)[0]]
     node = config.get_endpoint()
     node.connect()
 
@@ -109,12 +111,12 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
         submit_value_hash = w3.eth.send_transaction(submit_value_txn)
         reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
         assert reciept["status"] == 1
-        return oracle, w3
+        return config, oracle, w3
 
 
 @pytest.mark.asyncio
 async def test_default_config(environment_setup, caplog):
-    oracle, w3 = await environment_setup
+    config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
     eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
     assert status.ok, status.error
@@ -127,26 +129,25 @@ async def test_default_config(environment_setup, caplog):
 
     with patch("getpass.getpass", return_value=""):
         with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
-            try:
-                async with async_timeout.timeout(9):
-                    await start(False, 8, "disputer-test-acct", True, 0.1)
-            except asyncio.TimeoutError:
-                pass
+            with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
+                with patch("telliot_feeds.sources.evm_call.EVMCallSource.cfg", config):
+                    try:
+                        async with async_timeout.timeout(9):
+                            await start(False, 8, "disputer-test-acct", True, 0.1)
+                    except asyncio.TimeoutError:
+                        pass
     indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])
     assert indispute
     # btc value should not be disputed since not in config
     indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
     assert not indispute
     indispute, _ = await oracle.read("isInDispute", evm_query_id, evm_timestamp[2])
-    # assert indispute == True
-    # An error occurs when trying to read evm call value from telliot source, gets an attribute
-    # error that shouldn't happen, so not sure what's going on here
-    assert "'EVMCallSource' object has no attribute '_history'" in caplog.text
+    assert indispute
 
 
 @pytest.mark.asyncio
 async def test_custom_btc_config(environment_setup):
-    oracle, w3 = await environment_setup
+    config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
     eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
     assert status.ok, status.error
@@ -162,11 +163,12 @@ async def test_custom_btc_config(environment_setup):
         with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
             with patch("builtins.open", side_effect=custom_open_side_effect):
                 with patch("yaml.safe_load", return_value=btc_config):
-                    try:
-                        async with async_timeout.timeout(7):
-                            await start(False, 8, "disputer-test-acct", True, 0.1)
-                    except asyncio.TimeoutError:
-                        pass
+                    with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
+                        try:
+                            async with async_timeout.timeout(9):
+                                await start(False, 8, "disputer-test-acct", True, 0.1)
+                        except asyncio.TimeoutError:
+                            pass
     indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
     assert indispute
     indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])
@@ -178,7 +180,7 @@ async def test_custom_btc_config(environment_setup):
 @pytest.mark.asyncio
 async def test_custom_eth_btc_config(environment_setup):
     """Test that eth and btc in dispute config"""
-    oracle, w3 = await environment_setup
+    config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
     eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
     assert status.ok, status.error
@@ -199,11 +201,12 @@ async def test_custom_eth_btc_config(environment_setup):
         with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
             with patch("builtins.open", side_effect=custom_open_side_effect):
                 with patch("yaml.safe_load", return_value=btc_config):
-                    try:
-                        async with async_timeout.timeout(9):
-                            await start(False, 8, "disputer-test-acct", True, 0.1)
-                    except asyncio.TimeoutError:
-                        pass
+                    with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
+                        try:
+                            async with async_timeout.timeout(9):
+                                await start(False, 8, "disputer-test-acct", True, 0.1)
+                        except asyncio.TimeoutError:
+                            pass
     indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
     assert indispute
     indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])

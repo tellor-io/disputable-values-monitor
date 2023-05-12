@@ -11,7 +11,6 @@ from typing import Union
 
 import eth_abi
 from chained_accounts import ChainedAccount
-from clamfig import deserialize
 from clamfig.base import Registry
 from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
@@ -19,7 +18,7 @@ from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
 from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
-from telliot_feeds.datasource import DataSource
+from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.query import OracleQuery
@@ -353,7 +352,7 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
     return None
 
 
-def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
+def get_source_from_data(query_data: bytes) -> Optional[Any]:
     """Recreate an oracle query from the `query_data` field"""
     try:
         query_type, encoded_param_values = eth_abi.decode_abi(["string", "bytes"], query_data)
@@ -370,12 +369,10 @@ def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
     param_types = [p["type"] for p in params_abi]
     param_values = eth_abi.decode_abi(param_types, encoded_param_values)
 
-    params = dict(zip(param_names, param_values))
-
-    if query_type != "SpotPrice":
-        query_type += "Source"
-
-    return deserialize({"type": query_type, **params})
+    source = DATAFEED_BUILDER_MAPPING[query_type].source
+    for key, value in zip(param_names, param_values):
+        setattr(source, key, value)
+    return source
 
 
 async def parse_new_report_event(
