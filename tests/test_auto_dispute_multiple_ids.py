@@ -130,7 +130,7 @@ async def test_default_config(environment_setup, caplog):
     with patch("getpass.getpass", return_value=""):
         with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
             with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
-                with patch("telliot_feeds.sources.evm_call.EVMCallSource.cfg", config):
+                with patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config):
                     try:
                         async with async_timeout.timeout(9):
                             await start(False, 8, "disputer-test-acct", True, 0.1)
