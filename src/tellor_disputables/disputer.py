@@ -36,7 +36,7 @@ async def dispute(
     if not meant_to_dispute:
         logger.info(
             f"Found disputable new report on chain_id {new_report.chain_id}"
-            "outside selected Monitored Feeds, skipping dispute"
+            " outside selected Monitored Feeds, skipping dispute"
         )
         return ""
 
