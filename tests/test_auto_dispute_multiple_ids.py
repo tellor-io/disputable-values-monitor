@@ -1,5 +1,6 @@
 import asyncio
 import io
+from contextlib import ExitStack
 from typing import Optional
 from unittest.mock import mock_open
 from unittest.mock import patch
@@ -9,6 +10,8 @@ import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
+from telliot_feeds.feeds import evm_call_feed_example
+from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
 from tellor_disputables.cli import start
@@ -26,16 +29,18 @@ def txn_kwargs(w3: Web3) -> dict:
     }
 
 
-eth_query_id = "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
-eth_query_data = "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000953706f745072696365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003657468000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000037573640000000000000000000000000000000000000000000000000000000000"  # noqa: E501
-btc_query_id = "0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
-btc_query_data = "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000953706f745072696365000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003627463000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000037573640000000000000000000000000000000000000000000000000000000000"  # noqa: E501
-evm_wrong_val = "00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000064528c2b00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000003039"  # noqa: E501
-evm_query_id = "0xd7472d51b2cd65a9c6b81da09854efdeeeff8afcda1a2934566f54b731a922f3"
-evm_query_data = "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000745564d43616c6c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000088df592f8eb5d7bd38bfef7deb0fbc02cf3778a00000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000418160ddd00000000000000000000000000000000000000000000000000000000"  # noqa: E501
+eth = SpotPrice("eth", "usd")
+btc = SpotPrice("btc", "usd")
+eth_query_id, eth_query_data = Web3.toHex(eth.query_id), Web3.toHex(eth.query_data)
+btc_query_id, btc_query_data = Web3.toHex(btc.query_id), Web3.toHex(btc.query_data)
+evm_query_id, evm_query_data = Web3.toHex(evm_call_feed_example.query.query_id), Web3.toHex(
+    evm_call_feed_example.query.query_data
+)
+evm_wrong_val = evm_call_feed_example.query.value_type.encode((int.to_bytes(12345, 32, "big"), 1683131435)).hex()
 
 
 def custom_open_side_effect(*args, **kwargs):
+    """mocks open function to return a mock file"""
     if args[0] == "disputer-config.yaml":
         return mock_open().return_value
     return io.open(*args, **kwargs)
@@ -115,66 +120,77 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
 
 
 @pytest.mark.asyncio
-async def test_default_config(environment_setup, caplog):
+async def fetch_timestamp(oracle, query_id, chain_timestamp):
+    """fetches a value's timestamp from oracle"""
+    timestamp, status = await oracle.read("getDataBefore", query_id, chain_timestamp)
+    assert timestamp[2] > 0
+    assert status.ok, status.error
+    return timestamp
+
+
+async def check_dispute(oracle, query_id, timestamp):
+    """checks if a value is in dispute"""
+    indispute, _ = await oracle.read("isInDispute", query_id, timestamp[2])
+    return indispute
+
+
+async def setup_and_start(config, config_patches=None):
+    # using exit stack makes nested patching easier to read
+    with ExitStack() as stack:
+        stack.enter_context(patch("getpass.getpass", return_value=""))
+        stack.enter_context(patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")))
+        stack.enter_context(patch("tellor_disputables.cli.TelliotConfig", new=lambda: config))
+
+        if config_patches is not None:
+            for p in config_patches:
+                stack.enter_context(p)
+
+        try:
+            async with async_timeout.timeout(9):
+                await start(False, 8, "disputer-test-acct", True, 0.1)
+        except asyncio.TimeoutError:
+            pass
+
+
+@pytest.mark.asyncio
+async def test_default_config(environment_setup):
+    """Test that the default config works as expected"""
     config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
-    eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
-    assert status.ok, status.error
-    evm_timestamp, status = await oracle.read("getDataBefore", evm_query_id, chain_timestamp + 5000)
-    assert evm_timestamp[2] > 0
-    assert status.ok, status.error
-    btc_timestamp, status = await oracle.read("getDataBefore", btc_query_id, chain_timestamp + 10000)
-    assert btc_timestamp[2] > 0
-    assert status.ok, status.error
 
-    with patch("getpass.getpass", return_value=""):
-        with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
-            with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
-                with patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config):
-                    try:
-                        async with async_timeout.timeout(9):
-                            await start(False, 8, "disputer-test-acct", True, 0.1)
-                    except asyncio.TimeoutError:
-                        pass
-    indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])
-    assert indispute
-    # btc value should not be disputed since not in config
-    indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
-    assert not indispute
-    indispute, _ = await oracle.read("isInDispute", evm_query_id, evm_timestamp[2])
-    assert indispute
+    eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+
+    await setup_and_start(config)
+    # not in config file
+    assert not await check_dispute(oracle, btc_query_id, btc_timestamp)
+    # in config file
+    assert await check_dispute(oracle, eth_query_id, eth_timestamp)
+    assert await check_dispute(oracle, evm_query_id, evm_timestamp)
 
 
 @pytest.mark.asyncio
 async def test_custom_btc_config(environment_setup):
+    """Test that a custom btc config works as expected"""
     config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
-    eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
-    assert status.ok, status.error
-    evm_timestamp, status = await oracle.read("getDataBefore", evm_query_id, chain_timestamp + 5000)
-    assert evm_timestamp[2] > 0
-    assert status.ok, status.error
-    btc_timestamp, status = await oracle.read("getDataBefore", btc_query_id, chain_timestamp + 10000)
-    assert btc_timestamp[2] > 0
-    assert status.ok, status.error
+
+    eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
     btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
-    with patch("getpass.getpass", return_value=""):
-        with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
-            with patch("builtins.open", side_effect=custom_open_side_effect):
-                with patch("yaml.safe_load", return_value=btc_config):
-                    with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
-                        try:
-                            async with async_timeout.timeout(9):
-                                await start(False, 8, "disputer-test-acct", True, 0.1)
-                        except asyncio.TimeoutError:
-                            pass
-    indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
-    assert indispute
-    indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])
-    assert not indispute
-    indispute, _ = await oracle.read("isInDispute", evm_query_id, evm_timestamp[2])
-    assert not indispute
+    config_patches = [
+        patch("builtins.open", side_effect=custom_open_side_effect),
+        patch("yaml.safe_load", return_value=btc_config),
+    ]
+    await setup_and_start(config, config_patches)
+
+    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
+    # not in config file
+    assert not await check_dispute(oracle, eth_query_id, eth_timestamp)
+    assert not await check_dispute(oracle, evm_query_id, evm_timestamp)
 
 
 @pytest.mark.asyncio
@@ -182,34 +198,36 @@ async def test_custom_eth_btc_config(environment_setup):
     """Test that eth and btc in dispute config"""
     config, oracle, w3 = await environment_setup
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
-    eth_timestamp, status = await oracle.read("getDataBefore", eth_query_id, chain_timestamp)
-    assert status.ok, status.error
-    evm_timestamp, status = await oracle.read("getDataBefore", evm_query_id, chain_timestamp + 5000)
-    assert evm_timestamp[2] > 0
-    assert status.ok, status.error
-    btc_timestamp, status = await oracle.read("getDataBefore", btc_query_id, chain_timestamp + 10000)
-    assert btc_timestamp[2] > 0
-    assert status.ok, status.error
 
-    btc_config = {
+    eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+
+    btc_eth_config = {
         "feeds": [
             {"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
             {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
         ]
     }
-    with patch("getpass.getpass", return_value=""):
-        with patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")):
-            with patch("builtins.open", side_effect=custom_open_side_effect):
-                with patch("yaml.safe_load", return_value=btc_config):
-                    with patch("tellor_disputables.cli.TelliotConfig", new=lambda: config):
-                        try:
-                            async with async_timeout.timeout(9):
-                                await start(False, 8, "disputer-test-acct", True, 0.1)
-                        except asyncio.TimeoutError:
-                            pass
-    indispute, _ = await oracle.read("isInDispute", btc_query_id, btc_timestamp[2])
-    assert indispute
-    indispute, _ = await oracle.read("isInDispute", eth_query_id, eth_timestamp[2])
-    assert indispute
-    indispute, _ = await oracle.read("isInDispute", evm_query_id, evm_timestamp[2])
-    assert not indispute
+    config_patches = [
+        patch("builtins.open", side_effect=custom_open_side_effect),
+        patch("yaml.safe_load", return_value=btc_eth_config),
+    ]
+    await setup_and_start(config, config_patches)
+
+    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
+    assert await check_dispute(oracle, eth_query_id, eth_timestamp)
+    # not in config file
+    assert not await check_dispute(oracle, evm_query_id, evm_timestamp)
+
+
+@pytest.mark.asyncio
+async def test_get_source_from_data(environment_setup, caplog):
+    """Test when get_source_from_data function returns None"""
+    config, _, _ = await environment_setup
+
+    config_patches = [
+        patch("tellor_disputables.data.get_source_from_data", side_effect=lambda _: None),
+    ]
+    await setup_and_start(config, config_patches)
+    assert "Unable to form source from queryData of query type EVMCall" in caplog.text

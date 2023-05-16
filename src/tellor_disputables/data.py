@@ -18,6 +18,7 @@ from telliot_core.contract.contract import Contract
 from telliot_core.directory import contract_directory
 from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
+from telliot_feeds.datasource import DataSource
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
@@ -30,6 +31,7 @@ from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
+from tellor_disputables.utils import are_all_attributes_none
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
@@ -243,13 +245,6 @@ def mk_filter(
     }
 
 
-def are_all_attributes_none(obj: object) -> bool:
-    for attr in obj.__dict__:
-        if getattr(obj, attr) is not None:
-            return False
-    return True
-
-
 async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     # go back 20 blocks; 10 for possible reorgs, the other 10 should cover for even the fastest chains. block/sec
@@ -352,8 +347,8 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
     return None
 
 
-def get_source_from_data(query_data: bytes) -> Optional[Any]:
-    """Recreate an oracle query from the `query_data` field"""
+def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
+    """Recreate data source using query type thats decoded from query data field"""
     try:
         query_type, encoded_param_values = eth_abi.decode_abi(["string", "bytes"], query_data)
     except OverflowError:
@@ -439,7 +434,7 @@ async def parse_new_report_event(
                 if are_all_attributes_none(mf.feed.query):
                     source = get_source_from_data(event_data.args._queryData)
                     if source is None:
-                        logger.error("Unable to form source from queryData of query type" + new_report.query_type)
+                        logger.error("Unable to form source from queryData of query type " + new_report.query_type)
                         return None
                     mf.feed = DataFeed(query=q, source=source)
                     monitored_feed = mf
