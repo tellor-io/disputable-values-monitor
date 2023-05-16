@@ -19,16 +19,17 @@ from telliot_core.directory import contract_directory
 from telliot_core.model.base import Base
 from telliot_feeds.datafeed import DataFeed
 from telliot_feeds.datasource import DataSource
+from telliot_feeds.feeds import CATALOG_FEEDS
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.abi_query import AbiQuery
 from telliot_feeds.queries.json_query import JsonQuery
 from telliot_feeds.queries.query import OracleQuery
+from telliot_feeds.queries.query_catalog import query_catalog
 from web3 import Web3
 from web3._utils.events import get_event_data
 from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
-from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables import NEW_REPORT_ABI
 from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import are_all_attributes_none
@@ -442,8 +443,8 @@ async def parse_new_report_event(
 
         if feed_qid == new_report.query_id:
             if new_report.query_type == "SpotPrice":
-
-                mf.feed = DATAFEED_LOOKUP[new_report.query_id[2:]]
+                catalog_entry = query_catalog.find(query_id=new_report.query_id)
+                mf.feed = CATALOG_FEEDS.get(catalog_entry[0].tag)
 
             else:
 
@@ -470,7 +471,31 @@ async def parse_new_report_event(
 
         # build a monitored feed for all feeds not auto-disputing for
         threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)
-        monitored_feed = MonitoredFeed(DATAFEED_LOOKUP[new_report.query_id[2:]], threshold)
+        catalog = query_catalog.find(query_id=new_report.query_id)
+        if catalog:
+            tag = catalog[0].tag
+            feed = CATALOG_FEEDS.get(tag)
+            if feed is None:
+                logger.error(f"Unable to find feed for tag {tag}")
+                return None
+        else:
+            # have to check if feed's source supports generic queries and isn't a manual source
+            # where a manual input is required
+            auto_types = [
+                "GasPriceOracle",
+                "AmpleforthCustomSpotPrice",
+                "AmpleforthUSPCE",
+                "MimicryCollectionStat",
+                "MimicryNFTMarketIndex",
+                "MimicryMacroMarketMashup",
+            ]
+
+            if new_report.query_type not in auto_types:
+                logger.debug(f"Query type {new_report.query_type} doesn't have an auto source to compare value")
+                return None
+            feed = DataFeed(query=q, source=get_source_from_data(event_data.args._queryData))
+
+        monitored_feed = MonitoredFeed(feed, threshold)
 
     disputable = await monitored_feed.is_disputable(cfg, new_report.value)
     if disputable is None:
