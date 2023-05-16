@@ -140,6 +140,7 @@ async def setup_and_start(config, config_patches=None):
         stack.enter_context(patch("getpass.getpass", return_value=""))
         stack.enter_context(patch("tellor_disputables.alerts.send_text_msg", side_effect=print("alert sent")))
         stack.enter_context(patch("tellor_disputables.cli.TelliotConfig", new=lambda: config))
+        stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
 
         if config_patches is not None:
             for p in config_patches:
