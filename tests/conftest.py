@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 from hexbytes import HexBytes
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.directory import contract_directory
-from telliot_core.directory import ContractInfo
 from telliot_core.model.endpoints import RPCEndpoint
 from twilio.base.exceptions import TwilioException
 from web3 import Web3
@@ -17,6 +16,18 @@ from web3.datastructures import AttributeDict
 from tellor_disputables.alerts import get_twilio_client
 
 load_dotenv()
+
+
+@pytest.fixture(scope="function", autouse=True)
+def reset_chain():
+    """Reset the chain after each test"""
+    w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
+
+    snapshot_id = w3.provider.make_request("evm_snapshot", [])
+
+    yield
+
+    w3.provider.make_request("evm_revert", [snapshot_id["result"]])
 
 
 @pytest.fixture
@@ -69,7 +80,7 @@ def disputer_account():
     account_name = "disputer-test-acct"
 
     if not find_accounts(account_name, 1337):
-        ChainedAccount.add(account_name, 1337, os.getenv("PRIVATE_KEY"), "")
+        ChainedAccount.add(account_name, 1337, "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d", "")
 
     disputer = find_accounts(account_name, 1337)[0]
 
@@ -101,32 +112,41 @@ def check_twilio_configured() -> None:
 
 @pytest.fixture
 def setup():
-
+    """Setup contracts and fork mainnet for testing"""
     token_contract_info = contract_directory.find(name="trb-token", chain_id=1)[0]
     governance_contract_info = contract_directory.find(name="tellor-governance", chain_id=1)[0]
     oracle_contract_info = contract_directory.find(name="tellor360-oracle", chain_id=1)[0]
+    autopay_contract_info = contract_directory.find(name="tellor360-autopay", chain_id=1)[0]
 
     contract_directory.entries["tellor360-oracle"].address[1337] = oracle_contract_info.address[1]
-
-    forked_token = ContractInfo(
-        "trb-token-fork", "Ganache", {1337: token_contract_info.address[1]}, token_contract_info.abi_file
-    )
-    forked_governance = ContractInfo(
-        "tellor-governance-fork",
-        "Ganache",
-        {1337: governance_contract_info.address[1]},
-        governance_contract_info.abi_file,
-    )
-
-    contract_directory.add_entry(forked_token)
-    contract_directory.add_entry(forked_governance)
+    contract_directory.entries["trb-token"].address[1337] = token_contract_info.address[1]
+    contract_directory.entries["tellor360-autopay"].address[1337] = autopay_contract_info.address[1]
+    contract_directory.entries["tellor-governance"].address[1337] = governance_contract_info.address[1]
 
     cfg = TelliotConfig()
     cfg.main.chain_id = 1337
-    ganache_endpoint = RPCEndpoint(1337, url="http://localhost:8545")
+    ganache_endpoint = RPCEndpoint(1337, url="http://127.0.0.1:8545")
     cfg.endpoints.endpoints.append(ganache_endpoint)
+    mainnet_endpoint = cfg.endpoints.find(chain_id=1)
+    if mainnet_endpoint and mainnet_endpoint[0].url.endswith("{INFURA_API_KEY}"):
+        mainnet_endpoint[0].url = os.getenv("MAINNET_URL")
+
+    ganache_endpoint.connect()
+    w3 = ganache_endpoint.web3
+    token = w3.eth.contract(address=token_contract_info.address[1], abi=token_contract_info.get_abi(1))
+    transfer = token.get_function_by_name("transfer")
+    multisig_address = "0x39E419bA25196794B595B2a595Ea8E527ddC9856"
+    # transfer 100 TRB to the disputer account
+    token_txn = transfer("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1", int(100e18)).buildTransaction(
+        {
+            "gas": 500000,
+            "gasPrice": w3.eth.gas_price,
+            "nonce": w3.eth.get_transaction_count(multisig_address),
+            "from": multisig_address,
+        }
+    )
+    w3.eth.send_transaction(token_txn)
 
     yield cfg
 
-    del contract_directory.entries["trb-token-fork"], contract_directory.entries["tellor-governance-fork"]
     cfg.endpoints.endpoints.remove(ganache_endpoint)

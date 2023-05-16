@@ -8,6 +8,7 @@ from telliot_core.apps.telliot_config import TelliotConfig
 
 from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
 from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
+from src.tellor_disputables.utils import are_all_attributes_none
 from src.tellor_disputables.utils import disputable_str
 from src.tellor_disputables.utils import get_logger
 from src.tellor_disputables.utils import get_tx_explorer_url
@@ -61,3 +62,24 @@ def test_select_account():
         account = select_account(cfg, None)
 
     assert not account
+
+
+class TestObject:
+    def __init__(self, attr1=None, attr2=None, attr3=None):
+        self.attr1 = attr1
+        self.attr2 = attr2
+        self.attr3 = attr3
+
+
+def test_all_attributes_none():
+    obj = TestObject()
+    assert are_all_attributes_none(obj)
+
+
+def test_some_attributes_not_none():
+    obj = TestObject(None, "not none", None)
+    assert not are_all_attributes_none(obj)
+
+
+def test_no_object():
+    assert not are_all_attributes_none("obj")

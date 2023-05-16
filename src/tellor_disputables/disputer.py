@@ -120,7 +120,7 @@ async def dispute(
         func_name="beginDispute",
         _queryId=new_report.query_id,
         _timestamp=new_report.submission_timestamp,
-        gas_limit=800000,
+        gas_limit=1000000,
         legacy_gas_price=gas_price,
         acc_nonce=acc_nonce + 1,
     )
