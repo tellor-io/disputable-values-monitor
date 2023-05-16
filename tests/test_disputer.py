@@ -46,7 +46,9 @@ async def test_not_meant_to_dispute(caplog, disputer_account):
 
     await dispute(cfg, disp_config, account=disputer_account, new_report=report)
 
-    assert "Found disputable new report" in caplog.text
+    assert (
+        "Found disputable new report on chain_id 1337 outside selected Monitored Feeds, skipping dispute" in caplog.text
+    )
 
 
 @pytest.mark.asyncio
