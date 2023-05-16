@@ -107,3 +107,13 @@ def get_logger(name: str) -> logging.Logger:
     logger.addHandler(fh)
     logger.setLevel(logging.DEBUG)
     return logger
+
+
+def are_all_attributes_none(obj: object) -> bool:
+    """Check if all attributes of an object are None."""
+    if not hasattr(obj, "__dict__"):
+        return False
+    for attr in obj.__dict__:
+        if getattr(obj, attr) is not None:
+            return False
+    return True
