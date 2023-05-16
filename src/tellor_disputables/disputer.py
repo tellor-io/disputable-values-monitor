@@ -5,6 +5,7 @@ from chained_accounts import ChainedAccount
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.gas.legacy_gas import fetch_gas_price
 from web3 import Web3
+from web3.exceptions import ContractLogicError
 
 from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import get_contract
@@ -57,7 +58,7 @@ async def dispute(
     except ValueError:
         logger.error(f"Unable to dispute: can't connect to endpoint on chain id {new_report.chain_id}")
         return ""
-
+    w3 = endpoint.web3
     token = get_contract(cfg, name="trb-token", account=account)
     governance = get_contract(cfg, name="tellor-governance", account=account)
 
@@ -94,7 +95,7 @@ async def dispute(
         return ""
 
     try:
-        acc_nonce = endpoint.web3.eth.get_transaction_count(Web3.toChecksumAddress(account.address))
+        acc_nonce = w3.eth.get_transaction_count(Web3.toChecksumAddress(account.address))
     except Exception as e:
         logger.error(f"Unable to dispute on chain_id {new_report.chain_id}: could not retrieve account nonce: {e}")
         return ""
@@ -116,11 +117,26 @@ async def dispute(
 
     logger.info("Approval Tx Hash: " + str(tx_receipt.transactionHash.hex()))
 
+    begin_dispute_function = governance.contract.get_function_by_name("beginDispute")
+    begin_dispute_tx = begin_dispute_function(
+        _queryId=new_report.query_id,
+        _timestamp=new_report.submission_timestamp,
+    )
+    try:
+        msg = f"Unable to estimate gas usage for dispute on chain_id {new_report.chain_id}:"
+        # Estimate gas usage amount
+        gas_limit: int = begin_dispute_tx.estimateGas({"from": Web3.toChecksumAddress(account.address)})
+    except ContractLogicError as e:
+        logger.error(f"{msg} {e}")
+        return ""
+    except Exception as e:
+        logger.error(f"{msg} {e}")
+        return ""
     tx_receipt, status = await governance.write(
         func_name="beginDispute",
         _queryId=new_report.query_id,
         _timestamp=new_report.submission_timestamp,
-        gas_limit=1000000,
+        gas_limit=int(gas_limit * 1.2),
         legacy_gas_price=gas_price,
         acc_nonce=acc_nonce + 1,
     )
