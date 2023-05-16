@@ -143,7 +143,7 @@ async def start(
                         confidence_threshold=confidence_threshold,
                     )
                 except Exception as e:
-                    logger.error("unable to parse new report event! " + str(e))
+                    logger.error(f"unable to parse new report event on chain_id {chain_id}: {e}")
                     continue
 
                 # Skip duplicate & missing events

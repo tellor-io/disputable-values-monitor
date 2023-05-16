@@ -110,14 +110,14 @@ class MonitoredFeed(Base):
             trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
 
             if trusted_val is None:
-                logger.warning("trusted val was " + str(trusted_val))
+                logger.warning(f"trusted val was {trusted_val}")
                 return None
 
         else:
             trusted_val, _ = await general_fetch_new_datapoint(self.feed)
 
             if trusted_val is None:
-                logger.warning("trusted val was " + str(trusted_val))
+                logger.warning(f"trusted val was {trusted_val}")
                 return None
 
         if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
@@ -171,7 +171,7 @@ class MonitoredFeed(Base):
         else:
             logger.error(
                 f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
-                f"with reported val {reported_val!r} of type {type(reported_val)}"
+                f"with reported val {reported_val!r} of type {type(reported_val)} on chain_id {cfg.main.chain_id}"
             )
             return None
 
@@ -193,7 +193,7 @@ def get_contract_info(chain_id: int, name: str) -> Tuple[Optional[str], Optional
         return addr, abi
 
     else:
-        logger.info(f"Could not find contract info for contract {name} chain_id {chain_id}")
+        logger.debug(f"Could not find contract info for contract {name} chain_id {chain_id}")
         return None, None
 
 
@@ -245,7 +245,7 @@ def mk_filter(
     }
 
 
-async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
+async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     # go back 20 blocks; 10 for possible reorgs, the other 10 should cover for even the fastest chains. block/sec
     # 1000 is the max number of blocks that can be queried at once
@@ -254,9 +254,9 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
         block_number = web3.eth.get_block_number()
     except Exception as e:
         if "server rejected" in str(e):
-            logger.info("Attempted to connect to deprecated infura network. Please check configs!" + str(e))
+            logger.info(f"Attempted to connect to deprecated infura network. Please check configs! {e}")
         else:
-            logger.warning("unable to retrieve latest block number:" + str(e))
+            logger.warning(f"unable to retrieve latest block number from chain_id {chain_id}: {e}")
         return []
 
     event_filter = mk_filter(block_number - int(blocks), "latest", addr, topics)
@@ -266,19 +266,19 @@ async def log_loop(web3: Web3, addr: str, topics: list[str], wait: int) -> list[
     except Exception as e:
         msg = str(e)
         if "unknown block" in msg:
-            logger.error("waiting for new blocks")
+            logger.error(f"waiting for new blocks on chain_id {chain_id}")
         elif "request failed or timed out" in msg:
-            logger.error("request for eth event logs failed")
+            logger.error(f"request for eth event logs failed on chain_id {chain_id}")
         elif "Too Many Requests" in msg:
-            logger.info(f"Too many requests to node on chain_id {web3.eth.chain_id}")
+            logger.info(f"Too many requests to node on chain_id {chain_id}")
         else:
-            logger.error("unknown RPC error gathering eth event logs \n" + msg)
+            logger.error(f"unknown RPC error gathering eth event logs on chain_id {chain_id}\n {msg}")
         return []
 
     unique_events_list = []
     for event in events:
-        if (web3.eth.chain_id, event) not in unique_events_list:
-            unique_events_list.append((web3.eth.chain_id, event))
+        if (chain_id, event) not in unique_events_list:
+            unique_events_list.append((chain_id, event))
 
     return unique_events_list
 
@@ -297,9 +297,9 @@ async def chain_events(
                 endpoint.connect()
                 w3 = endpoint.web3
             except (IndexError, ValueError) as e:
-                logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+                logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: {e}")
                 continue
-            events_loop.append(log_loop(w3, address, topic, wait))
+            events_loop.append(log_loop(w3, chain_id, address, topic, wait))
     events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
 
     return events
@@ -315,10 +315,11 @@ async def get_events(
     for endpoint in cfg.endpoints.endpoints:
         if endpoint.url.endswith("{INFURA_API_KEY}"):
             continue
+        chain_id = endpoint.chain_id
         try:
             endpoint.connect()
         except Exception as e:
-            logger.warning("unable to connect to endpoint: " + str(e))
+            logger.warning(f"unable to connect to endpoint for chain_id {chain_id}: {e}")
             continue
 
         w3 = endpoint.web3
@@ -326,12 +327,12 @@ async def get_events(
         if not w3:
             continue
 
-        addr, _ = get_contract_info(endpoint.chain_id, contract_name)
+        addr, _ = get_contract_info(chain_id, contract_name)
 
         if not addr:
             continue
 
-        log_loops.append(log_loop(w3, addr, topics, wait))
+        log_loops.append(log_loop(w3, chain_id, addr, topics, wait))
 
     events_lists: List[List[tuple[int, Any]]] = await asyncio.gather(*log_loops)
 
@@ -393,7 +394,7 @@ async def parse_new_report_event(
             endpoint.connect()
             w3 = endpoint.web3
         except ValueError as e:
-            logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: " + str(e))
+            logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: {e}")
             return None
 
         codec = w3.codec
@@ -402,7 +403,7 @@ async def parse_new_report_event(
     q = get_query_from_data(event_data.args._queryData)
 
     if q is None:
-        logger.error("Unable to form query from queryData of query type" + new_report.query_type)
+        logger.error(f"Unable to form query from queryData of query type {new_report.query_type}")
         return None
 
     new_report.tx_hash = event_data.transactionHash.hex()
@@ -425,7 +426,7 @@ async def parse_new_report_event(
         try:
             feed_qid = HexBytes(mf.feed.query.query_id).hex()
         except Exception as e:
-            logger.error(f"Error while assembling query id: {mf.feed.query.descriptor}, {e}")
+            logger.error(f"Error while assembling query id for {mf.feed.query.descriptor}: {e}")
             feed_qid = None
 
         if feed_qid is None:
@@ -434,7 +435,7 @@ async def parse_new_report_event(
                 if are_all_attributes_none(mf.feed.query):
                     source = get_source_from_data(event_data.args._queryData)
                     if source is None:
-                        logger.error("Unable to form source from queryData of query type " + new_report.query_type)
+                        logger.error(f"Unable to form source from queryData of query type {new_report.query_type}")
                         return None
                     mf.feed = DataFeed(query=q, source=source)
                     monitored_feed = mf
@@ -449,7 +450,7 @@ async def parse_new_report_event(
                 source = get_source_from_data(event_data.args._queryData)
 
                 if source is None:
-                    logger.error("Unable to form source from queryData of query type" + new_report.query_type)
+                    logger.error(f"Unable to form source from queryData of query type {new_report.query_type}")
                     return None
 
                 mf.feed = DataFeed(query=q, source=source)
@@ -496,7 +497,7 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Optiona
         endpoint = cfg.get_endpoint()
         endpoint.connect()
     except ValueError as e:
-        logger.error(f"Unable to connect to endpoint on chain_id {cfg.main.chain_id}: " + str(e))
+        logger.error(f"Unable to connect to endpoint on chain_id {cfg.main.chain_id}: {e}")
         return None
 
     w3 = endpoint.web3
