@@ -201,7 +201,7 @@ async def test_dispute_using_sample_log(
     with mock.patch("telliot_core.contract.contract.Contract.write", side_effect=[mock_approve_tx, mock_dispute_tx]):
         await dispute(cfg, disp_config, disputer_account, new_report)
 
-    expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "Dispute Tx Link"]
+    expected_logs = ["balance", "Dispute Fee", "Approval Tx Hash", "revert no value exists at given timestamp"]
 
     for i in expected_logs:
         assert i in caplog.text
