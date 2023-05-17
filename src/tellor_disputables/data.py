@@ -408,11 +408,13 @@ async def parse_new_report_event(
         return None
 
     new_report.tx_hash = event_data.transactionHash.hex()
-    new_report.chain_id = endpoint.web3.eth.chain_id
+    new_report.chain_id = chain_id
     new_report.query_id = "0x" + event_data.args._queryId.hex()
     new_report.query_type = get_query_type(q)
     new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
     new_report.submission_timestamp = event_data.args._time  # in unix time
+    new_report.asset = getattr(q, "asset", "N/A")
+    new_report.currency = getattr(q, "currency", "N/A")
 
     try:
         new_report.value = q.value_type.decode(event_data.args._value)
