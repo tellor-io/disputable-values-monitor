@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import async_timeout
 import pytest
+from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
@@ -18,7 +19,7 @@ from web3 import Web3
 
 from tellor_disputables.cli import start
 
-
+# mainnet wallet used for testing
 wallet = "0x39E419bA25196794B595B2a595Ea8E527ddC9856"
 
 
@@ -61,7 +62,7 @@ def increase_time_and_mine_blocks(w3: Web3, seconds: int, num_blocks: Optional[i
 
 
 @pytest.fixture(scope="function")
-async def environment_setup(setup: TelliotConfig):
+async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccount):
     config = setup
     # only configure two required endpoints cause tests take too long
     config.endpoints.endpoints = [config.endpoints.find(chain_id=1)[0], config.endpoints.find(chain_id=1337)[0]]
@@ -73,10 +74,8 @@ async def environment_setup(setup: TelliotConfig):
     async with TelliotCore(config=config) as core:
         contracts = core.get_tellor360_contracts()
         # transfer trb to disputer account for disputing
-        token = contracts.token
-        account = token.account
         transfer_function = contracts.token.contract.get_function_by_name("transfer")
-        transfer_txn = transfer_function(w3.toChecksumAddress(account.address), int(100e18)).buildTransaction(
+        transfer_txn = transfer_function(w3.toChecksumAddress(disputer_account.address), int(100e18)).buildTransaction(
             txn_kwargs(w3)
         )
         transfer_hash = w3.eth.send_transaction(transfer_txn)
@@ -275,6 +274,10 @@ async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore]
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=mock_btc_config),
+        patch(
+            "telliot_feeds.sources.evm_call.EVMCallSource.fetch_new_datapoint",
+            AsyncMock(return_value=(int.to_bytes(2479, 32, "big"), 1679569268)),
+        ),
     ]
     # not disputing just alerting
     # if evm type is in dispute config it will be checked for equality
