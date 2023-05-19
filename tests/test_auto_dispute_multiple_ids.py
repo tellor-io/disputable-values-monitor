@@ -347,3 +347,27 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
         last_row = lines[-1]
 
         assert expected in last_row
+
+
+@pytest.mark.asyncio
+async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: Awaitable[TelliotCore]):
+    """Test when evm call response has the same value response but different timestamp"""
+    core = await submit_multiple_bad_values
+    config = core.config
+    # evm value that has same value but different block timestamp
+    evm_val = (int.to_bytes(12345, 32, "big"), 0)
+    config_patches = [
+        patch(
+            "telliot_feeds.sources.evm_call.EVMCallSource.fetch_new_datapoint",
+            AsyncMock(return_value=(evm_val, 0)),
+        ),
+    ]
+    await setup_and_start(True, config, config_patches)
+    expected = "Explorer not defined for chain_id 1337,EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
+
+    with open("table.csv", "r") as f:
+        lines = f.readlines()
+        # get the last row
+        last_row = lines[-1]
+
+        assert expected in last_row
