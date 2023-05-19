@@ -104,15 +104,20 @@ class MonitoredFeed(Base):
                 return True
 
             block_timestamp = reported_val[1]
+            reported_val = HexBytes(reported_val[0])
             cfg.main.chain_id = self.feed.query.chainId
 
             block_number = get_block_number_at_timestamp(cfg, block_timestamp)
 
             trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
-
-            if trusted_val is None:
-                logger.warning(f"trusted val was {trusted_val}")
+            if not isinstance(trusted_val, tuple):
+                logger.warning(f"Bad value response for EVMCall: {trusted_val}")
                 return None
+
+            if trusted_val[0] is None:
+                logger.warning(f"Unable to fetch trusted value for EVMCall: {trusted_val}")
+                return None
+            trusted_val = HexBytes(trusted_val[0])
 
         else:
             trusted_val, _ = await general_fetch_new_datapoint(self.feed)
@@ -260,7 +265,7 @@ async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str], wait
             logger.warning(f"unable to retrieve latest block number from chain_id {chain_id}: {e}")
         return []
 
-    event_filter = mk_filter(block_number - int(blocks), "latest", addr, topics)
+    event_filter = mk_filter(block_number - int(blocks), block_number, addr, topics)
 
     try:
         events = web3.eth.get_logs(event_filter)  # type: ignore
@@ -490,6 +495,7 @@ async def parse_new_report_event(
                 "MimicryCollectionStat",
                 "MimicryNFTMarketIndex",
                 "MimicryMacroMarketMashup",
+                "EVMCall",
             ]
 
             if new_report.query_type not in auto_types:

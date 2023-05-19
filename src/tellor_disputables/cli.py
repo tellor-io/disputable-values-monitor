@@ -1,5 +1,4 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
-import datetime
 import logging
 import warnings
 from time import sleep
@@ -200,9 +199,6 @@ async def start(
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
                 print(df.to_markdown(), end="\r")
-                now = datetime.datetime.now()
-                print(f"\n\nLast scan: {now.strftime('%H:%M:%S')}")
-                print(f"Next scan: {(now + datetime.timedelta(seconds=wait)).strftime('%H:%M:%S')}", end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
 
         sleep(wait)
