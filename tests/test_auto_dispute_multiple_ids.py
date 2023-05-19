@@ -276,7 +276,7 @@ async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore]
         patch("yaml.safe_load", return_value=mock_btc_config),
         patch(
             "telliot_feeds.sources.evm_call.EVMCallSource.fetch_new_datapoint",
-            AsyncMock(return_value=(int.to_bytes(2479, 32, "big"), 1679569268)),
+            AsyncMock(return_value=((int.to_bytes(2479, 32, "big"), 1679569268), 0)),
         ),
     ]
     # not disputing just alerting
