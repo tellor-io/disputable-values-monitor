@@ -175,6 +175,7 @@ async def start(
                         new_report.status_str,
                         new_report.asset,
                         new_report.currency,
+                        new_report.chain_id,
                     )
                 )
 
@@ -184,15 +185,18 @@ async def start(
                     del display_rows[0]
 
                 # Display table
-                _, times, links, _, values, disputable_strs, assets, currencies = zip(*display_rows)
+                _, times, links, query_type, values, disputable_strs, assets, currencies, chain = zip(*display_rows)
+
                 dataframe_state = dict(
                     When=times,
                     Transaction=links,
-                    # QueryType=query_types,
+                    QueryType=query_type,
                     Asset=assets,
                     Currency=currencies,
-                    Value=values,
+                    # split length of characters in the Values' column that overflow when displayed in cli
+                    Value=[f"{str(val)[:6]}...{str(val)[-5:]}" if len(str(val)) > 10 else val for val in values],
                     Disputable=disputable_strs,
+                    ChainId=chain,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
                 print(df.to_markdown(), end="\r")

@@ -7,10 +7,11 @@ from typing import Optional
 
 import yaml
 from box import Box
+from telliot_feeds.feeds import CATALOG_FEEDS
 from telliot_feeds.feeds import DataFeed
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
+from telliot_feeds.queries.query_catalog import query_catalog
 
-from tellor_disputables import DATAFEED_LOOKUP
 from tellor_disputables.data import Metrics
 from tellor_disputables.data import MonitoredFeed
 from tellor_disputables.data import Threshold
@@ -48,7 +49,7 @@ class AutoDisputerConfig:
         For each query id in the disputer-config.yaml...
 
         This function reads the selected query Ids from disputer-config.yaml,
-        then selects the matching DataFeed from tellor_disputables.DATAFEED_LOOKUP
+        then selects the matching DataFeed from telliot_feeds.query_catalog
         dict.
 
         It also reads the query Id's selected threshold from disputer-config.yaml
@@ -66,7 +67,12 @@ class AutoDisputerConfig:
                 try:
                     if hasattr(self.box.feeds[i], "query_id"):
                         query_id = self.box.feeds[i].query_id[2:]
-                        datafeed: DataFeed[Any] = DATAFEED_LOOKUP[query_id]
+                        catalog_entry = query_catalog.find(query_id=query_id)
+                        if not catalog_entry:
+                            logger.error(f"No corresponding datafeed found for query id: {query_id}")
+                            return None
+                        # if catalog entry exists for query id, feed exists
+                        datafeed: DataFeed[Any] = CATALOG_FEEDS.get(catalog_entry[0].tag)
                     elif hasattr(self.box.feeds[i], "query_type"):
                         query_type = self.box.feeds[i].query_type
                         datafeed = DATAFEED_BUILDER_MAPPING[query_type]
