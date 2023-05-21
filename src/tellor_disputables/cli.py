@@ -193,6 +193,7 @@ async def start(
                     QueryType=query_type,
                     Asset=assets,
                     Currency=currencies,
+                    # split length of characters in the Values' column that overflow when displayed in cli
                     Value=[f"{str(val)[:6]}...{str(val)[-5:]}" if len(str(val)) > 10 else val for val in values],
                     Disputable=disputable_strs,
                     ChainId=chain,
