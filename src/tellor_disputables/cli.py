@@ -100,13 +100,11 @@ async def start(
             cfg=cfg,
             contract_name="tellor360-oracle",
             topics=[Topics.NEW_REPORT],
-            wait=wait,
         )
         tellor_flex_report_events = await get_events(
             cfg=cfg,
             contract_name="tellorflex-oracle",
             topics=[Topics.NEW_REPORT],
-            wait=wait,
         )
         tellor360_events = await chain_events(
             cfg=cfg,
@@ -116,7 +114,6 @@ async def start(
                 5: "0x51c59c6cAd28ce3693977F2feB4CfAebec30d8a2",
             },
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
-            wait=wait,
         )
         event_lists += tellor360_events + tellor_flex_report_events
         for event_list in event_lists:
