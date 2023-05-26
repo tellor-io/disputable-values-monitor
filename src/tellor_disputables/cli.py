@@ -21,6 +21,7 @@ from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import clear_console
+from tellor_disputables.utils import format_values
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import select_account
@@ -178,6 +179,8 @@ async def start(
 
                 # Prune display
                 if len(display_rows) > 10:
+                    # sort by timestamp
+                    display_rows = sorted(display_rows, key=lambda x: x[1])
                     displayed_events.remove(display_rows[0][0])
                     del display_rows[0]
 
@@ -191,13 +194,17 @@ async def start(
                     Asset=assets,
                     Currency=currencies,
                     # split length of characters in the Values' column that overflow when displayed in cli
-                    Value=[f"{str(val)[:6]}...{str(val)[-5:]}" if len(str(val)) > 10 else val for val in values],
+                    Value=values,
                     Disputable=disputable_strs,
                     ChainId=chain,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
-                print(df.to_markdown(), end="\r")
+                df = df.sort_values("When")
+                df["Value"] = df["Value"].apply(format_values)
+                print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
+                # reset config to clear object attributes that were set during loop
+                disp_cfg = AutoDisputerConfig()
 
         sleep(wait)
 

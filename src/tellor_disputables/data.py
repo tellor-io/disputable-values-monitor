@@ -28,6 +28,8 @@ from telliot_feeds.queries.query import OracleQuery
 from telliot_feeds.queries.query_catalog import query_catalog
 from web3 import Web3
 from web3._utils.events import get_event_data
+from web3.exceptions import ExtraDataLengthError
+from web3.middleware import geth_poa_middleware
 from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
@@ -495,7 +497,6 @@ async def parse_new_report_event(
                 "MimicryCollectionStat",
                 "MimicryNFTMarketIndex",
                 "MimicryMacroMarketMashup",
-                "EVMCall",
             ]
 
             if new_report.query_type not in auto_types:
@@ -541,7 +542,12 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Optiona
 
     while start_block <= end_block:
         midpoint = math.floor((start_block + end_block) / 2)
-        block = w3.eth.get_block(midpoint)
+        # for poa chains get_block method throws an error if poa middleware is not injected
+        try:
+            block = w3.eth.get_block(midpoint)
+        except ExtraDataLengthError:
+            w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            block = w3.eth.get_block(midpoint)
 
         if block.timestamp == timestamp:
             return midpoint
