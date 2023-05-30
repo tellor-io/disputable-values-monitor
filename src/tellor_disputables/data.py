@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -27,11 +28,12 @@ from telliot_feeds.queries.query import OracleQuery
 from telliot_feeds.queries.query_catalog import query_catalog
 from web3 import Web3
 from web3._utils.events import get_event_data
+from web3.exceptions import ExtraDataLengthError
+from web3.middleware import geth_poa_middleware
 from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import NEW_REPORT_ABI
-from tellor_disputables import WAIT_PERIOD
 from tellor_disputables.utils import are_all_attributes_none
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
@@ -45,6 +47,10 @@ class Metrics(Enum):
     Percentage = "percentage"
     Equality = "equality"
     Range = "range"
+
+
+start_block: Dict[int, int] = {}
+inital_block_offset = 1000
 
 
 @dataclass
@@ -251,11 +257,8 @@ def mk_filter(
     }
 
 
-async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str], wait: int) -> list[tuple[int, Any]]:
+async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str]) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
-    # go back 20 blocks; 10 for possible reorgs, the other 10 should cover for even the fastest chains. block/sec
-    # 1000 is the max number of blocks that can be queried at once
-    blocks = min(20 * (wait / WAIT_PERIOD), 1000)
     try:
         block_number = web3.eth.get_block_number()
     except Exception as e:
@@ -264,8 +267,9 @@ async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str], wait
         else:
             logger.warning(f"unable to retrieve latest block number from chain_id {chain_id}: {e}")
         return []
-
-    event_filter = mk_filter(block_number - int(blocks), block_number, addr, topics)
+    from_block = start_block.get(chain_id, block_number - inital_block_offset)
+    from_block -= 10  # go back 10 more blocks to account for reorgs
+    event_filter = mk_filter(from_block, block_number, addr, topics)
 
     try:
         events = web3.eth.get_logs(event_filter)  # type: ignore
@@ -285,12 +289,12 @@ async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str], wait
     for event in events:
         if (chain_id, event) not in unique_events_list:
             unique_events_list.append((chain_id, event))
-
+    start_block[chain_id] = block_number
     return unique_events_list
 
 
 async def chain_events(
-    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], wait: int
+    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]]
 ) -> List[List[tuple[int, Any]]]:
     """"""
     events_loop = []
@@ -305,15 +309,13 @@ async def chain_events(
             except (IndexError, ValueError) as e:
                 logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: {e}")
                 continue
-            events_loop.append(log_loop(w3, chain_id, address, topic, wait))
+            events_loop.append(log_loop(w3, chain_id, address, topic))
     events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
 
     return events
 
 
-async def get_events(
-    cfg: TelliotConfig, contract_name: str, topics: list[str], wait: int
-) -> List[List[tuple[int, Any]]]:
+async def get_events(cfg: TelliotConfig, contract_name: str, topics: list[str]) -> List[List[tuple[int, Any]]]:
     """Get all events from all live Tellor networks"""
 
     log_loops = []
@@ -338,7 +340,7 @@ async def get_events(
         if not addr:
             continue
 
-        log_loops.append(log_loop(w3, chain_id, addr, topics, wait))
+        log_loops.append(log_loop(w3, chain_id, addr, topics))
 
     events_lists: List[List[tuple[int, Any]]] = await asyncio.gather(*log_loops)
 
@@ -495,7 +497,6 @@ async def parse_new_report_event(
                 "MimicryCollectionStat",
                 "MimicryNFTMarketIndex",
                 "MimicryMacroMarketMashup",
-                "EVMCall",
             ]
 
             if new_report.query_type not in auto_types:
@@ -541,7 +542,12 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Optiona
 
     while start_block <= end_block:
         midpoint = math.floor((start_block + end_block) / 2)
-        block = w3.eth.get_block(midpoint)
+        # for poa chains get_block method throws an error if poa middleware is not injected
+        try:
+            block = w3.eth.get_block(midpoint)
+        except ExtraDataLengthError:
+            w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            block = w3.eth.get_block(midpoint)
 
         if block.timestamp == timestamp:
             return midpoint

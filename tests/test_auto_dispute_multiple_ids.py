@@ -17,8 +17,11 @@ from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
+from tellor_disputables import data
 from tellor_disputables.cli import start
 
+# during testing there aren't that many blocks so setting offset to 0
+data.inital_block_offset = 0
 # mainnet wallet used for testing
 wallet = "0x39E419bA25196794B595B2a595Ea8E527ddC9856"
 
@@ -303,7 +306,7 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
     assert receipt["status"] == 1
 
     await setup_and_start(False, config)
-    expected = "Explorer not defined for chain_id 1337,AmpleforthCustomSpotPrice,N/A,N/A,1e-18,yes ❗📲"
+    expected = "Explorer not defined for chain_id 1337,AmpleforthCustomSpotPrice,N/A,N/A,0.0000,yes ❗📲"
 
     with open("table.csv", "r") as f:
         lines = f.readlines()
@@ -339,7 +342,7 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
         )
     ]
     await setup_and_start(False, config, config_patches)
-    expected = "Explorer not defined for chain_id 1337,GasPriceOracle,N/A,N/A,46.613,yes ❗📲"
+    expected = "Explorer not defined for chain_id 1337,GasPriceOracle,N/A,N/A,46.6130,yes ❗📲"
 
     with open("table.csv", "r") as f:
         lines = f.readlines()
