@@ -3,7 +3,6 @@ from typing import Optional
 
 from chained_accounts import ChainedAccount
 from telliot_core.apps.telliot_config import TelliotConfig
-from telliot_core.gas.legacy_gas import fetch_gas_price
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
@@ -101,13 +100,12 @@ async def dispute(
         return ""
 
     # write approve(governance contract, disputeFee) and log "token approved" if successful
-    gas_price = await fetch_gas_price()
     tx_receipt, status = await token.write(
         "approve",
         spender=governance.address,
         amount=dispute_fee * 100,
         gas_limit=60000,
-        legacy_gas_price=gas_price,
+        legacy_gas_price=w3.fromWei(w3.eth.gas_price, "gwei"),
         acc_nonce=acc_nonce,
     )
 
@@ -137,7 +135,7 @@ async def dispute(
         _queryId=new_report.query_id,
         _timestamp=new_report.submission_timestamp,
         gas_limit=int(gas_limit * 1.2),
-        legacy_gas_price=gas_price,
+        legacy_gas_price=w3.fromWei(w3.eth.gas_price, "gwei"),
         acc_nonce=acc_nonce + 1,
     )
 
