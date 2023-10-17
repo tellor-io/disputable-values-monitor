@@ -11,10 +11,10 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 
 from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.alerts import alert
-from tellor_disputables.alerts import dispute_alert
-from tellor_disputables.alerts import generic_alert
-from tellor_disputables.alerts import get_twilio_info
+from tellor_disputables.discord import alert
+from tellor_disputables.discord import dispute_alert
+from tellor_disputables.discord import generic_alert
+from tellor_disputables.discord import get_alert_bot
 from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
@@ -76,9 +76,9 @@ async def start(
     disp_cfg = AutoDisputerConfig()
     print_title_info()
 
-    from_number, recipients = get_twilio_info()
-    if from_number is None or recipients is None:
-        logger.error("Missing phone numbers. See README for required environment variables. Exiting.")
+    alert_bot = get_alert_bot()
+    if alert_bot is None:
+        logger.error("Missing Disord webhook URL. See README for required environment variables. Exiting.")
         return
 
     if not disp_cfg.monitored_feeds:
@@ -104,7 +104,7 @@ async def start(
         )
         tellor_flex_report_events = await get_events(
             cfg=cfg,
-            contract_name="tellorflex-oracle",
+            contract_name="tellor360-oracle",
             topics=[Topics.NEW_REPORT],
         )
         tellor360_events = await chain_events(
@@ -156,7 +156,7 @@ async def start(
                 if is_disputing:
                     click.echo("...Now with auto-disputing!")
 
-                alert(all_values, new_report, recipients, from_number)
+                alert(all_values, new_report)
 
                 if is_disputing and new_report.disputable:
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)
