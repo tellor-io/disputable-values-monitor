@@ -3,22 +3,12 @@ import os
 from typing import List
 from typing import Optional
 from typing import Tuple
-from hexbytes import HexBytes
-from web3.datastructures import AttributeDict
 
 import click
 from discordwebhook import Discord
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables.data import NewReport
-from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
-
-
-def get_alert_bot() -> Tuple[Optional[str], Optional[List[str]]]:
-    """Read the Discord webhook url from the environment."""
-    DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-    alert_bot = Discord(url=DISCORD_WEBHOOK_URL)
-    return alert_bot if alert_bot is not None else None
 
 
 def generic_alert(msg: str) -> None:
@@ -26,6 +16,13 @@ def generic_alert(msg: str) -> None:
     alert_bot = get_alert_bot()
     alert_bot.post(content=msg)
     return
+
+
+def get_alert_bot() -> Tuple[Optional[str], Optional[List[str]]]:
+    """Read the Discord webhook url from the environment."""
+    DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+    alert_bot = Discord(url=DISCORD_WEBHOOK_URL)
+    return alert_bot if alert_bot is not None else None
 
 
 def dispute_alert(msg: str) -> None:
@@ -36,11 +33,13 @@ def dispute_alert(msg: str) -> None:
     return
 
 
-def alert(all_values: bool, new_report: NewReport) -> None:
+def alert(all_values: bool, new_report: NewReport, alert_bot: Discord) -> None:
+
+    alert_bot = get_alert_bot()
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         msg = generate_alert_msg(False, new_report.link)
-        send_discord_msg(msg)
+        send_discord_msg(alert_bot, msg)
 
         return
 
@@ -52,11 +51,12 @@ def alert(all_values: bool, new_report: NewReport) -> None:
     # If user wants ALL NewReports
     if all_values:
         msg = generate_alert_msg(False, new_report.link)
-        send_discord_msg(msg)
+        send_discord_msg(alert_bot, msg)
 
     else:
         if new_report.disputable:
-            send_discord_msg(msg)
+            msg = generate_alert_msg(True, new_report.link)
+            send_discord_msg(alert_bot, msg)
 
 
 def generate_alert_msg(disputable: bool, link: str) -> str:
@@ -69,7 +69,7 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
         return f"\n❗NEW VALUE❗\n{link}"
 
 
-def send_discord_msg(msg: str) -> None:
+def send_discord_msg(alert_bot: Discord, msg: str) -> None:
     """Send Discord alert."""
     try:
         click.echo("Alert sent!")

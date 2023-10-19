@@ -13,7 +13,7 @@ from twilio.base.exceptions import TwilioException
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
-from tellor_disputables.alerts import get_twilio_client
+from tellor_disputables.discord import get_alert_bot
 
 load_dotenv()
 
@@ -102,10 +102,10 @@ def disputer_account():
 
 
 @pytest.fixture
-def check_twilio_configured() -> None:
+def check_discord_configured() -> None:
     try:
-        _ = get_twilio_client()
-    except TwilioException as e:
+        _ = get_alert_bot()
+    except Exception as e:
         warnings.warn(str(e), stacklevel=2)
         pytest.skip(str(e))
 

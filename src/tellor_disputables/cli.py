@@ -104,7 +104,7 @@ async def start(
         )
         tellor_flex_report_events = await get_events(
             cfg=cfg,
-            contract_name="tellor360-oracle",
+            contract_name="tellorflex-oracle",
             topics=[Topics.NEW_REPORT],
         )
         tellor360_events = await chain_events(
@@ -156,7 +156,7 @@ async def start(
                 if is_disputing:
                     click.echo("...Now with auto-disputing!")
 
-                alert(all_values, new_report)
+                alert(all_values, new_report, alert_bot)
 
                 if is_disputing and new_report.disputable:
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)
