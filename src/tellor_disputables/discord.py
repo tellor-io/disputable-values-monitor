@@ -71,8 +71,11 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
 
 def send_discord_msg(msg: str) -> None:
     """Send Discord alert."""
-    click.echo("Alert sent!")
-    alert_bot = get_alert_bot()
-    alert_bot.post(content=msg)
+    try:
+        click.echo("Alert sent!")
+        alert_bot = get_alert_bot()
+        alert_bot.post(content=msg)
+    except Exception as e:
+        print("No Webhook URL found. See documentation or try 'source vars.sh' commamnd.")
 
-
+    return
