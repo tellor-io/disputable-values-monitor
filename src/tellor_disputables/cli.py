@@ -130,7 +130,7 @@ async def start(
                 ):
                     link = get_tx_explorer_url(cfg=cfg, tx_hash=event.transactionHash.hex())
                     msg = f"\n❗NEW ORACLE ADDRESS ALERT❗\n{link}"
-                    generic_alert(from_number=from_number, recipients=recipients, msg=msg)
+                    generic_alert(msg=msg)
                     continue
 
                 try:
@@ -161,7 +161,7 @@ async def start(
                 if is_disputing and new_report.disputable:
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)
                     if success_msg:
-                        dispute_alert(success_msg, recipients, from_number)
+                        dispute_alert(success_msg)
 
                 display_rows.append(
                     (
