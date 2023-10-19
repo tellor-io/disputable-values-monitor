@@ -9,7 +9,6 @@ from hexbytes import HexBytes
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.directory import contract_directory
 from telliot_core.model.endpoints import RPCEndpoint
-from twilio.base.exceptions import TwilioException
 from web3 import Web3
 from web3.datastructures import AttributeDict
 

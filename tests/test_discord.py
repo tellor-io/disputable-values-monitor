@@ -32,7 +32,7 @@ def test_notify_typical_disputable(capsys):
             "status ",
         )
 
-        alert(False, r)
+        alert(False, r, Discord)
 
         assert "alert sent" in capsys.readouterr().out
 
@@ -75,11 +75,11 @@ def test_notify_non_disputable(capsys):
             None,
             "status ",
         )
-        alert(True, r)
+        alert(True, r, Discord)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r)
+        alert(False, r, Discord)
 
         assert "second alert sent" not in capsys.readouterr().out
 
@@ -108,10 +108,10 @@ def test_notify_always_alertable_value(capsys):
             None,
             "status ",
         )
-        alert(True, r)
+        alert(True, r, Discord)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r)
+        alert(False, r, Discord)
 
         assert "second alert sent" not in capsys.readouterr().out
