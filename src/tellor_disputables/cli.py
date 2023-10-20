@@ -2,7 +2,7 @@
 import logging
 import warnings
 from time import sleep
-
+from typing import Optional
 import click
 import pandas as pd
 from chained_accounts import ChainedAccount
@@ -68,12 +68,12 @@ async def main(all_values: bool, wait: int, account_name: str, is_disputing: boo
 
 
 async def start(
-    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float
+    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: Optional[float] = None
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
-    disp_cfg = AutoDisputerConfig()
+    disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
     print_title_info()
 
     alert_bot = get_alert_bot()
@@ -204,7 +204,7 @@ async def start(
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
                 # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig()
+                disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
 
         sleep(wait)
 

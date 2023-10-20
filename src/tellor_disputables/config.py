@@ -25,7 +25,8 @@ class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
 
-    def __init__(self) -> None:
+    def __init__(self, is_disputing: bool, confidence_flag: Optional[float]) -> None:
+        self.confidence = None if is_disputing else confidence_flag
 
         try:
             with open("disputer-config.yaml", "r") as f:
@@ -96,7 +97,7 @@ class AutoDisputerConfig:
                     if threshold_type.lower() == "equality":
                         threshold_amount = None
                     else:
-                        threshold_amount = self.box.feeds[i].threshold.amount
+                        threshold_amount = self.box.feeds[i].threshold.amount if self.confidence is None else self.confidence
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
