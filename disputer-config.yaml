@@ -25,31 +25,6 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
     threshold:
       type: Percentage
       amount: 0.75 # 75%
-#SWETH/USD
-  - query_id: "0xfd47fa335a8c4886222ebae89a8de8d4a0187eb06c4429d3c0a7932332d2430d"
-    threshold:
-      type: Percentage
-      amount: 0.75 # 75%
-#BRL/USD
-  - query_id: "0x7f3fc5bbf0bcc372beece1d2711095b6c884c69e21dad1180f2160adfcd8b044"
-    threshold:
-      type: Percentage
-      amount: 0.75 # 75%
-#CNY/USD
-  - query_id: "0x2c81613b335c890096fd1c9a89766a2d71da2c9636505a9cb3b3dc7877cdad4b"
-    threshold:
-      type: Percentage
-      amount: 0.75 # 75%
-#WSTETH/USD
-  - query_id: "0x1962cde2f19178fe2bb2229e78a6d386e6406979edc7b9a1966d89d83b3ebf2e"
-    threshold:
-      type: Percentage
-      amount: 0.75 # 75%
-#CBETH/USD
-  - query_id: "0xbb5e0a51ab0e06354439f377e326ca71ec8149249d163f75f543fcdc25818e76"
-    threshold:
-      type: Percentage
-      amount: 0.75 # 75%
   - query_type: EVMCall
     threshold:
       type: Equality
