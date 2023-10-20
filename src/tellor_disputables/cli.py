@@ -2,7 +2,7 @@
 import logging
 import warnings
 from time import sleep
-from typing import Optional
+
 import click
 import pandas as pd
 from chained_accounts import ChainedAccount
@@ -68,7 +68,7 @@ async def main(all_values: bool, wait: int, account_name: str, is_disputing: boo
 
 
 async def start(
-    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: Optional[float] = None
+    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()

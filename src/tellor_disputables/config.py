@@ -25,7 +25,7 @@ class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
 
-    def __init__(self, is_disputing: bool, confidence_flag: Optional[float]) -> None:
+    def __init__(self, is_disputing: bool, confidence_flag: float) -> None:
         self.confidence = None if is_disputing else confidence_flag
 
         try:
@@ -97,7 +97,9 @@ class AutoDisputerConfig:
                     if threshold_type.lower() == "equality":
                         threshold_amount = None
                     else:
-                        threshold_amount = self.box.feeds[i].threshold.amount if self.confidence is None else self.confidence
+                        threshold_amount = (
+                            self.box.feeds[i].threshold.amount if self.confidence is None else self.confidence
+                        )
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -117,4 +119,4 @@ class AutoDisputerConfig:
 
 if __name__ == "__main__":
 
-    print(AutoDisputerConfig())
+    print(AutoDisputerConfig(is_disputing=False, confidence_flag=0.5))
