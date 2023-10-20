@@ -1,8 +1,5 @@
 """Send text messages using Twilio."""
 import os
-from typing import List
-from typing import Optional
-from typing import Tuple
 
 import click
 from discordwebhook import Discord
@@ -18,7 +15,7 @@ def generic_alert(msg: str) -> None:
     return
 
 
-def get_alert_bot() -> Tuple[Optional[str], Optional[List[str]]]:
+def get_alert_bot() -> Discord:
     """Read the Discord webhook url from the environment."""
     DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
     alert_bot = Discord(url=DISCORD_WEBHOOK_URL)
@@ -76,6 +73,6 @@ def send_discord_msg(alert_bot: Discord, msg: str) -> None:
         alert_bot = get_alert_bot()
         alert_bot.post(content=msg)
     except Exception as e:
-        print("No Webhook URL found. See documentation or try 'source vars.sh' commamnd.")
+        print(f"No Webhook URL found. See documentation or try 'source vars.sh' commamnd. Also: {e}")
 
     return

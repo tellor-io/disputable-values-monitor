@@ -53,4 +53,3 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
   - query_type: EVMCall
     threshold:
       type: Equality
-

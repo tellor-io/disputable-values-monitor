@@ -11,14 +11,14 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 
 from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.discord import alert
-from tellor_disputables.discord import dispute_alert
-from tellor_disputables.discord import generic_alert
-from tellor_disputables.discord import get_alert_bot
 from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import chain_events
 from tellor_disputables.data import get_events
 from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.discord import alert
+from tellor_disputables.discord import dispute_alert
+from tellor_disputables.discord import generic_alert
+from tellor_disputables.discord import get_alert_bot
 from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import clear_console
 from tellor_disputables.utils import format_values
