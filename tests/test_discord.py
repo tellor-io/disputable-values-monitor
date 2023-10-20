@@ -1,14 +1,13 @@
 """Tests for generating alert messages."""
-import os
 import time
 from unittest import mock
 
 from discordwebhook import Discord
 
+from tellor_disputables.data import NewReport
 from tellor_disputables.discord import alert
 from tellor_disputables.discord import generate_alert_msg
 from tellor_disputables.discord import get_alert_bot
-from tellor_disputables.data import NewReport
 
 
 def test_notify_typical_disputable(capsys):

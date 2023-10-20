@@ -76,6 +76,6 @@ def send_discord_msg(alert_bot: Discord, msg: str) -> None:
         alert_bot = get_alert_bot()
         alert_bot.post(content=msg)
     except Exception as e:
-        print("No Webhook URL found. See documentation or try 'source vars.sh' commamnd.")
+        print(f"No Webhook URL found. See documentation or try 'source vars.sh' commamnd. Also: {e}")
 
     return
