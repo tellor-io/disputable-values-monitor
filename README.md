@@ -6,7 +6,7 @@ A CLI dashboard & text alerts app for disputing bad values reported to Tellor or
 ## Introduction
 
 The Disputable Values Monitor is a tool that anyone can use to:
-- Monitor / view data submitted to Tellor oracle contracts 
+- Monitor / view data submitted to Tellor oracle contracts
 - Send Discord alerts for unusual data submissions
 - Automatically dispute wildly inaccurate values
 
@@ -14,7 +14,7 @@ The Disputable Values Monitor is a tool that anyone can use to:
 
 ### Prerequisites:
 - A discord server where you can create a channel and a bot for recieving alerts sent by the Disputable Values Monitor via webhook. See the "Making a Webhook" section of the Discord documentation [here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks/).
-- Install Python 3.9 and/or verify that it is the current version: 
+- Install Python 3.9 and/or verify that it is the current version:
 ```bash
 python -V
 ```
@@ -51,11 +51,11 @@ source vars.sh
 
 ### Set the chains you want to monitor
 
-- Initialize telliot configuration: 
+- Initialize telliot configuration:
 ```bash
 `poetry run telliot config init`
 ```
-You should now have a `telliot` folder in your home directory. 
+You should now have a `telliot` folder in your home directory.
 
 - Open `~/telliot/endpoints.yaml` with your favorite text editor. The Disputable-Values-Monitor will check reports on each chain that is configured in this list. Remove the networks that you don't want to monitor, and provide and endpoint url for those that you do. For example, if you want to monitor reports on Ethereum Mainnet and Sepolia testnet, your endpoints.yaml file should look like this:
 ```
@@ -81,7 +81,7 @@ endpoints:
 ```bash
 cli
 ```
-Enter `y` to confirm alerts only. 
+Enter `y` to confirm alerts only.
 
 ### Options / Flags
 
@@ -93,7 +93,7 @@ Enter `y` to confirm alerts only.
 
 ### Run the DVM for Automatic Disputes
 
-**Disclaimer:** 
+**Disclaimer:**
 *Disputing Tellor values requires staking TRB tokens that can be lost if the community votes in favor of the reporter. There is no guarantee that this software will correctly identify bad values. Use this auto-disputing functionality at your own risk. Experimenting on a testnet before using any real funds is HIGHLY recommended.
 
 1) Create a telliot account using the private key for the address that holds your TRB to be used for dispute fees and gas (ETH, or other) for network fees:
@@ -104,7 +104,7 @@ Where `1 10 137 11155111` are the network IDs for the networks you want to be ab
 
 2) Edit `dipsuter-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added  by providing the `query_id`, `threshold` `type` and `amount`.
 
-The provided configuation is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM: 
+The provided configuation is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM:
 ```yaml
 # AutoDisputer configuration file
 feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
