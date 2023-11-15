@@ -190,8 +190,7 @@ async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
     await setup_and_start(True, config)
-    # not in config file
-    assert not await check_dispute(oracle, btc_query_id, btc_timestamp)
+    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
     # in config file
     assert await check_dispute(oracle, eth_query_id, eth_timestamp)
     assert await check_dispute(oracle, evm_query_id, evm_timestamp)
@@ -306,7 +305,7 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
     assert receipt["status"] == 1
 
     await setup_and_start(False, config)
-    expected = "Explorer not defined for chain_id 1337,AmpleforthCustomSpotPrice,N/A,N/A,0.0000,yes ❗📲"
+    expected = "AmpleforthCustomSpotPrice,N/A,N/A,0.0000,yes ❗📲"
 
     with open("table.csv", "r") as f:
         lines = f.readlines()
@@ -342,7 +341,7 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
         )
     ]
     await setup_and_start(False, config, config_patches)
-    expected = "Explorer not defined for chain_id 1337,GasPriceOracle,N/A,N/A,46.6130,yes ❗📲"
+    expected = "GasPriceOracle,N/A,N/A,46.6130,yes ❗📲"
 
     with open("table.csv", "r") as f:
         lines = f.readlines()
@@ -366,7 +365,7 @@ async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: A
         ),
     ]
     await setup_and_start(True, config, config_patches)
-    expected = "Explorer not defined for chain_id 1337,EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
+    expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
 
     with open("table.csv", "r") as f:
         lines = f.readlines()

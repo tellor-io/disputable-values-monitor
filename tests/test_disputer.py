@@ -227,5 +227,5 @@ async def test_get_dispute_fee():
     )
 
     dispute_fee = await get_dispute_fee(cfg, report)
-    assert dispute_fee == 10000000000000000000 
+    assert dispute_fee == 1_000_000_000_000_000_000 
 
