@@ -21,7 +21,7 @@ def test_build_single_feed_from_yaml():
     """
 
     with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
-        auto_disp_cfg = AutoDisputerConfig()
+        auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
 
     assert isinstance(auto_disp_cfg, AutoDisputerConfig)
     assert len(auto_disp_cfg.monitored_feeds) == 1
@@ -46,7 +46,7 @@ def test_build_multiple_feeds_from_yaml():
     """
 
     with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
-        auto_disp_cfg = AutoDisputerConfig()
+        auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
 
     assert isinstance(auto_disp_cfg, AutoDisputerConfig)
     assert len(auto_disp_cfg.monitored_feeds) == 2
@@ -73,7 +73,7 @@ def test_invalid_yaml_config():
     """
 
     with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
-        auto_disp_cfg = AutoDisputerConfig()
+        auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
 
     assert not auto_disp_cfg.monitored_feeds
 
@@ -89,7 +89,7 @@ def test_form_evm_call_feed_from_yaml():
     """
 
     with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
-        auto_disp_cfg = AutoDisputerConfig()
+        auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
 
     assert auto_disp_cfg.monitored_feeds
 

@@ -10,8 +10,7 @@ from tellor_disputables.data import NewReport
 
 def generic_alert(msg: str) -> None:
     """Send a Discord message via webhook."""
-    alert_bot = get_alert_bot()
-    alert_bot.post(content=msg)
+    send_discord_msg(get_alert_bot(), msg)
     return
 
 
@@ -24,8 +23,7 @@ def get_alert_bot() -> Discord:
 
 def dispute_alert(msg: str) -> None:
     """send an alert that the dispute was successful to the user"""
-    alert_bot = get_alert_bot()
-    alert_bot.post(content=msg)
+    send_discord_msg(get_alert_bot(), msg)
     print(msg)
     return
 
@@ -70,7 +68,6 @@ def send_discord_msg(alert_bot: Discord, msg: str) -> None:
     """Send Discord alert."""
     try:
         click.echo("Alert sent!")
-        alert_bot = get_alert_bot()
         alert_bot.post(content=msg)
     except Exception as e:
         print(f"No Webhook URL found. See documentation or try 'source vars.sh' commamnd. Also: {e}")
