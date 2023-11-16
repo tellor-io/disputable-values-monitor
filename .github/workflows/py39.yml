@@ -14,10 +14,6 @@ jobs:
     runs-on: "ubuntu-latest"
     env:
       USING_COVERAGE: '3.9'
-      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }} 
-      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-      TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
-      ALERT_RECIPIENTS: ${{ secrets.ALERT_RECIPIENTS }}
       NODE_URL: ${{ secrets.NODE_URL }}
       MAINNET_URL: ${{ secrets.MAINNET_URL }}
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
@@ -41,6 +37,7 @@ jobs:
           apt-get update && apt-get install -y npm
           npm install -g ganache-cli
           poetry env use 3.9 && poetry install
+          pip freeze
       - name: Start Ganache
         run: nohup ganache-cli --fork ${{ secrets.MAINNET_URL }}@18581106 -l 3000000000 -d -p 8545 -u 0x39e419ba25196794b595b2a595ea8e527ddc9856 &
       - name: "Run poetry pytest for ${{ matrix.python-version }}"
