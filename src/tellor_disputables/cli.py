@@ -58,6 +58,8 @@ def print_title_info() -> None:
 @async_run
 async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
+    # Raises exception if no webhook url is found
+    _ = get_alert_bot()
     await start(
         all_values=all_values,
         wait=wait,
@@ -75,11 +77,6 @@ async def start(
     cfg.main.chain_id = 1
     disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
     print_title_info()
-
-    alert_bot = get_alert_bot()
-    if alert_bot is None:
-        logger.error("Missing Disord webhook URL. See README for required environment variables. Exiting.")
-        return
 
     if not disp_cfg.monitored_feeds:
         logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
@@ -156,7 +153,7 @@ async def start(
                 if is_disputing:
                     click.echo("...Now with auto-disputing!")
 
-                alert(all_values, new_report, alert_bot)
+                alert(all_values, new_report)
 
                 if is_disputing and new_report.disputable:
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)

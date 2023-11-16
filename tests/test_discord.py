@@ -1,6 +1,7 @@
 """Tests for generating alert messages."""
 import time
 from unittest import mock
+from unittest import TestCase
 
 from discordwebhook import Discord
 
@@ -31,7 +32,7 @@ def test_notify_typical_disputable(capsys):
             "status ",
         )
 
-        alert(False, r, Discord)
+        alert(False, r)
 
         assert "alert sent" in capsys.readouterr().out
 
@@ -45,7 +46,9 @@ def test_generate_alert_msg():
     assert "DISPUTABLE VALUE" in msg
 
 
-def test_get_alert_bot(check_discord_configured):
+@mock.patch("os.getenv")
+def test_get_alert_bot(mock_getenv):
+    mock_getenv.return_value = "a"
     alert_bot = get_alert_bot()
 
     assert isinstance(alert_bot, Discord)
@@ -74,11 +77,11 @@ def test_notify_non_disputable(capsys):
             None,
             "status ",
         )
-        alert(True, r, Discord)
+        alert(True, r)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r, Discord)
+        alert(False, r)
 
         assert "second alert sent" not in capsys.readouterr().out
 
@@ -107,10 +110,29 @@ def test_notify_always_alertable_value(capsys):
             None,
             "status ",
         )
-        alert(True, r, Discord)
+        alert(True, r)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r, Discord)
+        alert(False, r)
 
         assert "second alert sent" not in capsys.readouterr().out
+
+
+def test_discord_object_return_if_no_webhook():
+    alert_bot = Discord(url=None)
+    assert isinstance(alert_bot, Discord)
+    assert alert_bot is not None
+
+
+@mock.patch("os.getenv")
+def test_alert_bot_if_no_webhook(mock_getenv):
+    mock_getenv.return_value = None
+    with TestCase().assertRaises(Exception) as context:
+        get_alert_bot()
+    assert "No DISCORD_WEBHOOK_URL found. See documentation or try 'source vars.sh' command." in str(context.exception)
+    mock_getenv.return_value = "a"
+    alert_bot = get_alert_bot()
+    assert isinstance(alert_bot, Discord)
+    assert alert_bot.url == "a"
+    assert alert_bot.url is not None
