@@ -1,5 +1,4 @@
 import os
-import warnings
 
 import pytest
 from chained_accounts import ChainedAccount
@@ -12,7 +11,6 @@ from telliot_core.model.endpoints import RPCEndpoint
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
-from tellor_disputables.discord import get_alert_bot
 
 load_dotenv()
 
@@ -98,15 +96,6 @@ def disputer_account():
     )
 
     return disputer
-
-
-@pytest.fixture
-def check_discord_configured() -> None:
-    try:
-        _ = get_alert_bot()
-    except Exception as e:
-        warnings.warn(str(e), stacklevel=2)
-        pytest.skip(str(e))
 
 
 @pytest.fixture
