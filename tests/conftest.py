@@ -1,5 +1,4 @@
 import os
-import warnings
 
 import pytest
 from chained_accounts import ChainedAccount
@@ -9,11 +8,9 @@ from hexbytes import HexBytes
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.directory import contract_directory
 from telliot_core.model.endpoints import RPCEndpoint
-from twilio.base.exceptions import TwilioException
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
-from tellor_disputables.alerts import get_twilio_client
 
 load_dotenv()
 
@@ -99,15 +96,6 @@ def disputer_account():
     )
 
     return disputer
-
-
-@pytest.fixture
-def check_twilio_configured() -> None:
-    try:
-        _ = get_twilio_client()
-    except TwilioException as e:
-        warnings.warn(str(e), stacklevel=2)
-        pytest.skip(str(e))
 
 
 @pytest.fixture

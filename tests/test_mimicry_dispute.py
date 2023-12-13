@@ -91,13 +91,13 @@ async def test_disputability_mimicry_nft_index_type(setup, disputer_account):
     ):
         parse_first_event = await parse_new_report_event(
             cfg,
-            monitored_feeds=AutoDisputerConfig().monitored_feeds,
+            monitored_feeds=AutoDisputerConfig(is_disputing=True, confidence_flag=None).monitored_feeds,
             confidence_threshold=0.75,
             log=first_receipt["logs"][1],
         )
         parse_second_event = await parse_new_report_event(
             cfg,
-            monitored_feeds=AutoDisputerConfig().monitored_feeds,
+            monitored_feeds=AutoDisputerConfig(is_disputing=True, confidence_flag=None).monitored_feeds,
             confidence_threshold=0.75,
             log=second_receipt["logs"][1],
         )

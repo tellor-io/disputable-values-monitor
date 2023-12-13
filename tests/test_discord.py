@@ -1,15 +1,14 @@
 """Tests for generating alert messages."""
-import os
 import time
 from unittest import mock
+from unittest import TestCase
 
-from twilio.rest import Client
+from discordwebhook import Discord
 
-from tellor_disputables.alerts import alert
-from tellor_disputables.alerts import generate_alert_msg
-from tellor_disputables.alerts import get_twilio_client
-from tellor_disputables.alerts import get_twilio_info
 from tellor_disputables.data import NewReport
+from tellor_disputables.discord import alert
+from tellor_disputables.discord import generate_alert_msg
+from tellor_disputables.discord import get_alert_bot
 
 
 def test_notify_typical_disputable(capsys):
@@ -18,7 +17,7 @@ def test_notify_typical_disputable(capsys):
     def first_alert():
         print("alert sent")
 
-    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert()])):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -33,7 +32,7 @@ def test_notify_typical_disputable(capsys):
             "status ",
         )
 
-        alert(False, r, "", "")
+        alert(False, r)
 
         assert "alert sent" in capsys.readouterr().out
 
@@ -47,22 +46,12 @@ def test_generate_alert_msg():
     assert "DISPUTABLE VALUE" in msg
 
 
-def test_get_phone_numbers():
-    os.environ["ALERT_RECIPIENTS"] = "+17897894567,+17897894567,+17897894567"
-    os.environ["TWILIO_FROM"] = "+19035029327"
-    from_num, recipients = get_twilio_info()
+@mock.patch("os.getenv")
+def test_get_alert_bot(mock_getenv):
+    mock_getenv.return_value = "a"
+    alert_bot = get_alert_bot()
 
-    assert from_num is not None
-    assert isinstance(from_num, str)
-    assert from_num == "+19035029327"
-    assert isinstance(recipients, list)
-    assert recipients == ["+17897894567", "+17897894567", "+17897894567"]
-
-
-def test_get_twilio_client(check_twilio_configured):
-    client = get_twilio_client()
-
-    assert isinstance(client, Client)
+    assert isinstance(alert_bot, Discord)
 
 
 def test_notify_non_disputable(capsys):
@@ -74,7 +63,7 @@ def test_notify_non_disputable(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert(), second_alert()])):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -88,11 +77,11 @@ def test_notify_non_disputable(capsys):
             None,
             "status ",
         )
-        alert(True, r, "", "")
+        alert(True, r)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r, "", "")
+        alert(False, r)
 
         assert "second alert sent" not in capsys.readouterr().out
 
@@ -107,7 +96,7 @@ def test_notify_always_alertable_value(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (mock.patch("tellor_disputables.alerts.send_text_msg", side_effect=[first_alert(), second_alert()])):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -121,10 +110,29 @@ def test_notify_always_alertable_value(capsys):
             None,
             "status ",
         )
-        alert(True, r, "", "")
+        alert(True, r)
 
         assert "alert sent" in capsys.readouterr().out
 
-        alert(False, r, "", "")
+        alert(False, r)
 
         assert "second alert sent" not in capsys.readouterr().out
+
+
+def test_discord_object_return_if_no_webhook():
+    alert_bot = Discord(url=None)
+    assert isinstance(alert_bot, Discord)
+    assert alert_bot is not None
+
+
+@mock.patch("os.getenv")
+def test_alert_bot_if_no_webhook(mock_getenv):
+    mock_getenv.return_value = None
+    with TestCase().assertRaises(Exception) as context:
+        get_alert_bot()
+    assert "No DISCORD_WEBHOOK_URL found. See documentation or try 'source vars.sh' command." in str(context.exception)
+    mock_getenv.return_value = "a"
+    alert_bot = get_alert_bot()
+    assert isinstance(alert_bot, Discord)
+    assert alert_bot.url == "a"
+    assert alert_bot.url is not None

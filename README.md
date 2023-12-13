@@ -5,68 +5,106 @@ A CLI dashboard & text alerts app for disputing bad values reported to Tellor or
 
 ## Introduction
 
-Tellor is an active oracle protocol on Ethereum that allows users to accept off-chain data from a distribtued network of data reporters. Given that the Tellor team does not put data on chain for users themselves, users desire to be able to monitor and dispute bad data automatically. Hence, Tellor created the Auto-disputer, which monitors the accuracy of a group of feeds selected by the user, sends a text to the user if a feed becomes inaccurate, and disputes the bad data on-chain to protect the user's protocol from bad data.
+The Disputable Values Monitor is a tool that anyone can use to:
+- Monitor / view data submitted to Tellor oracle contracts
+- Send Discord alerts for unusual data submissions
+- Automatically dispute wildly inaccurate values
 
-## Quickstart
-```bash!
-python3.9 -m venv venv  # incompatible with python 3.10
-source venv/bin/activate
-pip install tellor-disputables
-mv venv/lib/python3.9/site-packages/vars.example.sh vars.sh
-mv venv/lib/python3.9/site-packages/disputer-config.yaml disputer-config.yaml
-chained add <name of new account> <private key> <chain id(s) separated by spaces>
-# before proceeding, add environment variables to vars.sh
-source vars.sh
-cli -d  # the d is for dispute!
-```
 ## Setup
 
 ### Prerequisites:
-- Install Python 3.9
-- Install [Poetry](https://github.com/python-poetry/poetry)
-- Create an account on [twilio](https://www.twilio.com/docs/sms/quickstart/python)
+- A discord server where you can create a channel and a bot for recieving alerts sent by the Disputable Values Monitor via webhook. See the "Making a Webhook" section of the Discord documentation [here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks/).
+- Install Python 3.9 and/or verify that it is the current version:
+```bash
+python -V
+```
+The output should be:
+```bash
+Python 3.9.XX
+```
+**Note:**
+*Other versions (e.g. Python 3.8 or 3.10) are not compatible with the Disputable Values Monitor.*
+
+- Clone the repo and change directory:
+```bash
+git clone https://github.com/tellor-io/disputable-values-monitor
+cd disputable-values-monitor
+```
+- Create a python environment for installation:
+```bash
+python3 -m venv env
+```
+- Install
+```bash
+poetry install
+```
 
 ### Update environment variables:
 ```bash
 mv venv/lib/python3.9/site-packages/vars.example.sh vars.sh
 ```
-Edit `vars.sh`:
-- List phone numbers you want alerts sent to (`ALERT_RECIPIENTS`).
-- From [twilio](https://www.twilio.com/docs/sms/quickstart/python), specify the phone number that will send messages (`TWILIO_FROM`), your `TWILIO_ACCOUNT_SID`, and access key (`TWILIO_AUTH_TOKEN`).
+- Edit `vars.sh` with your favorite text editor replacing the dummy url with the url for your Discord bot's webhook.
 - Export environment variables:
-```
+```bash
 source vars.sh
 ```
 
-### Edit the chains you want to monitor
+### Set the chains you want to monitor
 
-To edit the chains you want to monitor:
-1. Initialize telliot configuration
-Run `poetry run telliot config init`
-
-This will create a file called `~/telliot/endpoints.yaml`, where you can list and configure the chains and endpoints you want to monitor.
-You will need a chain_id, network name, provider name, and a url for an endpoint. You must at least enter a mainnet endpoint, along with any other chains you want to monitor. You also must delete any chains you do not want to monitor.
-Here is an example.
+- Initialize telliot configuration:
+```bash
+`poetry run telliot config init`
 ```
-- type: RPCEndpoint # do not edit this line
+You should now have a `telliot` folder in your home directory.
+
+- Open `~/telliot/endpoints.yaml` with your favorite text editor. The Disputable-Values-Monitor will check reports on each chain that is configured in this list. Remove the networks that you don't want to monitor, and provide and endpoint url for those that you do. For example, if you want to monitor reports on Ethereum Mainnet and Sepolia testnet, your endpoints.yaml file should look like this:
+```
+type: EndpointList
+endpoints:
+- type: RPCEndpoint
   chain_id: 1
-  network: mainnet # name of network
-  provider: infura # name of provider
-  url: myinfuraurl... # url for your endpoint
+  network: mainnet
+  provider: Infura
+  url: https://YOUR_MAINNET_ENDPOINT
+  explorer: https://etherscan.io
+- type: RPCEndpoint
+  chain_id: 11155111
+  network: sepolia
+  provider: Infura
+  url: https://YOUR_SEPOLIA_ENDPOINT
+  explorer: https://sepolia.etherscan.io/
 ```
 
-You can list as many chains as you'd like.
+### Run the DVM for Alerts Only
 
-### Configuring Tresholds
-
-Monitored Feeds and their Thresholds are defined in the `disputer-config.yaml` file. You can move the config file to your current directory with
+- Start the Disputable-Values-Monitor for Alerts only:
+```bash
+cli
 ```
-mv venv/lib/python3.9/site-packages/disputer-config.yaml disputer-config.yaml
+Enter `y` to confirm alerts only.
+
+### Options / Flags
+
+`-c` or `--confidence-threshold`: to specify a percentage threshold for recieving alerts (unavailable if -d is used). The default is 10% or `-c 0.1`
+
+`-w` or `--wait`: The wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds or `-w 7`
+
+`-av`: to get an alert for all `NewReport` events (regardless of whether they are disputable or not).
+
+### Run the DVM for Automatic Disputes
+
+**Disclaimer:**
+*Disputing Tellor values requires staking TRB tokens that can be lost if the community votes in favor of the reporter. There is no guarantee that this software will correctly identify bad values. Use this auto-disputing functionality at your own risk. Experimenting on a testnet before using any real funds is HIGHLY recommended.
+
+1) Create a telliot account using the private key for the address that holds your TRB to be used for dispute fees and gas (ETH, or other) for network fees:
+```bash
+telliot account add AccountName 0xYOUR_PRIVATE_KEY 1 10 137 11155111
 ```
+Where `1 10 137 11155111` are the network IDs for the networks you want to be able to use with this account.
 
+2) Edit `dipsuter-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added  by providing the `query_id`, `threshold` `type` and `amount`.
 
-By default, the auto-disputer will monitor the ETH/USD feed on any chain id with a threshold Percentage threshold of 75%. In the default `dipsuter-config.yaml`, attached to the project, this is represented as:
-
+The provided configuation is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM:
 ```yaml
 # AutoDisputer configuration file
 feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
@@ -74,40 +112,20 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
     threshold:
       type: Percentage
       amount: 0.75 # 75%
-
 ```
-
-Where `0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992` represents the `queryId` of the eth/usd feed on Tellor. It is derived from the solidity code
-```solidity
-queryId = abi.encode("SpotPrice", abi.encode("eth", "usd"));
-```
-
-### Usage:
-```
-cli -d
-```
-
-### Options
-The available cli options are `-a`, `-av`, and `--wait`. You can use these options in any combination.
-
-Use `-c` or `--confidence-threshold` to specify a universal percentage confidence threshold for monitoriting ONLY.
-
-Use `-a` or `--account-name` to specify a `chained` account to use for disputing.
+3) Start the Disputable-Values-Monitor with the Auto-Disputer enabled:
 ```bash
-cli -a <your account name without quotes>
+cli -d -a AccountName
 ```
+*Note: If the `-c` and `-d` are used at the same time, the confidence-threshold for alerts only will be ignored. Alternate configuations may require a seperate instance of the DVM.*
 
-Use `-av` to get an alert for ALL `NewReport` events (regardless of whether they are disputable or not).
-```bash
-cli -av
-```
+### Options / Flags
 
-Use `--wait` to set the wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds.
-```bash
-cli --wait 120
-```
+`-w` or `--wait`: The wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds or `-w 7`
 
-## How it works
+`-av`: to get an alert for all `NewReport` events (regardless of whether they are disputable or not).
+
+## How it works / Advanced Configuration
 
 The Auto-disputer is a complex event listener for any EVM chain, but specifically it listens for NewReport events on the Tellor network(s) the user wants to monitor.
 
@@ -157,7 +175,6 @@ Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
 poetry env use 3.9
 poetry install
 ```
-
 
 Run tests:
 ```

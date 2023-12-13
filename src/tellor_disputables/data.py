@@ -525,7 +525,7 @@ async def parse_new_report_event(
         return new_report
 
 
-def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Optional[int]:
+def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Any:
 
     try:
         endpoint = cfg.get_endpoint()
