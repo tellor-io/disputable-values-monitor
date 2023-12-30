@@ -79,7 +79,7 @@ endpoints:
 
 - Start the Disputable-Values-Monitor for Alerts only:
 ```bash
-cli
+poetry run cli
 ```
 Enter `y` to confirm alerts only.
 
