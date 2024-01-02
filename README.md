@@ -53,7 +53,7 @@ source vars.sh
 
 - Initialize telliot configuration:
 ```bash
-`poetry run telliot config init`
+poetry run telliot config init
 ```
 You should now have a `telliot` folder in your home directory.
 
