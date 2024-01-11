@@ -18,7 +18,7 @@ from tellor_disputables.data import parse_new_report_event
 from tellor_disputables.discord import alert
 from tellor_disputables.discord import dispute_alert
 from tellor_disputables.discord import generic_alert
-from tellor_disputables.discord import get_alert_bot
+from tellor_disputables.discord import get_alert_bot_1
 from tellor_disputables.disputer import dispute
 from tellor_disputables.utils import clear_console
 from tellor_disputables.utils import format_values
@@ -59,7 +59,7 @@ def print_title_info() -> None:
 async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     # Raises exception if no webhook url is found
-    _ = get_alert_bot()
+    _ = get_alert_bot_1()
     await start(
         all_values=all_values,
         wait=wait,
@@ -109,7 +109,7 @@ async def start(
             # addresses are for token contract
             chain_addy={
                 1: "0x88dF592F8eb5D7Bd38bFeF7dEb0fBc02cf3778a0",
-                5: "0x51c59c6cAd28ce3693977F2feB4CfAebec30d8a2",
+                11155111: "0x80fc34a2f9FfE86F41580F47368289C402DEc660",
             },
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
         )

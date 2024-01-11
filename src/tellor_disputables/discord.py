@@ -14,13 +14,31 @@ def generic_alert(msg: str) -> None:
     return
 
 
-def get_alert_bot() -> Discord:
+def get_alert_bot_1() -> Discord:
     """Read the Discord webhook url from the environment."""
-    DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-    if DISCORD_WEBHOOK_URL is None:
-        raise Exception("No DISCORD_WEBHOOK_URL found. See documentation or try 'source vars.sh' command.")
-    alert_bot = Discord(url=DISCORD_WEBHOOK_URL)
-    return alert_bot
+    DISCORD_WEBHOOK_URL_1 = os.getenv("DISCORD_WEBHOOK_URL_1")
+    if DISCORD_WEBHOOK_URL_1 is None:
+        raise Exception("At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'.")
+    alert_bot_1 = Discord(url=DISCORD_WEBHOOK_URL_1)
+    return alert_bot_1
+
+
+def get_alert_bot_2() -> Discord:
+    """Read the Discord webhook url from the environment."""
+    DISCORD_WEBHOOK_URL_2 = os.getenv("DISCORD_WEBHOOK_URL_2")
+    if not DISCORD_WEBHOOK_URL_2:
+        print("alert bot 2 not used")
+    alert_bot_2 = Discord(url=DISCORD_WEBHOOK_URL_2)
+    return alert_bot_2
+
+
+def get_alert_bot_3() -> Discord:
+    """Read the Discord webhook url from the environment."""
+    DISCORD_WEBHOOK_URL_3 = os.getenv("DISCORD_WEBHOOK_URL_3")
+    if not DISCORD_WEBHOOK_URL_3:
+        print("alert bot 3 not used")
+    alert_bot_3 = Discord(url=DISCORD_WEBHOOK_URL_3)
+    return alert_bot_3
 
 
 def dispute_alert(msg: str) -> None:
@@ -66,6 +84,16 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
 
 def send_discord_msg(msg: str) -> None:
     """Send Discord alert."""
-    get_alert_bot().post(content=msg)
-    click.echo("Alert sent!")
+    get_alert_bot_1().post(content=msg)
+    try:
+        get_alert_bot_2().post(content=msg)
+    except Exception as e:
+        click.echo(f"alert bot 2 not used? {e}")
+        pass
+    try:
+        get_alert_bot_3().post(content=msg)
+    except Exception as e:
+        click.echo(f"alert bot 3 not used? {e}")
+        pass
+    click.echo("Alerts sent!")
     return
