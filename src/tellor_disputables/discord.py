@@ -24,21 +24,11 @@ def get_alert_bot_1() -> Discord:
 
 
 def get_alert_bot_2() -> Discord:
-    """Read the Discord webhook url from the environment."""
-    DISCORD_WEBHOOK_URL_2 = os.getenv("DISCORD_WEBHOOK_URL_2")
-    if not DISCORD_WEBHOOK_URL_2:
-        print("alert bot 2 not used")
-    alert_bot_2 = Discord(url=DISCORD_WEBHOOK_URL_2)
-    return alert_bot_2
+    return Discord(url=os.getenv("DISCORD_WEBHOOK_URL_2"))
 
 
 def get_alert_bot_3() -> Discord:
-    """Read the Discord webhook url from the environment."""
-    DISCORD_WEBHOOK_URL_3 = os.getenv("DISCORD_WEBHOOK_URL_3")
-    if not DISCORD_WEBHOOK_URL_3:
-        print("alert bot 3 not used")
-    alert_bot_3 = Discord(url=DISCORD_WEBHOOK_URL_3)
-    return alert_bot_3
+    return Discord(url=os.getenv("DISCORD_WEBHOOK_URL_3"))
 
 
 def dispute_alert(msg: str) -> None:
