@@ -8,7 +8,7 @@ from discordwebhook import Discord
 from tellor_disputables.data import NewReport
 from tellor_disputables.discord import alert
 from tellor_disputables.discord import generate_alert_msg
-from tellor_disputables.discord import get_alert_bot
+from tellor_disputables.discord import get_alert_bot_1
 
 
 def test_notify_typical_disputable(capsys):
@@ -49,7 +49,7 @@ def test_generate_alert_msg():
 @mock.patch("os.getenv")
 def test_get_alert_bot(mock_getenv):
     mock_getenv.return_value = "a"
-    alert_bot = get_alert_bot()
+    alert_bot = get_alert_bot_1()
 
     assert isinstance(alert_bot, Discord)
 
@@ -129,10 +129,10 @@ def test_discord_object_return_if_no_webhook():
 def test_alert_bot_if_no_webhook(mock_getenv):
     mock_getenv.return_value = None
     with TestCase().assertRaises(Exception) as context:
-        get_alert_bot()
-    assert "No DISCORD_WEBHOOK_URL found. See documentation or try 'source vars.sh' command." in str(context.exception)
+        get_alert_bot_1()
+    assert "At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'." in str(context.exception)
     mock_getenv.return_value = "a"
-    alert_bot = get_alert_bot()
+    alert_bot = get_alert_bot_1()
     assert isinstance(alert_bot, Discord)
     assert alert_bot.url == "a"
     assert alert_bot.url is not None

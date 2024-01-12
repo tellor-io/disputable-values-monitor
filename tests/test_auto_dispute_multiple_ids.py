@@ -12,6 +12,7 @@ import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
+from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.queries.price.spot_price import SpotPrice
@@ -164,6 +165,12 @@ async def setup_and_start(is_disputing, config, config_patches=None):
         stack.enter_context(patch("tellor_disputables.discord.send_discord_msg", side_effect=print("alert sent")))
         stack.enter_context(patch("tellor_disputables.cli.TelliotConfig", new=lambda: config))
         stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
+        stack.enter_context(
+            patch(
+                "telliot_feeds.sources.ampleforth.ampl_usd_vwap.BitfinexSource.fetch_new_datapoint",
+                AsyncMock(side_effect=lambda: (1.0, datetime_now_utc())),
+            )
+        )
 
         if config_patches is not None:
             for p in config_patches:

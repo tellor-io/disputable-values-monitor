@@ -137,4 +137,4 @@ def setup():
 
     yield cfg
 
-    cfg.endpoints.endpoints.remove(ganache_endpoint)
+    # cfg.endpoints.endpoints.remove(ganache_endpoint)
