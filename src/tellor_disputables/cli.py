@@ -55,8 +55,21 @@ def print_title_info() -> None:
     type=float,
     default=0.1,
 )
+@click.option(
+    "--initial_block_offset",
+    help="the number of blocks to look back when first starting the DVM",
+    type=int,
+    default=0,
+)
 @async_run
-async def main(all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float) -> None:
+async def main(
+    all_values: bool,
+    wait: int,
+    account_name: str,
+    is_disputing: bool,
+    confidence_threshold: float,
+    initial_block_offset: int,
+) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     # Raises exception if no webhook url is found
     _ = get_alert_bot_1()
@@ -66,11 +79,17 @@ async def main(all_values: bool, wait: int, account_name: str, is_disputing: boo
         account_name=account_name,
         is_disputing=is_disputing,
         confidence_threshold=confidence_threshold,
+        initial_block_offset=initial_block_offset,
     )
 
 
 async def start(
-    all_values: bool, wait: int, account_name: str, is_disputing: bool, confidence_threshold: float
+    all_values: bool,
+    wait: int,
+    account_name: str,
+    is_disputing: bool,
+    confidence_threshold: float,
+    initial_block_offset: int,
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
@@ -98,11 +117,13 @@ async def start(
             cfg=cfg,
             contract_name="tellor360-oracle",
             topics=[Topics.NEW_REPORT],
+            inital_block_offset=initial_block_offset,
         )
         tellor_flex_report_events = await get_events(
             cfg=cfg,
             contract_name="tellorflex-oracle",
             topics=[Topics.NEW_REPORT],
+            inital_block_offset=initial_block_offset,
         )
         tellor360_events = await chain_events(
             cfg=cfg,
@@ -112,6 +133,7 @@ async def start(
                 11155111: "0x80fc34a2f9FfE86F41580F47368289C402DEc660",
             },
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
+            inital_block_offset=initial_block_offset,
         )
         event_lists += tellor360_events + tellor_flex_report_events
         for event_list in event_lists:

@@ -50,7 +50,6 @@ class Metrics(Enum):
 
 
 start_block: Dict[int, int] = {}
-inital_block_offset = 1000
 
 
 @dataclass
@@ -257,7 +256,9 @@ def mk_filter(
     }
 
 
-async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str]) -> list[tuple[int, Any]]:
+async def log_loop(
+    web3: Web3, chain_id: int, addr: str, topics: list[str], inital_block_offset: int
+) -> list[tuple[int, Any]]:
     """Generate a list of recent events from a contract."""
     try:
         block_number = web3.eth.get_block_number()
@@ -294,7 +295,7 @@ async def log_loop(web3: Web3, chain_id: int, addr: str, topics: list[str]) -> l
 
 
 async def chain_events(
-    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]]
+    cfg: TelliotConfig, chain_addy: dict[int, str], topics: list[list[str]], inital_block_offset: int
 ) -> List[List[tuple[int, Any]]]:
     """"""
     events_loop = []
@@ -309,13 +310,15 @@ async def chain_events(
             except (IndexError, ValueError) as e:
                 logger.error(f"Unable to connect to endpoint on chain_id {chain_id}: {e}")
                 continue
-            events_loop.append(log_loop(w3, chain_id, address, topic))
+            events_loop.append(log_loop(w3, chain_id, address, topic, inital_block_offset))
     events: List[List[tuple[int, Any]]] = await asyncio.gather(*events_loop)
 
     return events
 
 
-async def get_events(cfg: TelliotConfig, contract_name: str, topics: list[str]) -> List[List[tuple[int, Any]]]:
+async def get_events(
+    cfg: TelliotConfig, contract_name: str, topics: list[str], inital_block_offset: int
+) -> List[List[tuple[int, Any]]]:
     """Get all events from all live Tellor networks"""
 
     log_loops = []
@@ -340,7 +343,7 @@ async def get_events(cfg: TelliotConfig, contract_name: str, topics: list[str]) 
         if not addr:
             continue
 
-        log_loops.append(log_loop(w3, chain_id, addr, topics))
+        log_loops.append(log_loop(w3, chain_id, addr, topics, inital_block_offset))
 
     events_lists: List[List[tuple[int, Any]]] = await asyncio.gather(*log_loops)
 
