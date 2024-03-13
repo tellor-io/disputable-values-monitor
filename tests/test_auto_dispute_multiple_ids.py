@@ -178,7 +178,7 @@ async def setup_and_start(is_disputing, config, config_patches=None):
 
         try:
             async with async_timeout.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1)
+                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0)
         except asyncio.TimeoutError:
             pass
 
