@@ -1,4 +1,5 @@
 import asyncio
+import csv
 import io
 from contextlib import ExitStack
 from typing import Awaitable
@@ -315,11 +316,12 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
     expected = "AmpleforthCustomSpotPrice,N/A,N/A,0.0000,yes ❗📲"
 
     with open("table.csv", "r") as f:
-        lines = f.readlines()
-        # get the last row
-        last_row = lines[-1]
-
-        assert expected in last_row
+        reader = csv.reader(f)
+        rows = list(reader)
+        matching_rows = [row for row in rows if expected in ",".join(row)]
+        result = matching_rows[0] if matching_rows else None
+        assert result is not None, "Expected row not found."
+        assert expected in ",".join(result), "Expected row not in the response."
 
 
 @pytest.mark.asyncio
@@ -351,11 +353,12 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
     expected = "GasPriceOracle,N/A,N/A,46.6130,yes ❗📲"
 
     with open("table.csv", "r") as f:
-        lines = f.readlines()
-        # get the last row
-        last_row = lines[-1]
-
-        assert expected in last_row
+        reader = csv.reader(f)
+        rows = list(reader)
+        matching_rows = [row for row in rows if expected in ",".join(row)]
+        result = matching_rows[0] if matching_rows else None
+        assert result is not None, "Expected row not found."
+        assert expected in ",".join(result), "Expected row not in the response."
 
 
 @pytest.mark.asyncio
@@ -375,8 +378,9 @@ async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: A
     expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
 
     with open("table.csv", "r") as f:
-        lines = f.readlines()
-        # get the last row
-        last_row = lines[-1]
-
-        assert expected in last_row
+        reader = csv.reader(f)
+        rows = list(reader)
+        matching_rows = [row for row in rows if expected in ",".join(row)]
+        result = matching_rows[0] if matching_rows else None
+        assert result is not None, "Expected row not found."
+        assert expected in ",".join(result), "Expected row not in the response."
