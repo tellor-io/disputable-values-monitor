@@ -218,13 +218,12 @@ async def test_get_dispute_fee():
     )
     # todo: use mock instead
     cfg = TelliotConfig()
-    for i,ep in enumerate(default_endpoint_list):
+    for i, ep in enumerate(default_endpoint_list):
         if ep.chain_id == 80001:
             default_endpoint_list[i] = rpc
             break
     cfg.endpoints.endpoints = default_endpoint_list
     cfg.main.chain_id = 80001
-    
 
     report = NewReport(
         "0xabc123",
