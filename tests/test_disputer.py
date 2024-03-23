@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
+from telliot_core.model.endpoints import EndpointList
 from telliot_core.model.endpoints import RPCEndpoint
 from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
@@ -208,9 +209,16 @@ async def test_dispute_using_sample_log(
 
 @pytest.mark.asyncio
 async def test_get_dispute_fee():
-
+    rpc = RPCEndpoint(
+        chain_id=80001,
+        provider="polygon",
+        network="mumbai",
+        url="https://polygon-mumbai-bor-rpc.publicnode.com",
+        explorer="https://mumbai.polygonscan.com/",
+    )
     cfg = TelliotConfig()
     cfg.main.chain_id = 80001
+    cfg.endpoints = EndpointList(endpoints=[rpc])
 
     report = NewReport(
         "0xabc123",
