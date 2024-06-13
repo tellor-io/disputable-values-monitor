@@ -34,6 +34,7 @@ from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import NEW_REPORT_ABI
+from tellor_disputables.discord import send_discord_msg
 from tellor_disputables.utils import are_all_attributes_none
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
@@ -430,6 +431,10 @@ async def parse_new_report_event(
         new_report.value = q.value_type.decode(event_data.args._value)
     except eth_abi.exceptions.DecodingError:
         new_report.value = event_data.args._value
+
+    if new_report.query_type == "SpotPrice":
+        if len(event_data.args._value) != 32:
+            send_discord_msg("Spot price value length is not 32 bytes")
 
     # if query of event matches a query type of the monitored feeds, fill the query parameters
 
