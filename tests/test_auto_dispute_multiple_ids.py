@@ -13,8 +13,11 @@ import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
+from telliot_feeds.datasource import DataSource
 from telliot_feeds.dtypes.datapoint import datetime_now_utc
+from telliot_feeds.dtypes.datapoint import OptionalDataPoint
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
+from telliot_feeds.feeds import eth_usd_median_feed
 from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
@@ -163,7 +166,9 @@ async def setup_and_start(is_disputing, config, config_patches=None):
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
-        stack.enter_context(patch("tellor_disputables.discord.send_discord_msg", side_effect=print("alert sent")))
+        stack.enter_context(
+            patch("tellor_disputables.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
+        )
         stack.enter_context(patch("tellor_disputables.cli.TelliotConfig", new=lambda: config))
         stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
         stack.enter_context(
@@ -384,3 +389,83 @@ async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: A
         result = matching_rows[0] if matching_rows else None
         assert result is not None, "Expected row not found."
         assert expected in ",".join(result), "Expected row not in the response."
+
+
+value = 3400
+
+
+class FakeDataSource(DataSource[float]):
+    async def fetch_new_datapoint(self) -> OptionalDataPoint[float]:
+        return value, datetime_now_utc()
+
+
+@pytest.mark.asyncio
+async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys):
+
+    core = await stake_deposited
+    core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
+    contracts = core.get_tellor360_contracts()
+    w3 = core.endpoint._web3
+    oracle = contracts.oracle
+    submit_value = oracle.contract.get_function_by_name("submitValue")
+    # submit fake eth value
+    submit_value_txn = submit_value(
+        eth_query_id, int.to_bytes(int(value * 1e18), 20, "big"), 0, eth_query_data
+    ).buildTransaction(txn_kwargs(w3))
+    submit_value_hash = w3.eth.send_transaction(submit_value_txn)
+    receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert receipt["status"] == 1
+
+    eth_usd_median_feed.source = FakeDataSource()
+    eth_config = {
+        "feeds": [
+            {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
+        ]
+    }
+    config_patches = [
+        patch("builtins.open", side_effect=custom_open_side_effect),
+        patch("yaml.safe_load", return_value=eth_config),
+        patch("tellor_disputables.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
+        patch(
+            "tellor_disputables.data.send_discord_msg",
+            side_effect=lambda _: print("Spot price value length is not 32 bytes"),
+        ),
+    ]
+    await setup_and_start(False, core.config, config_patches)
+    assert "Spot price value length is not 32 bytes" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
+
+    core = await stake_deposited
+    core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
+    contracts = core.get_tellor360_contracts()
+    w3 = core.endpoint._web3
+    oracle = contracts.oracle
+    submit_value = oracle.contract.get_function_by_name("submitValue")
+    # submit fake eth value
+    submit_value_txn = submit_value(
+        eth_query_id, int.to_bytes(int(value * 1e18), 33, "big"), 0, eth_query_data
+    ).buildTransaction(txn_kwargs(w3))
+    submit_value_hash = w3.eth.send_transaction(submit_value_txn)
+    receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert receipt["status"] == 1
+
+    eth_usd_median_feed.source = FakeDataSource()
+    eth_config = {
+        "feeds": [
+            {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
+        ]
+    }
+    config_patches = [
+        patch("builtins.open", side_effect=custom_open_side_effect),
+        patch("yaml.safe_load", return_value=eth_config),
+        patch("tellor_disputables.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
+        patch(
+            "tellor_disputables.data.send_discord_msg",
+            side_effect=lambda _: print("Spot price value length is not 32 bytes"),
+        ),
+    ]
+    await setup_and_start(False, core.config, config_patches)
+    assert "Spot price value length is not 32 bytes" in capsys.readouterr().out

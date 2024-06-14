@@ -34,6 +34,7 @@ from web3.types import LogReceipt
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
 from tellor_disputables import NEW_REPORT_ABI
+from tellor_disputables.discord import send_discord_msg
 from tellor_disputables.utils import are_all_attributes_none
 from tellor_disputables.utils import disputable_str
 from tellor_disputables.utils import get_logger
@@ -431,6 +432,10 @@ async def parse_new_report_event(
     except eth_abi.exceptions.DecodingError:
         new_report.value = event_data.args._value
 
+    if new_report.query_type == "SpotPrice":
+        if len(event_data.args._value) != 32:
+            send_discord_msg("Spot price value length is not 32 bytes")
+
     # if query of event matches a query type of the monitored feeds, fill the query parameters
 
     monitored_feed = None
@@ -456,7 +461,7 @@ async def parse_new_report_event(
         if feed_qid == new_report.query_id:
             if new_report.query_type == "SpotPrice":
                 catalog_entry = query_catalog.find(query_id=new_report.query_id)
-                mf.feed = CATALOG_FEEDS.get(catalog_entry[0].tag)
+                mf.feed = get_feed_from_catalog(catalog_entry[0].tag)
 
             else:
 
@@ -486,7 +491,7 @@ async def parse_new_report_event(
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag
-            feed = CATALOG_FEEDS.get(tag)
+            feed = get_feed_from_catalog(tag)
             if feed is None:
                 logger.error(f"Unable to find feed for tag {tag}")
                 return None
@@ -571,3 +576,7 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Any:
     estimated_block_number = block_a.number + estimated_block_delta
 
     return int(estimated_block_number)
+
+
+def get_feed_from_catalog(tag: str) -> Optional[DataFeed]:
+    return CATALOG_FEEDS.get(tag)

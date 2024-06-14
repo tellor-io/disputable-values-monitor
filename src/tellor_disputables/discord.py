@@ -1,11 +1,11 @@
 """Send text messages using Twilio."""
 import os
+from typing import Any
 
 import click
 from discordwebhook import Discord
 
 from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
-from tellor_disputables.data import NewReport
 
 
 def generic_alert(msg: str) -> None:
@@ -38,7 +38,7 @@ def dispute_alert(msg: str) -> None:
     return
 
 
-def alert(all_values: bool, new_report: NewReport) -> None:
+def alert(all_values: bool, new_report: Any) -> None:
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         msg = generate_alert_msg(False, new_report.link)
