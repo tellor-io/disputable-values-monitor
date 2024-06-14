@@ -213,7 +213,7 @@ async def test_get_dispute_fee():
         chain_id=80001,
         provider="polygon",
         network="mumbai",
-        url="https://polygon-mumbai-bor-rpc.publicnode.com",
+        url="https://polygon-mumbai.api.onfinality.io/public",
         explorer="https://mumbai.polygonscan.com/",
     )
     # todo: use mock instead
