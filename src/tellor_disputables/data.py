@@ -461,7 +461,7 @@ async def parse_new_report_event(
         if feed_qid == new_report.query_id:
             if new_report.query_type == "SpotPrice":
                 catalog_entry = query_catalog.find(query_id=new_report.query_id)
-                mf.feed = CATALOG_FEEDS.get(catalog_entry[0].tag)
+                mf.feed = get_feed_from_catalog(catalog_entry[0].tag)
 
             else:
 
@@ -491,7 +491,7 @@ async def parse_new_report_event(
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag
-            feed = CATALOG_FEEDS.get(tag)
+            feed = get_feed_from_catalog(tag)
             if feed is None:
                 logger.error(f"Unable to find feed for tag {tag}")
                 return None
@@ -576,3 +576,7 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Any:
     estimated_block_number = block_a.number + estimated_block_delta
 
     return int(estimated_block_number)
+
+
+def get_feed_from_catalog(tag: str) -> Optional[DataFeed]:
+    return CATALOG_FEEDS.get(tag)
