@@ -74,14 +74,16 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
 
 def send_discord_msg(msg: str) -> None:
     """Send Discord alert."""
-    get_alert_bot_1().post(content=msg)
+    MONITOR_NAME = os.getenv("MONITOR_NAME")
+    message = f"❗{MONITOR_NAME} Found Something❗\n"
+    get_alert_bot_1().post(content=message + msg)
     try:
-        get_alert_bot_2().post(content=msg)
+        get_alert_bot_2().post(content=message + msg)
     except Exception as e:
         click.echo(f"alert bot 2 not used? {e}")
         pass
     try:
-        get_alert_bot_3().post(content=msg)
+        get_alert_bot_3().post(content=message + msg)
     except Exception as e:
         click.echo(f"alert bot 3 not used? {e}")
         pass
