@@ -75,7 +75,7 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
 def send_discord_msg(msg: str) -> None:
     """Send Discord alert."""
     MONITOR_NAME = os.getenv("MONITOR_NAME")
-    message = f"{MONITOR_NAME} Found Something:"
+    message = f"❗{MONITOR_NAME} Found Something❗\n"
     get_alert_bot_1().post(content=message + msg)
     try:
         get_alert_bot_2().post(content=message + msg)

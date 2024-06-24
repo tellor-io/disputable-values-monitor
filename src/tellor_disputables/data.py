@@ -434,7 +434,7 @@ async def parse_new_report_event(
 
     if new_report.query_type == "SpotPrice":
         if len(event_data.args._value) != 32:
-            send_discord_msg("Spot price value length is not 32 bytes")
+            send_discord_msg(f"SpotPrice value not 32 bytes! \n{new_report.link}")
 
     # if query of event matches a query type of the monitored feeds, fill the query parameters
 
