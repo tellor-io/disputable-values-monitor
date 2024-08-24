@@ -61,6 +61,7 @@ def print_title_info() -> None:
     type=int,
     default=0,
 )
+@click.option("-sc", "skip_confirmations", help="skip confirm configuration (unsafe start)", is_flag=True)
 @async_run
 async def main(
     all_values: bool,
@@ -69,6 +70,7 @@ async def main(
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
+    skip_confirmations: bool,
 ) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     # Raises exception if no webhook url is found
@@ -80,6 +82,7 @@ async def main(
         is_disputing=is_disputing,
         confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
+        skip_confirmations=skip_confirmations,
     )
 
 
@@ -90,6 +93,7 @@ async def start(
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
+    skip_confirmations: bool,
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
@@ -101,9 +105,12 @@ async def start(
         logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
         return
 
-    account: ChainedAccount = select_account(cfg, account_name)
+    account = None
 
-    if account and is_disputing:
+    if not skip_confirmations:
+        account: ChainedAccount = select_account(cfg, account_name)
+
+    if account and is_disputing and not skip_confirmations:
         click.echo("...Now with auto-disputing!")
 
     display_rows = []
