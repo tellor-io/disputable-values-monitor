@@ -1,4 +1,5 @@
 """Helper functions."""
+import csv
 import logging
 import os
 from dataclasses import dataclass
@@ -21,7 +22,6 @@ def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:
         return explorer + "/tx/" + tx_hash
     else:
         return f"Explorer not defined for chain_id {cfg.main.chain_id}"
-
 
 @dataclass
 class Topics:
@@ -129,3 +129,33 @@ def format_values(val: Any) -> Any:
         return f"{str(val)[:6]}...{str(val)[-5:]}"
     else:
         return val
+
+
+def init_csv_files_if_none_exist() -> bool:
+    cnt = 0
+    with open("../../data/btc_data.csv", "r", newline='') as f:
+        cr = csv.reader(f)
+        for row in cr:
+            cnt += 1
+    f.close()
+    if cnt == 0:
+        with open("../../data/btc_data.csv", "a", newline='') as f:
+            cw = csv.writer(f)
+            cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        f.close()
+    else: 
+        print("the btc data file already exists")
+
+    cnt = 0
+    with open("../../data/eth_data.csv", "r", newline='') as f:
+        cr = csv.reader(f)
+        for row in cr:
+            cnt += 1
+    f.close()
+    if cnt == 0:
+        with open("../../data/eth_data.csv", "a", newline='') as f:
+            cw = csv.writer(f)
+            cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        f.close()
+    else:
+        print("the eth data file already exists")

@@ -25,6 +25,7 @@ from tellor_disputables.utils import format_values
 from tellor_disputables.utils import get_logger
 from tellor_disputables.utils import get_tx_explorer_url
 from tellor_disputables.utils import select_account
+from tellor_disputables.utils import init_csv_files_if_none_exist
 from tellor_disputables.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
@@ -108,6 +109,8 @@ async def start(
 
     display_rows = []
     displayed_events = set()
+
+    init_csv_files_if_none_exist()
 
     # Build query if filter is set
     while True:

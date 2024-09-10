@@ -1,6 +1,8 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
 import math
+import csv
+import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -98,6 +100,7 @@ class MonitoredFeed(Base):
         self,
         cfg: TelliotConfig,
         reported_val: Reportable,
+        report: NewReport
     ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
@@ -131,6 +134,17 @@ class MonitoredFeed(Base):
             if trusted_val is None:
                 logger.warning(f"trusted val was {trusted_val}")
                 return None
+
+        if report.currency.lower() == "btc":
+            with open ('../../data/btc_data.csv','a', newline='') as btc_data_file:
+                csv_writter = csv.writer(btc_data_file)
+                csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            btc_data_file.close()
+        elif report.currency.lower() == "eth":
+            with open ('../../data/eth_data.csv','a', newline='') as eth_data_file:
+                csv_writter = csv.writer(eth_data_file)
+                csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            eth_data_file.close()
 
         if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
             trusted_val, (str, bytes, float, int, tuple)
@@ -514,7 +528,7 @@ async def parse_new_report_event(
 
         monitored_feed = MonitoredFeed(feed, threshold)
 
-    disputable = await monitored_feed.is_disputable(cfg, new_report.value)
+    disputable = await monitored_feed.is_disputable(cfg, new_report.value, new_report)
     if disputable is None:
 
         if see_all_values:
