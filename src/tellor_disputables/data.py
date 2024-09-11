@@ -135,7 +135,7 @@ class MonitoredFeed(Base):
                 logger.warning(f"trusted val was {trusted_val}")
                 return None
 
-        if report.currency.lower() == "btc":
+        if report.asset.lower() == "btc":
             try:
                 with open ('btc_data.csv','a', newline='') as btc_data_file:
                     csv_writter = csv.writer(btc_data_file)
@@ -144,7 +144,7 @@ class MonitoredFeed(Base):
             except Exception as e:
                 raise(e)
             
-        elif report.currency.lower() == "eth":
+        elif report.asset.lower() == "eth":
             try:
                 with open ('eth_data.csv','a', newline='') as eth_data_file:
                     csv_writter = csv.writer(eth_data_file)
