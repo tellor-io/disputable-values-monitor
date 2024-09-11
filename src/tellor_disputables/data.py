@@ -536,7 +536,6 @@ async def parse_new_report_event(
 
         monitored_feed = MonitoredFeed(feed, threshold)
 
-    print("about to call is_disputeable")
     try:
         disputable = await monitored_feed.is_disputable(cfg, new_report.value, new_report)
     except Exception as e:
