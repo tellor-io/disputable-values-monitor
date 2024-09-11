@@ -136,14 +136,20 @@ class MonitoredFeed(Base):
                 return None
 
         if report.currency.lower() == "btc":
-            with open ('btc_data.csv','a', newline='') as btc_data_file:
-                csv_writter = csv.writer(btc_data_file)
-                csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            try:
+                with open ('btc_data.csv','a', newline='') as btc_data_file:
+                    csv_writter = csv.writer(btc_data_file)
+                    csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            except Exception as e:
+                print(e)
             btc_data_file.close()
         elif report.currency.lower() == "eth":
-            with open ('eth_data.csv','a', newline='') as eth_data_file:
-                csv_writter = csv.writer(eth_data_file)
-                csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            try:
+                with open ('eth_data.csv','a', newline='') as eth_data_file:
+                    csv_writter = csv.writer(eth_data_file)
+                    csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+            except Exception as e:
+                print(e)
             eth_data_file.close()
 
         if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
@@ -440,6 +446,7 @@ async def parse_new_report_event(
     new_report.submission_timestamp = event_data.args._time  # in unix time
     new_report.asset = getattr(q, "asset", "N/A")
     new_report.currency = getattr(q, "currency", "N/A")
+    print(new_report)
 
     try:
         new_report.value = q.value_type.decode(event_data.args._value)
@@ -531,8 +538,8 @@ async def parse_new_report_event(
     print("about to call is_disputeable")
     try:
         disputable = await monitored_feed.is_disputable(cfg, new_report.value, new_report)
-    except Exception:
-        print(Exception)
+    except Exception as e:
+        print(e)
     if disputable is None:
 
         if see_all_values:
