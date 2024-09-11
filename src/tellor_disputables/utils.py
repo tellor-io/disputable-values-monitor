@@ -131,31 +131,24 @@ def format_values(val: Any) -> Any:
         return val
 
 
-def init_csv_files_if_none_exist() -> bool:
-    cnt = 0
-    with open("../../data/btc_data.csv", "r", newline='') as f:
-        cr = csv.reader(f)
-        for row in cr:
-            cnt += 1
-    f.close()
-    if cnt == 0:
-        with open("../../data/btc_data.csv", "a", newline='') as f:
+def init_csv_files_if_none_exist():
+    filepath = "../../data/btc_data.csv"
+    try: 
+        with open(filepath, 'x') as f: 
             cw = csv.writer(f)
             cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
-    else: 
-        print("the btc data file already exists")
+    except FileExistsError: 
+        print(f"The file '{filepath}' already exists.")
 
-    cnt = 0
-    with open("../../data/eth_data.csv", "r", newline='') as f:
-        cr = csv.reader(f)
-        for row in cr:
-            cnt += 1
-    f.close()
-    if cnt == 0:
-        with open("../../data/eth_data.csv", "a", newline='') as f:
+    filepath = "../../data/eth_data.csv"
+    try: 
+        with open(filepath, 'x') as f: 
             cw = csv.writer(f)
             cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
-    else:
-        print("the eth data file already exists")
+    except FileExistsError: 
+        print(f"The file '{filepath}' already exists.")
+    
+
+
