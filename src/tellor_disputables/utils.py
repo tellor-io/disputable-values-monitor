@@ -134,18 +134,18 @@ def format_values(val: Any) -> Any:
 def init_csv_files_if_none_exist():
     filepath = "./data/btc_data.csv"
     try: 
-        with open(filepath, 'x') as f: 
-            cw = csv.writer(f)
-            cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        f = open(filepath, 'x') 
+        cw = csv.writer(f)
+        cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
 
     filepath = "./data/eth_data.csv"
     try: 
-        with open(filepath, 'x') as f: 
-            cw = csv.writer(f)
-            cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        f = open(filepath, 'x') 
+        cw = csv.writer(f)
+        cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
