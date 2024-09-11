@@ -140,7 +140,6 @@ def init_csv_files_if_none_exist():
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
-        f.close()
 
     filepath = "eth_data.csv"
     try: 
@@ -150,6 +149,5 @@ def init_csv_files_if_none_exist():
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
-        f.close()
 
 

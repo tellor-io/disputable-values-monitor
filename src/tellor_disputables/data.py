@@ -140,17 +140,19 @@ class MonitoredFeed(Base):
                 with open ('btc_data.csv','a', newline='') as btc_data_file:
                     csv_writter = csv.writer(btc_data_file)
                     csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+                btc_data_file.close()
             except Exception as e:
-                print(e)
-            btc_data_file.close()
+                raise(e)
+            
         elif report.currency.lower() == "eth":
             try:
                 with open ('eth_data.csv','a', newline='') as eth_data_file:
                     csv_writter = csv.writer(eth_data_file)
                     csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+                eth_data_file.close()
             except Exception as e:
-                print(e)
-            eth_data_file.close()
+                raise(e)
+            
 
         if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
             trusted_val, (str, bytes, float, int, tuple)
