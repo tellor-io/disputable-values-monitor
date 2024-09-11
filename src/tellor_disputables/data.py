@@ -136,12 +136,12 @@ class MonitoredFeed(Base):
                 return None
 
         if report.currency.lower() == "btc":
-            with open ('../../data/btc_data.csv','a', newline='') as btc_data_file:
+            with open ('btc_data.csv','a', newline='') as btc_data_file:
                 csv_writter = csv.writer(btc_data_file)
                 csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
             btc_data_file.close()
         elif report.currency.lower() == "eth":
-            with open ('../../data/eth_data.csv','a', newline='') as eth_data_file:
+            with open ('eth_data.csv','a', newline='') as eth_data_file:
                 csv_writter = csv.writer(eth_data_file)
                 csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
             eth_data_file.close()
@@ -528,7 +528,11 @@ async def parse_new_report_event(
 
         monitored_feed = MonitoredFeed(feed, threshold)
 
-    disputable = await monitored_feed.is_disputable(cfg, new_report.value, new_report)
+    print("about to call is_disputeable")
+    try:
+        disputable = await monitored_feed.is_disputable(cfg, new_report.value, new_report)
+    except Exception:
+        print(Exception)
     if disputable is None:
 
         if see_all_values:
