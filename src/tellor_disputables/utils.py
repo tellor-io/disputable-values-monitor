@@ -132,7 +132,7 @@ def format_values(val: Any) -> Any:
 
 
 def init_csv_files_if_none_exist():
-    filepath = "../../data/btc_data.csv"
+    filepath = "./data/btc_data.csv"
     try: 
         with open(filepath, 'x') as f: 
             cw = csv.writer(f)
@@ -141,7 +141,7 @@ def init_csv_files_if_none_exist():
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
 
-    filepath = "../../data/eth_data.csv"
+    filepath = "./data/eth_data.csv"
     try: 
         with open(filepath, 'x') as f: 
             cw = csv.writer(f)
