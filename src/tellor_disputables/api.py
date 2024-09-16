@@ -9,7 +9,7 @@ def home():
 
 @app.route('/price-data/<string:id>/csv', methods=['GET'])
 def get_price_data_csv(id): 
-    csv_path = f'{id}_data.csv'
+    csv_path = f'../../{id}_data.csv'
     
     # Check if the file exists
     if not os.path.exists(csv_path):
