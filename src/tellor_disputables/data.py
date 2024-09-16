@@ -148,7 +148,7 @@ class MonitoredFeed(Base):
             try:
                 with open ('eth_data.csv','a', newline='') as eth_data_file:
                     csv_writter = csv.writer(eth_data_file)
-                    csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+                    csv_writter.writerow([report.reporter_address, reported_val, report.submission_timestamp, trusted_val, int(time.time())])
                 eth_data_file.close()
             except Exception as e:
                 raise(e)
@@ -449,6 +449,7 @@ async def parse_new_report_event(
     new_report.submission_timestamp = event_data.args._time  # in unix time
     new_report.asset = getattr(q, "asset", "N/A")
     new_report.currency = getattr(q, "currency", "N/A")
+    new_report.reporter_address = event_data._reporter
 
     try:
         new_report.value = q.value_type.decode(event_data.args._value)

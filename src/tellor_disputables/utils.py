@@ -54,6 +54,7 @@ class NewReport:
     query_id: str = ""
     disputable: Optional[bool] = None
     status_str: str = ""
+    reporter_address: str = ""
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
@@ -136,8 +137,7 @@ def init_csv_files_if_none_exist():
     try: 
         f = open(filepath, 'x') 
         cw = csv.writer(f)
-        ##cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
-        cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
@@ -146,8 +146,7 @@ def init_csv_files_if_none_exist():
     try: 
         f = open(filepath, 'x') 
         cw = csv.writer(f)
-        ##cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
-        cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
+        cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
         print(f"The file '{filepath}' already exists.")
