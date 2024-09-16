@@ -139,7 +139,7 @@ class MonitoredFeed(Base):
             try:
                 with open ('btc_data.csv','a', newline='') as btc_data_file:
                     csv_writter = csv.writer(btc_data_file)
-                    csv_writter.writerow([reported_val, report.submission_timestamp, trusted_val, int(time.time())])
+                    csv_writter.writerow([report.reporter_address, reported_val, report.submission_timestamp, trusted_val, int(time.time())])
                 btc_data_file.close()
             except Exception as e:
                 raise(e)
