@@ -440,6 +440,7 @@ async def parse_new_report_event(
         logger.error(f"Unable to form query from queryData of query type {new_report.query_type}")
         return None
 
+    print(f"Event data: {event_data}")
     new_report.tx_hash = event_data.transactionHash.hex()
     new_report.chain_id = chain_id
     new_report.query_id = "0x" + event_data.args._queryId.hex()

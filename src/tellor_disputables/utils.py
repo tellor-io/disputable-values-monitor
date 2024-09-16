@@ -136,6 +136,7 @@ def init_csv_files_if_none_exist():
     try: 
         f = open(filepath, 'x') 
         cw = csv.writer(f)
+        ##cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
@@ -145,6 +146,7 @@ def init_csv_files_if_none_exist():
     try: 
         f = open(filepath, 'x') 
         cw = csv.writer(f)
+        ##cw.writerow(["reporter_address", "reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         cw.writerow(["reported_price", "reported_timestamp", "trusted_val", "dvm_check_timestamp"])
         f.close()
     except FileExistsError: 
