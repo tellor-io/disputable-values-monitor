@@ -210,20 +210,20 @@ async def test_dispute_using_sample_log(
 @pytest.mark.asyncio
 async def test_get_dispute_fee():
     rpc = RPCEndpoint(
-        chain_id=80001,
+        chain_id=80002,
         provider="polygon",
-        network="mumbai",
+        network="amoy",
         url="https://rpc-amoy.polygon.technology",
-        explorer="https://mumbai.polygonscan.com/",
+        explorer="https://amoy.polygonscan.com/",
     )
     # todo: use mock instead
     cfg = TelliotConfig()
     for i, ep in enumerate(default_endpoint_list):
-        if ep.chain_id == 80001:
+        if ep.chain_id == 80002:
             default_endpoint_list[i] = rpc
             break
     cfg.endpoints.endpoints = default_endpoint_list
-    cfg.main.chain_id = 80001
+    cfg.main.chain_id = 80002
 
     report = NewReport(
         "0xabc123",
