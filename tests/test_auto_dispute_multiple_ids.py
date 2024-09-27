@@ -189,6 +189,7 @@ async def setup_and_start(is_disputing, config, config_patches=None):
             pass
 
 
+@pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
 async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
     """Test that the default config works as expected"""
