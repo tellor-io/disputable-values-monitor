@@ -22,8 +22,8 @@ from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
-from disputable_values_monitor import data
-from disputable_values_monitor.cli import start
+from tellor_disputables import data
+from tellor_disputables.cli import start
 
 # during testing there aren't that many blocks so setting offset to 0
 data.inital_block_offset = 0
@@ -58,7 +58,6 @@ def custom_open_side_effect(*args, **kwargs):
 
 
 def increase_time_and_mine_blocks(w3: Web3, seconds: int, num_blocks: Optional[int] = None):
-    """advances time as needed for tests"""
     # Increase time
     w3.provider.make_request("evm_increaseTime", [seconds])
 
@@ -95,7 +94,6 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
 
 @pytest.fixture(scope="function")
 async def stake_deposited(environment_setup: TelliotCore):
-    """tests depositing stakes for reporting"""
     core = await environment_setup
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
@@ -118,7 +116,6 @@ async def stake_deposited(environment_setup: TelliotCore):
 
 @pytest.fixture(scope="function")
 async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
-    """tests submission of multiple bad values by same reporter"""
     core = await stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
@@ -170,9 +167,9 @@ async def setup_and_start(is_disputing, config, config_patches=None):
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
         stack.enter_context(
-            patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
+            patch("tellor_disputables.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
         )
-        stack.enter_context(patch("disputable_values_monitor.cli.TelliotConfig", new=lambda: config))
+        stack.enter_context(patch("tellor_disputables.cli.TelliotConfig", new=lambda: config))
         stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
         stack.enter_context(
             patch(
@@ -277,7 +274,7 @@ async def test_get_source_from_data(submit_multiple_bad_values: Awaitable[Tellio
     config = core.config
 
     config_patches = [
-        patch("disputable_values_monitor.data.get_source_from_data", side_effect=lambda _: None),
+        patch("tellor_disputables.data.get_source_from_data", side_effect=lambda _: None),
     ]
     await setup_and_start(True, config, config_patches)
     assert "Unable to form source from queryData of query type EVMCall" in caplog.text
@@ -429,9 +426,9 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=eth_config),
-        patch("disputable_values_monitor.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
+        patch("tellor_disputables.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
         patch(
-            "disputable_values_monitor.data.send_discord_msg",
+            "tellor_disputables.data.send_discord_msg",
             side_effect=lambda _: print("Spot price value length is not 32 bytes"),
         ),
     ]
@@ -465,9 +462,9 @@ async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=eth_config),
-        patch("disputable_values_monitor.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
+        patch("tellor_disputables.data.get_feed_from_catalog", return_value=eth_usd_median_feed),
         patch(
-            "disputable_values_monitor.data.send_discord_msg",
+            "tellor_disputables.data.send_discord_msg",
             side_effect=lambda _: print("Spot price value length is not 32 bytes"),
         ),
     ]
