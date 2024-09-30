@@ -5,10 +5,10 @@ from unittest import TestCase
 
 from discordwebhook import Discord
 
-from disputable_values_monitor.data import NewReport
-from disputable_values_monitor.discord import alert
-from disputable_values_monitor.discord import generate_alert_msg
-from disputable_values_monitor.discord import get_alert_bot_1
+from tellor_disputables.data import NewReport
+from tellor_disputables.discord import alert
+from tellor_disputables.discord import generate_alert_msg
+from tellor_disputables.discord import get_alert_bot_1
 
 
 def test_notify_typical_disputable(capsys):
@@ -17,7 +17,7 @@ def test_notify_typical_disputable(capsys):
     def first_alert():
         print("alert sent")
 
-    with (mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert()])):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -63,9 +63,7 @@ def test_notify_non_disputable(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (
-        mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])
-    ):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -98,9 +96,7 @@ def test_notify_always_alertable_value(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (
-        mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])
-    ):
+    with (mock.patch("tellor_disputables.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -124,7 +120,6 @@ def test_notify_always_alertable_value(capsys):
 
 
 def test_discord_object_return_if_no_webhook():
-    """test that None is returned if no webhook"""
     alert_bot = Discord(url=None)
     assert isinstance(alert_bot, Discord)
     assert alert_bot is not None
@@ -132,7 +127,6 @@ def test_discord_object_return_if_no_webhook():
 
 @mock.patch("os.getenv")
 def test_alert_bot_if_no_webhook(mock_getenv):
-    """test that None is returned if no webhook"""
     mock_getenv.return_value = None
     with TestCase().assertRaises(Exception) as context:
         get_alert_bot_1()
