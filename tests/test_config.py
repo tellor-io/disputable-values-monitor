@@ -3,10 +3,10 @@ from unittest import mock
 
 from telliot_feeds.feeds import evm_call_feed
 
-from tellor_disputables.config import AutoDisputerConfig
-from tellor_disputables.data import Metrics
-from tellor_disputables.data import MonitoredFeed
-from tellor_disputables.data import Threshold
+from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.data import Metrics
+from disputable_values_monitor.data import MonitoredFeed
+from disputable_values_monitor.data import Threshold
 
 
 def test_build_single_feed_from_yaml():

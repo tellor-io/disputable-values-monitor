@@ -4,11 +4,10 @@ from unittest.mock import patch
 import pytest
 from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.feeds import mimicry_nft_market_index_usd_feed
-from web3 import Web3
-
 from tellor_disputables.config import AutoDisputerConfig
 from tellor_disputables.data import get_contract
 from tellor_disputables.data import parse_new_report_event
+from web3 import Web3
 
 
 def increase_time(w3, seconds):
@@ -24,8 +23,10 @@ def revert_to_snapshot(w3, snapshot_id):
     w3.provider.make_request("evm_revert", [snapshot_id])
 
 
+@pytest.mark.skip  # mimicry integration was depricated
 @pytest.mark.asyncio
 async def test_disputability_mimicry_nft_index_type(setup, disputer_account):
+    """test if an incorrect mimicry data report is detected"""
     # get a snapshot of chain to revert to
 
     cfg = setup
