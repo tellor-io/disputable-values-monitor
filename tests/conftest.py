@@ -73,7 +73,7 @@ def evm_call_log():
 
 @pytest.fixture
 def disputer_account():
-
+    """test account used for disputing"""
     account_name = "disputer-test-acct"
 
     if not find_accounts(account_name, 1337):
