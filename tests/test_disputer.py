@@ -11,15 +11,15 @@ from telliot_core.model.endpoints import RPCEndpoint
 from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
-from disputable_values_monitor import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
-from disputable_values_monitor.config import AutoDisputerConfig
-from disputable_values_monitor.data import Metrics
-from disputable_values_monitor.data import MonitoredFeed
-from disputable_values_monitor.data import parse_new_report_event
-from disputable_values_monitor.data import Threshold
-from disputable_values_monitor.disputer import dispute
-from disputable_values_monitor.disputer import get_dispute_fee
-from disputable_values_monitor.utils import NewReport
+from tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
+from tellor_disputables.config import AutoDisputerConfig
+from tellor_disputables.data import Metrics
+from tellor_disputables.data import MonitoredFeed
+from tellor_disputables.data import parse_new_report_event
+from tellor_disputables.data import Threshold
+from tellor_disputables.disputer import dispute
+from tellor_disputables.disputer import get_dispute_fee
+from tellor_disputables.utils import NewReport
 
 
 @pytest.mark.asyncio
@@ -190,7 +190,7 @@ async def test_dispute_using_sample_log(
     cfg.endpoints.endpoints.append(endpoint)
 
     with mock.patch(
-        "disputable_values_monitor.data.general_fetch_new_datapoint", return_value=(mock_telliot_val, int(time.time()))
+        "tellor_disputables.data.general_fetch_new_datapoint", return_value=(mock_telliot_val, int(time.time()))
     ):
         new_report = await parse_new_report_event(
             cfg, eth_usd_report_log, monitored_feeds=monitored_feeds, confidence_threshold=0.1
