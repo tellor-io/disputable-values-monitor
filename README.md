@@ -36,7 +36,7 @@ python3 -m venv env
 ```
 - Install
 ```bash
-poetry install
+pip install poetry && poetry install
 ```
 
 ### Update environment variables:
