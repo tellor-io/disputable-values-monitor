@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "disputable-values-monitor"
-version = "2.0.3"
+version = "2.0.4"
 description = "dashboard & alerts for disputable values reported to Tellor oracles"
 authors = ["Tellor Development Community"]
 license = "MIT"
