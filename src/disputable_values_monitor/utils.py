@@ -73,7 +73,9 @@ def clear_console() -> None:
         _ = os.system("clear")
 
 
-def select_account(cfg: TelliotConfig, account: Optional[str], password: Optional[str], skip_confirmations: Optional[bool]) -> Optional[ChainedAccount]:
+def select_account(
+    cfg: TelliotConfig, account: Optional[str], password: Optional[str], skip_confirmations: Optional[bool]
+) -> Optional[ChainedAccount]:
     """Select an account for disputing, allow no account to be chosen."""
 
     if account is not None:

@@ -24,8 +24,8 @@ from disputable_values_monitor.utils import clear_console
 from disputable_values_monitor.utils import format_values
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
-from disputable_values_monitor.utils import Topics
 from disputable_values_monitor.utils import select_account
+from disputable_values_monitor.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
 price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
