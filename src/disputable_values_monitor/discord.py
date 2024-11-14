@@ -5,7 +5,7 @@ from typing import Any
 import click
 from discordwebhook import Discord
 
-from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
+from disputable_values_monitor import ALWAYS_ALERT_QUERY_TYPES
 
 
 def generic_alert(msg: str) -> None:

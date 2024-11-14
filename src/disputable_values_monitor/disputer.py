@@ -6,10 +6,10 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
-from tellor_disputables.config import AutoDisputerConfig
-from tellor_disputables.data import get_contract
-from tellor_disputables.utils import get_logger
-from tellor_disputables.utils import NewReport
+from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.data import get_contract
+from disputable_values_monitor.utils import get_logger
+from disputable_values_monitor.utils import NewReport
 
 logger = get_logger(__name__)
 

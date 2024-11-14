@@ -32,14 +32,14 @@ from web3.exceptions import ExtraDataLengthError
 from web3.middleware import geth_poa_middleware
 from web3.types import LogReceipt
 
-from tellor_disputables import ALWAYS_ALERT_QUERY_TYPES
-from tellor_disputables import NEW_REPORT_ABI
-from tellor_disputables.discord import send_discord_msg
-from tellor_disputables.utils import are_all_attributes_none
-from tellor_disputables.utils import disputable_str
-from tellor_disputables.utils import get_logger
-from tellor_disputables.utils import get_tx_explorer_url
-from tellor_disputables.utils import NewReport
+from disputable_values_monitor import ALWAYS_ALERT_QUERY_TYPES
+from disputable_values_monitor import NEW_REPORT_ABI
+from disputable_values_monitor.discord import send_discord_msg
+from disputable_values_monitor.utils import are_all_attributes_none
+from disputable_values_monitor.utils import disputable_str
+from disputable_values_monitor.utils import get_logger
+from disputable_values_monitor.utils import get_tx_explorer_url
+from disputable_values_monitor.utils import NewReport
 
 logger = get_logger(__name__)
 

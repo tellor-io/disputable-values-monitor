@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "tellor-disputables"
-version = "2.0.1"
-description = "dashboard & text alerts for disputable values reported to Tellor oracles"
-authors = ["tallywiesenberg <info@tellor.io>"]
+name = "disputable-values-monitor"
+version = "2.0.4"
+description = "dashboard & alerts for disputable values reported to Tellor oracles"
+authors = ["Tellor Development Community"]
 license = "MIT"
-packages = [{ include = "tellor_disputables", from = "src" }]
+packages = [{ include = "disputable_values_monitor", from = "src" }]
 include = ["vars.example.sh", "README.md", "disputer-config.yaml"]
 
 [tool.poetry.dependencies]
@@ -36,8 +36,8 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-cli = "tellor_disputables.cli:main"
-data = "tellor_disputables.data:main"
+cli = "disputable_values_monitor.cli:main"
+data = "disputable_values_monitor.data:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

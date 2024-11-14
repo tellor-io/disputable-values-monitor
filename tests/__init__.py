@@ -1,1 +1,1 @@
-"""Unit tests for Tellor Disputables package."""
+"""Unit tests for the Disputable Values Monitor package."""

@@ -6,16 +6,17 @@ from chained_accounts import ChainedAccount
 from chained_accounts import find_accounts
 from telliot_core.apps.telliot_config import TelliotConfig
 
-from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT
-from src.tellor_disputables import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
-from src.tellor_disputables.utils import are_all_attributes_none
-from src.tellor_disputables.utils import disputable_str
-from src.tellor_disputables.utils import get_logger
-from src.tellor_disputables.utils import get_tx_explorer_url
-from src.tellor_disputables.utils import select_account
+from src.disputable_values_monitor import EXAMPLE_NEW_REPORT_EVENT
+from src.disputable_values_monitor import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
+from src.disputable_values_monitor.utils import are_all_attributes_none
+from src.disputable_values_monitor.utils import disputable_str
+from src.disputable_values_monitor.utils import get_logger
+from src.disputable_values_monitor.utils import get_tx_explorer_url
+from src.disputable_values_monitor.utils import select_account
 
 
 def test_get_tx_explorer_url():
+    """Test generation of the block explorer URL for a tx."""
     tx_hash = EXAMPLE_NEW_REPORT_EVENT["transactionHash"].hex()
     chain_id = 1
     cfg = TelliotConfig()
@@ -26,6 +27,7 @@ def test_get_tx_explorer_url():
 
 
 def test_disputable_str():
+    """Test disputable report is flagged on the dashboard."""
     disputable = True
     query_id = EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0]["args"]["_queryId"]
     disp_str = disputable_str(disputable, query_id)
@@ -39,7 +41,7 @@ def test_disputable_str():
 
 
 def test_logger():
-
+    """Test logger working."""
     logger = get_logger(__name__)
 
     logger.error("test message that writes to log.txt")

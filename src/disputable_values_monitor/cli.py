@@ -10,22 +10,22 @@ from hexbytes import HexBytes
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_core.cli.utils import async_run
 
-from tellor_disputables import WAIT_PERIOD
-from tellor_disputables.config import AutoDisputerConfig
-from tellor_disputables.data import chain_events
-from tellor_disputables.data import get_events
-from tellor_disputables.data import parse_new_report_event
-from tellor_disputables.discord import alert
-from tellor_disputables.discord import dispute_alert
-from tellor_disputables.discord import generic_alert
-from tellor_disputables.discord import get_alert_bot_1
-from tellor_disputables.disputer import dispute
-from tellor_disputables.utils import clear_console
-from tellor_disputables.utils import format_values
-from tellor_disputables.utils import get_logger
-from tellor_disputables.utils import get_tx_explorer_url
-from tellor_disputables.utils import select_account
-from tellor_disputables.utils import Topics
+from disputable_values_monitor import WAIT_PERIOD
+from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.data import chain_events
+from disputable_values_monitor.data import get_events
+from disputable_values_monitor.data import parse_new_report_event
+from disputable_values_monitor.discord import alert
+from disputable_values_monitor.discord import dispute_alert
+from disputable_values_monitor.discord import generic_alert
+from disputable_values_monitor.discord import get_alert_bot_1
+from disputable_values_monitor.disputer import dispute
+from disputable_values_monitor.utils import clear_console
+from disputable_values_monitor.utils import format_values
+from disputable_values_monitor.utils import get_logger
+from disputable_values_monitor.utils import get_tx_explorer_url
+from disputable_values_monitor.utils import select_account
+from disputable_values_monitor.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
 price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")

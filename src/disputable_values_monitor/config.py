@@ -12,10 +12,10 @@ from telliot_feeds.feeds import DataFeed
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.query_catalog import query_catalog
 
-from tellor_disputables.data import Metrics
-from tellor_disputables.data import MonitoredFeed
-from tellor_disputables.data import Threshold
-from tellor_disputables.utils import get_logger
+from disputable_values_monitor.data import Metrics
+from disputable_values_monitor.data import MonitoredFeed
+from disputable_values_monitor.data import Threshold
+from disputable_values_monitor.utils import get_logger
 
 logger = get_logger(__name__)
 
