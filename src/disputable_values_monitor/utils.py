@@ -73,12 +73,13 @@ def clear_console() -> None:
         _ = os.system("clear")
 
 
-def select_account(cfg: TelliotConfig, account: Optional[str], password: Optional[str]) -> Optional[ChainedAccount]:
+def select_account(cfg: TelliotConfig, account: Optional[str], password: Optional[str], skip_confirmations: Optional[bool]) -> Optional[ChainedAccount]:
     """Select an account for disputing, allow no account to be chosen."""
 
     if account is not None:
         accounts = find_accounts(name=account)
-        click.echo(f"Your account name: {accounts[0].name if accounts else None}")
+    if skip_confirmations:
+        return None
     else:
         run_alerts_only = click.confirm("Missing an account to send disputes. Run alerts only?")
         if not run_alerts_only:

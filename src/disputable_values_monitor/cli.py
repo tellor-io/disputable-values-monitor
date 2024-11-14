@@ -24,8 +24,8 @@ from disputable_values_monitor.utils import clear_console
 from disputable_values_monitor.utils import format_values
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
-from disputable_values_monitor.utils import select_account
 from disputable_values_monitor.utils import Topics
+from disputable_values_monitor.utils import select_account
 
 warnings.simplefilter("ignore", UserWarning)
 price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
@@ -38,7 +38,7 @@ logger = get_logger(__name__)
 
 def print_title_info() -> None:
     """Prints the title info."""
-    click.echo("Disputable Values Monitor 📒🔎📲")
+    click.echo("Disputable Values Monitor Starting... 📒🔎📲")
 
 
 @click.command()
@@ -63,7 +63,6 @@ def print_title_info() -> None:
     default=0,
 )
 @click.option("-sc", "skip_confirmations", help="skip confirm configuration (unsafe start)", is_flag=True)
-
 @async_run
 async def main(
     all_values: bool,
@@ -107,25 +106,21 @@ async def start(
     print_title_info()
 
     if not disp_cfg.monitored_feeds:
-        logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
+        click.echo("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
+        logger.error("No feeds set for monitoring, please check ./disputer-config.yaml")
         return
 
-    account = None
-    account: ChainedAccount = select_account(cfg, account_name, password)
-
-    if is_disputing and not account:
-        logger.error("A telliot account is required for auto-disputing (see --help)")
+    if not account_name and is_disputing:
+        click.echo("An account is required for auto-disputing (see --help)")
+        logger.error("auto-disputing enabled, but no account provided (see --help)")
         return
 
-    if account and is_disputing and not skip_confirmations:
-        click.echo("DVM started successfully...")
-
-    if account and is_disputing and skip_confirmations and not password:
-        logger.error("Use pwd flag to provide account password if skipping confirmations")
+    if account_name and not is_disputing:
+        click.echo("Telliot account provided but not disputing? (see --help)")
+        logger.error("Telliot account provided, but not disputing? (see --help)")
         return
 
-    if account and is_disputing and skip_confirmations and password:
-        click.echo("DVM starting now with auto-disputer...")
+    account: ChainedAccount = select_account(cfg, account_name, password, skip_confirmations)
 
     display_rows = []
     displayed_events = set()
