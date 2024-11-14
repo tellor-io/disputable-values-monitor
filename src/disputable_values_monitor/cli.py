@@ -46,6 +46,7 @@ def print_title_info() -> None:
     "-av", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
 )
 @click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
+@click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
 @click.option(
@@ -62,6 +63,7 @@ def print_title_info() -> None:
     default=0,
 )
 @click.option("-sc", "skip_confirmations", help="skip confirm configuration (unsafe start)", is_flag=True)
+
 @async_run
 async def main(
     all_values: bool,
@@ -71,6 +73,7 @@ async def main(
     confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
+    password: str,
 ) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     # Raises exception if no webhook url is found
@@ -83,6 +86,7 @@ async def main(
         confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
         skip_confirmations=skip_confirmations,
+        password=password,
     )
 
 
@@ -94,6 +98,7 @@ async def start(
     confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
+    password: str,
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
@@ -106,12 +111,21 @@ async def start(
         return
 
     account = None
+    account: ChainedAccount = select_account(cfg, account_name, password)
 
-    if not skip_confirmations:
-        account: ChainedAccount = select_account(cfg, account_name)
+    if is_disputing and not account:
+        logger.error("A telliot account is required for auto-disputing (see --help)")
+        return
 
     if account and is_disputing and not skip_confirmations:
-        click.echo("...Now with auto-disputing!")
+        click.echo("DVM started successfully...")
+
+    if account and is_disputing and skip_confirmations and not password:
+        logger.error("Use pwd flag to provide account password if skipping confirmations")
+        return
+
+    if account and is_disputing and skip_confirmations and password:
+        click.echo("DVM starting now with auto-disputer...")
 
     display_rows = []
     displayed_events = set()
