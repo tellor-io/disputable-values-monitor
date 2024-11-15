@@ -115,11 +115,6 @@ async def start(
         logger.error("auto-disputing enabled, but no account provided (see --help)")
         return
 
-    if account_name and not is_disputing:
-        click.echo("Telliot account provided but not disputing? (see --help)")
-        logger.error("Telliot account provided, but not disputing? (see --help)")
-        return
-
     account: ChainedAccount = select_account(cfg, account_name, password, skip_confirmations)
 
     display_rows = []

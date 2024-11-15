@@ -153,9 +153,12 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
 @pytest.mark.asyncio
 async def fetch_timestamp(oracle, query_id, chain_timestamp):
     """fetches a value's timestamp from oracle"""
-    timestamp, status = await oracle.read("getDataBefore", query_id, chain_timestamp)
-    assert timestamp[2] > 0
-    assert status.ok, status.error
+    try:
+        timestamp, status = await oracle.read("getDataBefore", query_id, chain_timestamp)
+        assert timestamp is not None and len(timestamp) > 2 and timestamp[2] > 0
+        assert status.ok, status.error
+    except Exception as e:
+        pytest.fail(f"Failed to fetch a valid timestamp: {e}")
     return timestamp
 
 
@@ -165,7 +168,7 @@ async def check_dispute(oracle, query_id, timestamp):
     return indispute
 
 
-async def setup_and_start(is_disputing, config, config_patches=None):
+async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=None):
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
@@ -187,7 +190,7 @@ async def setup_and_start(is_disputing, config, config_patches=None):
 
         try:
             async with async_timeout.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0)
+                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations, password)
         except asyncio.TimeoutError:
             pass
 
@@ -300,7 +303,7 @@ async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore]
     ]
     # not disputing just alerting
     # if evm type is in dispute config it will be checked for equality
-    await setup_and_start(False, config, config_patches)
+    await setup_and_start(False, config, config_patches, skip_confirmations=True, password=None)
     assert "Cannot evaluate percent difference on text/addresses/bytes" in caplog.text
 
 
