@@ -1,5 +1,6 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
+import json
 import math
 from dataclasses import dataclass
 from enum import Enum
@@ -320,7 +321,9 @@ async def chain_events(
 async def get_events(
     cfg: TelliotConfig, contract_name: str, topics: list[str], inital_block_offset: int
 ) -> List[List[tuple[int, Any]]]:
-    """Get all events from all live Tellor networks"""
+    """Get all events from monitored chains listed in chains.json"""
+
+    monitored_list = get_monitored_chains_json()
 
     log_loops = []
 
@@ -328,6 +331,8 @@ async def get_events(
         if endpoint.url.endswith("{INFURA_API_KEY}"):
             continue
         chain_id = endpoint.chain_id
+        if chain_id not in monitored_list:
+            continue
         try:
             endpoint.connect()
         except Exception as e:
@@ -579,4 +584,12 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Any:
 
 
 def get_feed_from_catalog(tag: str) -> Optional[DataFeed]:
+    """gets a list of chains to monitor from monitored-chains.json"""
     return CATALOG_FEEDS.get(tag)
+
+
+def get_monitored_chains_json() -> Any:
+    """gets a list of chains to monitor"""
+    with open("monitored-chains.json", "r") as f:
+        config = json.load(f)
+        return config.get("monitored_chains", [])
