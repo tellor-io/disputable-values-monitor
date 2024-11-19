@@ -54,13 +54,13 @@ source vars.sh
 
 - Edit `monitored-chains.json` with the desired set of networks that you wish to monitor with the disputanble values monitor.
 
-example, if you would like to monitor values only on mainniet, sepolia, Amoy and localhost:
+example, if you would like to monitor values only on mainnet Ethereum, sepolia, Amoy and localhost:
 ```
 {
   "monitored_chains": [1, 11155111, 80002, 1337]
 }
 ```
-*Note: mainniet, sepolia, Amoy and localhost are required for testing.*
+*Note: Ethereum, sepolia, Amoy and localhost are required for testing.*
 
 ### Set RPC Endpoints
 - Initialize telliot configuration:
