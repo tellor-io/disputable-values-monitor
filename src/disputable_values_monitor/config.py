@@ -12,9 +12,10 @@ from telliot_feeds.feeds import DataFeed
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.query_catalog import query_catalog
 
+from disputable_values_monitor.data import AlertThreshold
+from disputable_values_monitor.data import DisputeThreshold
 from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
-from disputable_values_monitor.data import Threshold
 from disputable_values_monitor.utils import get_logger
 
 logger = get_logger(__name__)
@@ -25,8 +26,8 @@ class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
 
-    def __init__(self, is_disputing: bool, confidence_flag: float) -> None:
-        self.confidence = None if is_disputing else confidence_flag
+    def __init__(self, is_disputing: bool, is_alerting: bool, confidence_flag: float) -> None:
+        self.confidence = None if is_disputing or is_alerting else confidence_flag
 
         try:
             with open("disputer-config.yaml", "r") as f:
@@ -91,14 +92,14 @@ class AutoDisputerConfig:
                 return None
 
             try:
-                # parse query type from YAML
+                # parse disputer type and threshold
                 try:
-                    threshold_type = self.box.feeds[i].threshold.type
-                    if threshold_type.lower() == "equality":
-                        threshold_amount = None
+                    disp_threshold_type = self.box.feeds[i].disp_threshold.type
+                    if disp_threshold_type.lower() == "equality":
+                        disp_threshold_amount = None
                     else:
-                        threshold_amount = (
-                            self.box.feeds[i].threshold.amount if self.confidence is None else self.confidence
+                        disp_threshold_type = (
+                            self.box.feeds[i].disp_threshold.amount if self.confidence is None else self.confidence
                         )
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
@@ -107,16 +108,42 @@ class AutoDisputerConfig:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
 
-                threshold: Threshold = Threshold(Metrics[threshold_type], amount=threshold_amount)
+                disp_threshold: DisputeThreshold = DisputeThreshold(
+                    Metrics[disp_threshold_type], amount=disp_threshold_amount
+                )
             except KeyError:
-                logging.error(f"Unsupported threshold: {threshold}\n")
+                logging.error("Unsupported dispute threshold. \n")
                 return None
 
-            monitored_feeds.append(MonitoredFeed(datafeed, threshold))
+            try:
+                # parse alerter type and threshold
+                try:
+                    alrt_threshold_type = self.box.feeds[i].alrt_threshold.type
+                    if alrt_threshold_type.lower() == "equality":
+                        alrt_threshold_amount = None
+                    else:
+                        alrt_threshold_type = (
+                            self.box.feeds[i].alrt_threshold.amount if self.confidence is None else self.confidence
+                        )
+                except AttributeError as e:
+                    logging.error(f"Python Box attribute error: {e}")
+                    return None
+                except TypeError as e:
+                    logging.error(f"Python Box attribute error: {e}")
+                    return None
+
+                alrt_threshold: AlertThreshold = AlertThreshold(
+                    Metrics[alrt_threshold_type], amount=alrt_threshold_amount
+                )
+            except KeyError:
+                logging.error("Unsupported alert threshold. \n")
+                return None
+
+            monitored_feeds.append(MonitoredFeed(datafeed, disp_threshold, alrt_threshold))
 
         return monitored_feeds
 
 
 if __name__ == "__main__":
 
-    print(AutoDisputerConfig(is_disputing=False, confidence_flag=0.5))
+    print(AutoDisputerConfig(is_disputing=True, is_alerting=True, confidence_flag=0.1))

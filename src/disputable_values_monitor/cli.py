@@ -49,6 +49,7 @@ def print_title_info() -> None:
 @click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
+@click.option("-alrt", "--is-alerting", help="enable custom threshold alerting", is_flag=True)
 @click.option(
     "-c",
     "--confidence-threshold",
@@ -69,6 +70,7 @@ async def main(
     wait: int,
     account_name: str,
     is_disputing: bool,
+    is_alerting: bool,
     confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
@@ -82,6 +84,7 @@ async def main(
         wait=wait,
         account_name=account_name,
         is_disputing=is_disputing,
+        is_alerting=is_alerting,
         confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
         skip_confirmations=skip_confirmations,
@@ -94,6 +97,7 @@ async def start(
     wait: int,
     account_name: str,
     is_disputing: bool,
+    is_alerting: bool,
     confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
@@ -102,7 +106,9 @@ async def start(
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
-    disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
+    disp_cfg = AutoDisputerConfig(
+        is_disputing=is_disputing, is_alerting=is_alerting, confidence_flag=confidence_threshold
+    )
     print_title_info()
 
     if not disp_cfg.monitored_feeds:
@@ -183,8 +189,11 @@ async def start(
                 clear_console()
                 print_title_info()
 
+                if is_alerting:
+                    click.echo("Valid alerting scheme loaded...")
+
                 if is_disputing:
-                    click.echo("...Now with auto-disputing!")
+                    click.echo("Valid disputing scheme loaded...")
 
                 alert(all_values, new_report)
 
@@ -200,7 +209,8 @@ async def start(
                         new_report.link,
                         new_report.query_type,
                         new_report.value,
-                        new_report.status_str,
+                        new_report.status_str_1,
+                        new_report.status_str_2,
                         new_report.asset,
                         new_report.currency,
                         new_report.chain_id,
@@ -208,14 +218,16 @@ async def start(
                 )
 
                 # Prune display
-                if len(display_rows) > 10:
+                if len(display_rows) > 25:
                     # sort by timestamp
                     display_rows = sorted(display_rows, key=lambda x: x[1])
                     displayed_events.remove(display_rows[0][0])
                     del display_rows[0]
 
                 # Display table
-                _, times, links, query_type, values, disputable_strs, assets, currencies, chain = zip(*display_rows)
+                _, times, links, query_type, values, disputable_strs, alertable_strs, assets, currencies, chain = zip(
+                    *display_rows
+                )
 
                 dataframe_state = dict(
                     When=times,
@@ -226,6 +238,7 @@ async def start(
                     # split length of characters in the Values' column that overflow when displayed in cli
                     Value=values,
                     Disputable=disputable_strs,
+                    Alertable=alertable_strs,
                     ChainId=chain,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
@@ -234,7 +247,9 @@ async def start(
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
                 # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
+                disp_cfg = AutoDisputerConfig(
+                    is_disputing=is_disputing, is_alerting=is_alerting, confidence_flag=confidence_threshold
+                )
 
         sleep(wait)
 

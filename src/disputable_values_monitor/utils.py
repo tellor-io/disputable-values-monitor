@@ -53,13 +53,21 @@ class NewReport:
     currency: str = ""
     query_id: str = ""
     disputable: Optional[bool] = None
-    status_str: str = ""
+    status_str_1: str = ""
+    status_str_2: str = ""
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
     """Return a string indicating whether the query is disputable."""
     if disputable is not None:
         return "yes ❗📲" if disputable else "no ✔️"
+    return f"❗unsupported query ID: {query_id}"
+
+
+def alertable_str(alertable: Optional[bool], query_id: str) -> str:
+    """Return a string indicating whether the query is alertable."""
+    if alertable is not None:
+        return "yes ❗📲" if alertable else "no ✔️"
     return f"❗unsupported query ID: {query_id}"
 
 

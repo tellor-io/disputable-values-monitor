@@ -26,8 +26,8 @@ def test_build_single_feed_from_yaml():
     assert isinstance(auto_disp_cfg, AutoDisputerConfig)
     assert len(auto_disp_cfg.monitored_feeds) == 1
     assert auto_disp_cfg.box.feeds
-    assert auto_disp_cfg.monitored_feeds[0].threshold.amount == 0.95
-    assert auto_disp_cfg.monitored_feeds[0].threshold.metric == Metrics.Percentage
+    assert auto_disp_cfg.monitored_feeds[0].disp_threshold.amount == 0.95
+    assert auto_disp_cfg.monitored_feeds[0].disp_threshold.metric == Metrics.Percentage
 
 
 def test_build_multiple_feeds_from_yaml():
@@ -51,10 +51,10 @@ def test_build_multiple_feeds_from_yaml():
     assert isinstance(auto_disp_cfg, AutoDisputerConfig)
     assert len(auto_disp_cfg.monitored_feeds) == 2
     assert auto_disp_cfg.box.feeds
-    assert auto_disp_cfg.monitored_feeds[0].threshold.amount == 0.95
-    assert auto_disp_cfg.monitored_feeds[0].threshold.metric == Metrics.Percentage
-    assert auto_disp_cfg.monitored_feeds[1].threshold.amount == 200
-    assert auto_disp_cfg.monitored_feeds[1].threshold.metric == Metrics.Range
+    assert auto_disp_cfg.monitored_feeds[0].disp_threshold.amount == 0.95
+    assert auto_disp_cfg.monitored_feeds[0].disp_threshold.metric == Metrics.Percentage
+    assert auto_disp_cfg.monitored_feeds[1].disp_threshold.amount == 200
+    assert auto_disp_cfg.monitored_feeds[1].disp_threshold.metric == Metrics.Range
 
 
 def test_invalid_yaml_config():
