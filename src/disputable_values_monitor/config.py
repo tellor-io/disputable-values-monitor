@@ -5,6 +5,7 @@ from typing import Any
 from typing import List
 from typing import Optional
 
+import click
 import yaml
 from box import Box
 from telliot_feeds.feeds import CATALOG_FEEDS
@@ -12,10 +13,11 @@ from telliot_feeds.feeds import DataFeed
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.queries.query_catalog import query_catalog
 
-from disputable_values_monitor.data import AlertThreshold
-from disputable_values_monitor.data import DisputeThreshold
 from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
+from disputable_values_monitor.data import Threshold
+from disputable_values_monitor.data import DisputeThreshold
+from disputable_values_monitor.data import AlertThreshold
 from disputable_values_monitor.utils import get_logger
 
 logger = get_logger(__name__)
@@ -69,6 +71,7 @@ class AutoDisputerConfig:
                 try:
                     if hasattr(self.box.feeds[i], "query_id"):
                         query_id = self.box.feeds[i].query_id[2:]
+                        click.echo(f"queryid: {query_id}")
                         catalog_entry = query_catalog.find(query_id=query_id)
                         if not catalog_entry:
                             logger.error(f"No corresponding datafeed found for query id: {query_id}")
@@ -92,15 +95,20 @@ class AutoDisputerConfig:
                 return None
 
             try:
-                # parse disputer type and threshold
+                # parse disputer type and alerter type and thresholds
                 try:
-                    disp_threshold_type = self.box.feeds[i].disp_threshold.type
-                    if disp_threshold_type.lower() == "equality":
+                    threshold_type = self.box.feeds[i].threshold.type
+                    click.echo(f"threshold type: {threshold_type}")
+                    if threshold_type.lower() == "equality":
                         disp_threshold_amount = None
+                        alrt_threshold_amount = None
                     else:
-                        disp_threshold_type = (
-                            self.box.feeds[i].disp_threshold.amount if self.confidence is None else self.confidence
+                        disp_threshold_amount = self.box.feeds[i].threshold.disp_amount
+                        alrt_threshold_amount = (
+                            self.box.feeds[i].threshold.alrt_amount if self.confidence is None else self.confidence
                         )
+                        click.echo(f"dispute_threshold_amount: {disp_threshold_amount}")
+                        click.echo(f"alert_threshold_amount: {alrt_threshold_amount}")
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -109,34 +117,16 @@ class AutoDisputerConfig:
                     return None
 
                 disp_threshold: DisputeThreshold = DisputeThreshold(
-                    Metrics[disp_threshold_type], amount=disp_threshold_amount
+                    Metrics[threshold_type],
+                    disp_amount=disp_threshold_amount,
+
                 )
-            except KeyError:
-                logging.error("Unsupported dispute threshold. \n")
-                return None
-
-            try:
-                # parse alerter type and threshold
-                try:
-                    alrt_threshold_type = self.box.feeds[i].alrt_threshold.type
-                    if alrt_threshold_type.lower() == "equality":
-                        alrt_threshold_amount = None
-                    else:
-                        alrt_threshold_type = (
-                            self.box.feeds[i].alrt_threshold.amount if self.confidence is None else self.confidence
-                        )
-                except AttributeError as e:
-                    logging.error(f"Python Box attribute error: {e}")
-                    return None
-                except TypeError as e:
-                    logging.error(f"Python Box attribute error: {e}")
-                    return None
-
                 alrt_threshold: AlertThreshold = AlertThreshold(
-                    Metrics[alrt_threshold_type], amount=alrt_threshold_amount
+                    Metrics[threshold_type],
+                    alrt_amount=alrt_threshold_amount,
                 )
-            except KeyError:
-                logging.error("Unsupported alert threshold. \n")
+            except KeyError as e:
+                logging.error(f"Unsupported dispute threshold:{e} \n")
                 return None
 
             monitored_feeds.append(MonitoredFeed(datafeed, disp_threshold, alrt_threshold))
@@ -146,4 +136,4 @@ class AutoDisputerConfig:
 
 if __name__ == "__main__":
 
-    print(AutoDisputerConfig(is_disputing=True, is_alerting=True, confidence_flag=0.1))
+    print(AutoDisputerConfig(is_disputing=True, is_alerting=False, confidence_flag=0.5))

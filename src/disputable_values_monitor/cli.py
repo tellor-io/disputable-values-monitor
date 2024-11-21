@@ -53,7 +53,7 @@ def print_title_info() -> None:
 @click.option(
     "-c",
     "--confidence-threshold",
-    help="set general confidence percentage threshold for monitoring only",
+    help="sets global confidence percentage threshold for all feeds.",
     type=float,
     default=0.1,
 )

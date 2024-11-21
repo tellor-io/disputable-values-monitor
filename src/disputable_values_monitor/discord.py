@@ -51,11 +51,6 @@ def alert(all_values: bool, new_report: Any) -> None:
         if new_report.disputable:
             msg = generate_alert_msg(True, new_report.link)
 
-    # Account for unsupported queryIDs
-    if new_report.alertable is not None:
-        if new_report.alertable:
-            msg = generate_alert_msg(False, new_report.link)
-
     # If user wants ALL NewReports
     if all_values:
         msg = generate_alert_msg(False, new_report.link)
@@ -63,6 +58,9 @@ def alert(all_values: bool, new_report: Any) -> None:
 
     else:
         if new_report.disputable:
+            msg = generate_alert_msg(True, new_report.link)
+            send_discord_msg(msg)
+        elif new_report.alertable:
             msg = generate_alert_msg(True, new_report.link)
             send_discord_msg(msg)
 
@@ -74,7 +72,7 @@ def generate_alert_msg(disputable: bool, alertable: bool, link: str) -> str:
     if disputable:
         return f"\n❗DISPUTABLE VALUE❗\n{link}"
     elif alertable:
-        return f"\n❗DEVIANT (ALERTABLE) VALUE❗\n{link}"
+        return f"\n *DEVIANT (ALERTABLE) VALUE* \n{link}"
     else:
         return f"\n❗NEW VALUE❗\n{link}"
 

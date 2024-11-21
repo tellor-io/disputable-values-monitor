@@ -57,19 +57,9 @@ start_block: Dict[int, int] = {}
 
 
 @dataclass
-class DisputeThreshold(Base):
+class Threshold(Base):
     """
-    A Threshold for sending a dispute.
-
-    amount (Optional[int]) -- amount of tolerated difference between
-    submitted on-chain values and trusted values from telliot.
-
-    metric (Metrics) -- type of threshold
-
-    If self.metric == "percentage", amount is a percent with a minimum of 0
-    If self.metric == "equality", amount is None
-    If self.metric == "range", amount is the maximum distance an on-chain value can have from
-    the trusted value from telliot
+    A Threshold for sending an alert. when confidence (-c) is used
     """
 
     metric: Metrics
@@ -90,11 +80,11 @@ class DisputeThreshold(Base):
 
 
 @dataclass
-class AlertThreshold(Base):
+class DisputeThreshold(Base):
     """
-    A Threshold for sending an alert (only).
+    A Threshold for sending an alert or dispute.
 
-    amount (Optional[int]) -- amount of tolerated difference between
+    disp_amount (Optional[int]) -- amount of tolerated difference between
     submitted on-chain values and trusted values from telliot.
 
     metric (Metrics) -- type of threshold
@@ -106,7 +96,7 @@ class AlertThreshold(Base):
     """
 
     metric: Metrics
-    amount: Union[int, float, None]
+    disp_amount: Union[int, float, None]
 
     def __post_init__(self) -> None:
 
@@ -115,14 +105,48 @@ class AlertThreshold(Base):
             self.amount = None
 
         if self.metric != Metrics.Equality:
-            if self.amount is None:
-                raise ValueError(f"{self.metric} threshold selected, amount cannot be None")
+            if self.disp_amount is None:
+                raise ValueError(f"{self.metric} threshold, disp_amount and alrt_amount cannot be None")
 
-            if self.amount < 0:
-                raise ValueError(f"{self.metric} threshold selected, amount cannot be negative")
+            if self.disp_amount < 0:
+                raise ValueError(f"{self.metric} threshold, disp_amount and alrt_amount cannot be None")
+
+
+@dataclass
+class AlertThreshold(Base):
+    """
+    A Threshold for sending an alert or dispute.
+
+    alrt_amount (Optional[int]) -- amount of tolerated difference between
+    submitted on-chain values and trusted values from telliot.
+
+    metric (Metrics) -- type of threshold
+
+    If self.metric == "percentage", amount is a percent with a minimum of 0
+    If self.metric == "equality", amount is None
+    If self.metric == "range", amount is the maximum distance an on-chain value can have from
+    the trusted value from telliot
+    """
+
+    metric: Metrics
+    alrt_amount: Union[int, float, None]
+
+    def __post_init__(self) -> None:
+
+        if self.metric == Metrics.Equality:
+            logger.warning("Equality threshold selected, ignoring amount")
+            self.amount = None
+
+        if self.metric != Metrics.Equality:
+            if self.alrt_amount is None:
+                raise ValueError(f"{self.metric} threshold, disp_amount and alrt_amount cannot be None")
+
+            if self.alrt_amount < 0:
+                raise ValueError(f"{self.metric} threshold, disp_amount and alrt_amount cannot be None")
 
 
 Reportable = Union[str, bytes, float, int, tuple[Any], None]
+click.echo(f"reportable {Reportable}")
 
 
 @dataclass
@@ -173,7 +197,7 @@ class MonitoredFeed(Base):
             trusted_val, (str, bytes, float, int, tuple)
         ):
 
-            if self.disp_threshold.metric and self.alrt_threshold.metric == Metrics.Percentage:
+            if self.threshold.metric == Metrics.Percentage:
 
                 if not trusted_val:
                     logger.warning(
@@ -192,8 +216,8 @@ class MonitoredFeed(Base):
                     logger.error("Please set a threshold amount to measure percent difference for alerting")
                     return None, None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
-                disputable_bool = float(abs(percent_diff)) >= self.disp_threshold.amount
-                alertable_bool = float(abs(percent_diff)) >= self.alrt_threshold.amount
+                disputable_bool = float(abs(percent_diff)) >= self.threshold.disp_amount
+                alertable_bool = float(abs(percent_diff)) >= self.threshold.alrt_amount
                 return disputable_bool, alertable_bool
 
             elif self.disp_threshold.metric and self.alrt_threshold.metric == Metrics.Range:
@@ -234,7 +258,7 @@ class MonitoredFeed(Base):
                 f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
                 f"with reported val {reported_val!r} of type {type(reported_val)} on chain_id {cfg.main.chain_id}"
             )
-            return None, None
+            return (None,)
 
 
 async def general_fetch_new_datapoint(feed: DataFeed, *args: Any) -> Optional[Any]:
@@ -539,9 +563,8 @@ async def parse_new_report_event(
 
     if (new_report.query_id[2:] != monitored_query_id) or (not monitored_feed):
 
-        # build a monitored feed for all feeds not auto-disputing for
-        disp_threshold = DisputeThreshold(metric=Metrics.Percentage, amount=confidence_threshold)
-        alrt_threshold = AlertThreshold(metric=Metrics.Percentage, amount=confidence_threshold)
+        # build a monitored feed if confidence (-c) used
+        threshold = Threshold(metric=Metrics.Percentage, amount=confidence_threshold)
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag
@@ -566,7 +589,7 @@ async def parse_new_report_event(
                 return None
             feed = DataFeed(query=q, source=get_source_from_data(event_data.args._queryData))
 
-        monitored_feed = MonitoredFeed(feed, disp_threshold, alrt_threshold)
+        monitored_feed = MonitoredFeed(feed, threshold)
 
     disputable, alertable = await monitored_feed.is_disputable(cfg, new_report.value)
     click.echo(f"asdfasdf: {disputable, alertable}")
