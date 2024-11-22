@@ -49,14 +49,7 @@ def print_title_info() -> None:
 @click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
 @click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
-@click.option("-alrt", "--is-alerting", help="enable custom threshold alerting", is_flag=True)
-@click.option(
-    "-c",
-    "--confidence-threshold",
-    help="sets global confidence percentage threshold for all feeds.",
-    type=float,
-    default=0.1,
-)
+@click.option("-d", "--is-alerting", help="enable custom alerting for configured feeds.", is_flag=True)
 @click.option(
     "--initial_block_offset",
     help="the number of blocks to look back when first starting the DVM",
@@ -71,7 +64,6 @@ async def main(
     account_name: str,
     is_disputing: bool,
     is_alerting: bool,
-    confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
     password: str,
@@ -85,7 +77,6 @@ async def main(
         account_name=account_name,
         is_disputing=is_disputing,
         is_alerting=is_alerting,
-        confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
         skip_confirmations=skip_confirmations,
         password=password,
@@ -98,7 +89,6 @@ async def start(
     account_name: str,
     is_disputing: bool,
     is_alerting: bool,
-    confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
     password: str,
@@ -106,14 +96,12 @@ async def start(
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
-    disp_cfg = AutoDisputerConfig(
-        is_disputing=is_disputing, is_alerting=is_alerting, confidence_flag=confidence_threshold
-    )
+    disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, is_alerting=is_alerting)
     print_title_info()
 
     if not disp_cfg.monitored_feeds:
-        click.echo("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
-        logger.error("No feeds set for monitoring, please check ./disputer-config.yaml")
+        click.echo("No feeds set for monitoring, please add configs to ./disputer-config.yaml")
+        logger.error("No feeds set for monitoring, please check configs in ./disputer-config.yaml")
         return
 
     if not account_name and is_disputing:
@@ -121,10 +109,27 @@ async def start(
         logger.error("auto-disputing enabled, but no account provided (see --help)")
         return
 
+    if is_disputing:
+        click.echo("🛡️ DVM is auto-disputing configured feeds at custom thresholds 🛡️")
+        click.echo(".DVM is NOT alerting configured feeds at custom alert thresholds.")
+        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
+    elif is_alerting:
+        click.echo("DVM is NOT auto-disputing at congigured thresholds.")
+        click.echo("📣 DVM is alerting configured feeds at custom alert thresholds 📣")
+        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
+    elif is_disputing and is_alerting:
+        click.echo("DVM is NOT auto-disputing at congigured thresholds.")
+        click.echo("📣 DVM is alerting configured feeds at custom alert thresholds 📣")
+        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
+    else:
+        click.echo("DVM is alerting at global percentage 📣")
+
     account: ChainedAccount = select_account(cfg, account_name, password, skip_confirmations)
 
     display_rows = []
     displayed_events = set()
+
+    sleep(10)
 
     # Build query if filter is set
     while True:
@@ -136,12 +141,12 @@ async def start(
             topics=[Topics.NEW_REPORT],
             inital_block_offset=initial_block_offset,
         )
-        tellor_flex_report_events = await get_events(
-            cfg=cfg,
-            contract_name="tellorflex-oracle",
-            topics=[Topics.NEW_REPORT],
-            inital_block_offset=initial_block_offset,
-        )
+        # tellor_flex_report_events = await get_events(
+        #     cfg=cfg,
+        #     contract_name="tellorflex-oracle",
+        #     topics=[Topics.NEW_REPORT],
+        #     inital_block_offset=initial_block_offset,
+        # )
         tellor360_events = await chain_events(
             cfg=cfg,
             # addresses are for token contract
@@ -152,7 +157,7 @@ async def start(
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
             inital_block_offset=initial_block_offset,
         )
-        event_lists += tellor360_events + tellor_flex_report_events
+        event_lists += tellor360_events  # + tellor_flex_report_events
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             if not event_list:
@@ -174,7 +179,6 @@ async def start(
                         cfg=cfg,
                         monitored_feeds=disp_cfg.monitored_feeds,
                         log=event,
-                        confidence_threshold=confidence_threshold,
                     )
                 except Exception as e:
                     logger.error(f"unable to parse new report event on chain_id {chain_id}: {e}")
@@ -247,9 +251,7 @@ async def start(
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
                 # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig(
-                    is_disputing=is_disputing, is_alerting=is_alerting, confidence_flag=confidence_threshold
-                )
+                disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, is_alerting=is_alerting)
 
         sleep(wait)
 
