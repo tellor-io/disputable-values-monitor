@@ -48,8 +48,20 @@ def print_title_info() -> None:
 @click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
 @click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
-@click.option("-d", "--is-alerting", help="enable custom alerting for configured feeds.", is_flag=True)
+@click.option("-art", "--is-alerting", help="enable custom alerting for configured feeds.", is_flag=True)
+@click.option(
+    "-d",
+    "--is-disputing",
+    help="enable automatic disputing on chain (CAUTION: BE SURE YOU UNDERSTAND HOW DISPUTES WORK)",
+    is_flag=True,
+)
+@click.option(
+    "-c",
+    "--confidence-threshold",
+    help="set general confidence percentage threshold for monitoring only",
+    type=float,
+    default=0.1,
+)
 @click.option(
     "--initial_block_offset",
     help="the number of blocks to look back when first starting the DVM",
@@ -62,8 +74,9 @@ async def main(
     all_values: bool,
     wait: int,
     account_name: str,
-    is_disputing: bool,
     is_alerting: bool,
+    is_disputing: bool,
+    confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
     password: str,
@@ -75,8 +88,9 @@ async def main(
         all_values=all_values,
         wait=wait,
         account_name=account_name,
-        is_disputing=is_disputing,
         is_alerting=is_alerting,
+        is_disputing=is_disputing,
+        confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
         skip_confirmations=skip_confirmations,
         password=password,
@@ -87,8 +101,9 @@ async def start(
     all_values: bool,
     wait: int,
     account_name: str,
-    is_disputing: bool,
     is_alerting: bool,
+    is_disputing: bool,
+    confidence_threshold: float,
     initial_block_offset: int,
     skip_confirmations: bool,
     password: str,
@@ -96,7 +111,11 @@ async def start(
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
-    disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, is_alerting=is_alerting)
+    disp_cfg = AutoDisputerConfig(
+        is_disputing=is_disputing,
+        is_alerting=is_alerting,
+        confidence_threshold=confidence_threshold,
+    )
     print_title_info()
 
     if not disp_cfg.monitored_feeds:
@@ -109,13 +128,13 @@ async def start(
         logger.error("auto-disputing enabled, but no account provided (see --help)")
         return
 
-    if is_disputing:
-        click.echo("🛡️ DVM is auto-disputing configured feeds at custom thresholds 🛡️")
-        click.echo(".DVM is NOT alerting configured feeds at custom alert thresholds.")
-        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
     elif is_alerting:
         click.echo("DVM is NOT auto-disputing at congigured thresholds.")
         click.echo("📣 DVM is alerting configured feeds at custom alert thresholds 📣")
+        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
+    if is_disputing:
+        click.echo("🛡️ DVM is auto-disputing configured feeds at custom thresholds 🛡️")
+        click.echo(".DVM is NOT alerting configured feeds at custom alert thresholds.")
         click.echo("DVM is alerting unconfigured spot prices at global percentage...")
     elif is_disputing and is_alerting:
         click.echo("DVM is NOT auto-disputing at congigured thresholds.")
@@ -179,6 +198,7 @@ async def start(
                         cfg=cfg,
                         monitored_feeds=disp_cfg.monitored_feeds,
                         log=event,
+                        confidence_threshold=confidence_threshold,
                     )
                 except Exception as e:
                     logger.error(f"unable to parse new report event on chain_id {chain_id}: {e}")
@@ -213,8 +233,8 @@ async def start(
                         new_report.link,
                         new_report.query_type,
                         new_report.value,
-                        new_report.status_str_1,
-                        new_report.status_str_2,
+                        new_report.alertable_str,
+                        new_report.disputable_str,
                         new_report.asset,
                         new_report.currency,
                         new_report.chain_id,
@@ -229,7 +249,7 @@ async def start(
                     del display_rows[0]
 
                 # Display table
-                _, times, links, query_type, values, disputable_strs, alertable_strs, assets, currencies, chain = zip(
+                _, times, links, query_type, values, alertable_str, disputable_str, assets, currencies, chain = zip(
                     *display_rows
                 )
 
@@ -241,8 +261,8 @@ async def start(
                     Currency=currencies,
                     # split length of characters in the Values' column that overflow when displayed in cli
                     Value=values,
-                    Disputable=disputable_strs,
-                    Alertable=alertable_strs,
+                    Alertable=alertable_str,
+                    Disputable=disputable_str,
                     ChainId=chain,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
@@ -251,7 +271,12 @@ async def start(
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
                 # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, is_alerting=is_alerting)
+
+                disp_cfg = AutoDisputerConfig(
+                    is_alerting=is_alerting,
+                    is_disputing=is_disputing,
+                    confidence_threshold=confidence_threshold,
+                )
 
         sleep(wait)
 

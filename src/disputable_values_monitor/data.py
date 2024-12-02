@@ -11,7 +11,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import click
 import eth_abi
 from chained_accounts import ChainedAccount
 from clamfig.base import Registry
@@ -57,14 +56,22 @@ start_block: Dict[int, int] = {}
 
 
 @dataclass
-class Threshold(Base):
+class Thresholds(Base):
     """
-    A Threshold for sending an alert for all telliot feeds that were
-    not configured in ./dispute-config.yaml
+    A Threshold for sending a dispute.
+
+    amount (Optional[int]) -- amount of tolerated difference between
+    submitted on-chain values and trusted values from telliot.
+
+    metric (Metrics) -- type of threshold
+
+    If self.metric == "percentage", amount is a percent with a minimum of 0
+    If self.metric == "equality", amount is None
+    If self.metric == "range", amount is the maximum distance an on-chain value can have from
+    the trusted value from telliot
     """
 
     metric: Metrics
-    global_amount: Union[int, float, None]
     alrt_amount: Union[int, float, None]
     disp_amount: Union[int, float, None]
 
@@ -72,23 +79,14 @@ class Threshold(Base):
 
         if self.metric == Metrics.Equality:
             logger.warning("Equality threshold selected, ignoring amount")
-            self.global_amount = None
-            self.alrt_amount = None
-            self.disp_amount = None
+            self.amount = None
 
         if self.metric != Metrics.Equality:
-            if self.global_amount is None:
-                raise ValueError(f"{self.metric} used. global_alert_percentage not used")
             if self.alrt_amount is None:
-                raise ValueError(f"{self.metric} used. alrt_amount not used")
-            if self.disp_amount is None:
-                raise ValueError(f"{self.metric} used. disp_amount not used")
-            if self.global_amount < 0:
-                raise ValueError(f"{self.metric} threshold selected, amounts cannot be negative")
+                raise ValueError(f"{self.metric} threshold type selected, alrt_amount cannot be None")
+
             if self.alrt_amount < 0:
-                raise ValueError(f"{self.metric} threshold selected, amounts cannot be negative")
-            if self.disp_amount < 0:
-                raise ValueError(f"{self.metric} threshold selected, amounts cannot be negative")
+                raise ValueError(f"{self.metric} threshold type selected, alrt_amount cannot be negative")
 
 
 Reportable = Union[str, bytes, float, int, tuple[Any], None]
@@ -97,22 +95,119 @@ Reportable = Union[str, bytes, float, int, tuple[Any], None]
 @dataclass
 class MonitoredFeed(Base):
     feed: DataFeed[Any]
-    threshold: Threshold
+    thresholds: Thresholds
 
-    async def is_alertable_or_disputable(
+    async def is_alertable(
         self,
         cfg: TelliotConfig,
         reported_val: Reportable,
-    ) -> tuple[Optional[bool], Optional[bool]]:
+    ) -> Optional[bool]:
+        """Check if the reported value is disputable."""
+        if reported_val is None:
+            logger.error("Need reported value to check alertability")
+            return None
+
+        #        if get_query_type(self.feed.query) == "EVMCall":
+        #
+        #            if not isinstance(reported_val, tuple):
+        #                return True
+        #
+        #            block_timestamp = reported_val[1]
+        #            reported_val = HexBytes(reported_val[0])
+        #            cfg.main.chain_id = self.feed.query.chainId
+        #
+        #            block_number = get_block_number_at_timestamp(cfg, block_timestamp)
+        #
+        #            trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
+        #            if not isinstance(trusted_val, tuple):
+        #                logger.warning(f"Bad value response for EVMCall: {trusted_val}")
+        #                return None
+        #
+        #            if trusted_val[0] is None:
+        #                logger.warning(f"Unable to fetch trusted value for EVMCall: {trusted_val}")
+        #                return None
+        #            trusted_val = HexBytes(trusted_val[0])
+        #
+        #        else:
+        trusted_val, _ = await general_fetch_new_datapoint(self.feed)
+
+        if trusted_val is None:
+            logger.warning(f"trusted val was {trusted_val}")
+            return None
+
+        if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
+            trusted_val, (str, bytes, float, int, tuple)
+        ):
+
+            if self.thresholds.metric == Metrics.Percentage:
+
+                if not trusted_val:
+                    logger.warning(
+                        f"Telliot val for {self.feed.query} found to be 0. Reported value was {reported_val!r}"
+                        "Please double check telliot value before disputing."
+                    )
+                    return None
+
+                if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
+                    logger.error("Cannot evaluate percent difference on text/addresses/bytes")
+                    return None
+                if self.thresholds.alrt_amount is None:
+                    logger.error("Please set a alrt_amount amount to measure percent difference")
+                    return None
+                if self.thresholds.disp_amount is None:
+                    logger.error("Please set a disp_amount amount to measure percent difference")
+                    return None
+                percent_diff: float = (reported_val - trusted_val) / trusted_val
+                print(float(abs(percent_diff)) >= self.thresholds.alrt_amount)
+                return bool(float(abs(percent_diff)) >= self.thresholds.alrt_amount)
+
+            elif self.thresholds.metric == Metrics.Range:
+
+                if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
+                    logger.error("Cannot evaluate range on text/addresses/bytes")
+
+                if self.thresholds.alrt_amount is None:
+                    logger.error("Please set a threshold amount to measure range")
+                    return None
+                range_: float = abs(reported_val - trusted_val)
+                return range_ >= self.thresholds.alrt_amount
+
+            #            elif self.thresholds.metric == Metrics.Equality:
+            #
+            #                # if we have two bytes strings (not raw bytes)
+            #                if (
+            #                    (isinstance(reported_val, str))
+            #                    and (isinstance(trusted_val, str))
+            #                    and reported_val.startswith("0x")
+            #                    and trusted_val.startswith("0x")
+            #                ):
+            #                    return trusted_val.lower() != reported_val.lower()
+            #                return bool(trusted_val != reported_val)
+
+            else:
+                logger.error("Attemping comparison with unknown threshold metric")
+                return None
+        else:
+            logger.error(
+                f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
+                f"with reported val {reported_val!r} of type {type(reported_val)} on chain_id {cfg.main.chain_id}"
+            )
+            return None
+
+    async def is_disputable(
+        self,
+        cfg: TelliotConfig,
+        reported_val: Reportable,
+    ) -> Optional[bool]:
         """Check if the reported value is disputable."""
         if reported_val is None:
             logger.error("Need reported value to check disputability")
-            return None, None
+            return None
 
         if get_query_type(self.feed.query) == "EVMCall":
 
             if not isinstance(reported_val, tuple):
-                return (None, True)
+                return True
 
             block_timestamp = reported_val[1]
             reported_val = HexBytes(reported_val[0])
@@ -123,11 +218,11 @@ class MonitoredFeed(Base):
             trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
             if not isinstance(trusted_val, tuple):
                 logger.warning(f"Bad value response for EVMCall: {trusted_val}")
-                return None, None
+                return None
 
             if trusted_val[0] is None:
                 logger.warning(f"Unable to fetch trusted value for EVMCall: {trusted_val}")
-                return None, None
+                return None
             trusted_val = HexBytes(trusted_val[0])
 
         else:
@@ -135,51 +230,42 @@ class MonitoredFeed(Base):
 
             if trusted_val is None:
                 logger.warning(f"trusted val was {trusted_val}")
-                return None, None
+                return None
 
         if isinstance(reported_val, (str, bytes, float, int, tuple)) and isinstance(
             trusted_val, (str, bytes, float, int, tuple)
         ):
 
-            if self.threshold.metric == Metrics.Percentage:
+            if self.thresholds.metric == Metrics.Percentage:
 
                 if not trusted_val:
                     logger.warning(
                         f"Telliot val for {self.feed.query} found to be 0. Reported value was {reported_val!r}"
                         "Please double check telliot value before disputing."
                     )
-                    return None, None
+                    return None
 
                 if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate percent difference on text/addresses/bytes")
-                    return None, None
-                if self.threshold.alrt_amount is None:
-                    logger.error("Please set a threshold amount to measure percent difference for alerting")
-                    return None, None
-                if self.threshold.disp_amount is None:
-                    logger.error("Please set a threshold amount to measure percent difference for disputing")
-                    return None, None
+                    return None
+                if self.thresholds.alrt_amount is None:
+                    logger.error("Please set a threshold amount to measure percent difference")
+                    return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
-                disputable_bool = float(abs(percent_diff)) >= self.threshold.alrt_amount
-                alertable_bool = float(abs(percent_diff)) >= self.threshold.disp_amount
-                return alertable_bool, disputable_bool
+                return float(abs(percent_diff)) >= self.thresholds.alrt_amount
 
-            elif self.disp_threshold.metric and self.alrt_threshold.metric == Metrics.Range:
+            elif self.thresholds.metric == Metrics.Range:
 
                 if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate range on text/addresses/bytes")
-                if self.disp_threshold.amount is None:
-                    logger.error("Please set a threshold amount to measure range for disputing")
-                    return None, None
-                if self.alrt_threshold.amount is None:
-                    logger.error("Please set a threshold amount for alerting to measure range")
-                    return None, None
-                range_: float = abs(reported_val - trusted_val)
-                alertable_bool = range_ >= self.threshold.alrt_amount
-                disputable_bool = range_ >= self.threshold.disp_amount
-                return alertable_bool, disputable_bool
 
-            elif self.disp_threshold.metric and self.alrt_threshold.metric == Metrics.Equality:
+                if self.thresholds.alrt_amount is None:
+                    logger.error("Please set a threshold amount to measure range")
+                    return None
+                range_: float = abs(reported_val - trusted_val)
+                return range_ >= self.thresholds.alrt_amount
+
+            elif self.thresholds.metric == Metrics.Equality:
 
                 # if we have two bytes strings (not raw bytes)
                 if (
@@ -188,20 +274,18 @@ class MonitoredFeed(Base):
                     and reported_val.startswith("0x")
                     and trusted_val.startswith("0x")
                 ):
-                    return trusted_val.lower() != reported_val.lower(), False, False
-                alertable_bool = False
-                disputable_bool = bool(trusted_val != reported_val)
-                return alertable_bool, disputable_bool
+                    return trusted_val.lower() != reported_val.lower()
+                return bool(trusted_val != reported_val)
 
             else:
                 logger.error("Attemping comparison with unknown threshold metric")
-                return None, None
+                return None
         else:
             logger.error(
                 f"Unable to compare telliot val {trusted_val!r} of type {type(trusted_val)}"
                 f"with reported val {reported_val!r} of type {type(reported_val)} on chain_id {cfg.main.chain_id}"
             )
-            return None, None
+            return None
 
 
 async def general_fetch_new_datapoint(feed: DataFeed, *args: Any) -> Optional[Any]:
@@ -406,6 +490,7 @@ def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
 async def parse_new_report_event(
     cfg: TelliotConfig,
     log: LogReceipt,
+    confidence_threshold: float,
     monitored_feeds: List[MonitoredFeed],
     see_all_values: bool = False,
 ) -> Optional[NewReport]:
@@ -495,7 +580,7 @@ async def parse_new_report_event(
             monitored_feed = mf
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
-        new_report.status_str_1 = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
+        new_report.alertable_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
         return new_report
 
     if monitored_feed is not None:
@@ -504,16 +589,16 @@ async def parse_new_report_event(
         monitored_query_id = None
 
     if (new_report.query_id[2:] != monitored_query_id) or (not monitored_feed):
-        # Using global_percentage_threshold for any feed not configured in disputer-config.yaml
-        global_alert_percentage = Threshold.global_amount
-        global_threshold = Threshold(metric=Metrics.Percentage, amount=global_alert_percentage)
+
+        # build a monitored feed for all feeds not configured
+        thresholds = Thresholds(metric=Metrics.Percentage, alrt_amount=confidence_threshold, thresholds=None)
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag
             feed = get_feed_from_catalog(tag)
             if feed is None:
                 logger.error(f"Unable to find feed for tag {tag}")
-                return None, None
+                return None
         else:
             # have to check if feed's source supports generic queries and isn't a manual source
             # where a manual input is required
@@ -528,19 +613,18 @@ async def parse_new_report_event(
 
             if new_report.query_type not in auto_types:
                 logger.debug(f"Query type {new_report.query_type} doesn't have an auto source to compare value")
-                return None, None
+                return None
             feed = DataFeed(query=q, source=get_source_from_data(event_data.args._queryData))
 
-    monitored_feed = MonitoredFeed(feed, global_threshold)
+        monitored_feed = MonitoredFeed(feed, thresholds)
 
-    alertable, disputable = await monitored_feed.is_alertable_or_disputable(cfg, new_report.value)
-
-    click.echo(f"asdfasdf: {alertable, disputable}")
-    if alertable or disputable is None:
+    alertable = await monitored_feed.is_alertable(cfg, new_report.value)
+    disputable = await monitored_feed.is_disputable(cfg, new_report.value)
+    if alertable is None:
 
         if see_all_values:
 
-            new_report.status_alertable = alertable_str(alertable, new_report.query_id)
+            new_report.alertable_str = alertable_str(alertable, new_report.query_id)
             new_report.alertable = alertable
 
             return new_report
@@ -548,11 +632,9 @@ async def parse_new_report_event(
             logger.info("unable to check disputability")
             return None
     else:
-        # new_report.status_str_1 = alertable_str(alertable, new_report.query_id)
-        new_report.status_alertable = alertable_str(alertable, new_report.query_id)
+        new_report.alertable_str = alertable_str(alertable, new_report.query_id)
         new_report.alertable = alertable
-        # new_report.status_str_2 = disputable_str(disputable, new_report.query_id)
-        new_report.status_disputable = disputable_str(disputable, new_report.query_id)
+        new_report.disputable_str = disputable_str(disputable, new_report.query_id)
         new_report.disputable = disputable
 
         return new_report

@@ -5,7 +5,6 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-import click
 import yaml
 from box import Box
 from telliot_feeds.feeds import CATALOG_FEEDS
@@ -15,7 +14,7 @@ from telliot_feeds.queries.query_catalog import query_catalog
 
 from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
-from disputable_values_monitor.data import Threshold
+from disputable_values_monitor.data import Thresholds
 from disputable_values_monitor.utils import get_logger
 
 logger = get_logger(__name__)
@@ -26,7 +25,9 @@ class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
 
-    def __init__(self, is_disputing: bool, is_alerting: bool) -> None:
+    def __init__(self, is_disputing: bool, is_alerting: bool, confidence_threshold: float) -> None:
+        self.confidence = None if is_alerting else confidence_threshold
+
         try:
             with open("disputer-config.yaml", "r") as f:
                 self.box = Box(yaml.safe_load(f))
@@ -60,7 +61,6 @@ class AutoDisputerConfig:
         """
 
         monitored_feeds = []
-
         for i in range(len(self.box.feeds)):
             try:
                 # parse query type from YAML
@@ -90,17 +90,17 @@ class AutoDisputerConfig:
                 return None
 
             try:
-                # parse disputer type and alerter type and thresholds
+                # parse query type from YAML
                 try:
                     threshold_type = self.box.feeds[i].threshold.type
                     if threshold_type.lower() == "equality":
-                        global_alert_percentage = None
-                        alrt_threshold_amount = None
-                        disp_threshold_amount = None
+                        threshold_alrt_amount = None
+                        threshold_disp_amount = None
                     else:
-                        global_alert_percentage = self.box.global_alert_percentage
-                        disp_threshold_amount = self.box.feeds[i].threshold.disp_amount
-                        alrt_threshold_amount = self.box.feeds[i].threshold.alrt_amount
+                        threshold_alrt_amount = (
+                            self.box.feeds[i].threshold.alrt_amount if self.confidence is None else self.confidence
+                        )
+                        threshold_disp_amount = self.box.feeds[i].threshold.disp_amount
                 except AttributeError as e:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
@@ -108,19 +108,17 @@ class AutoDisputerConfig:
                     logging.error(f"Python Box attribute error: {e}")
                     return None
 
-                threshold: Threshold = Threshold(
-                    Metrics.Percentage, global_alert_percentage, alrt_threshold_amount, disp_threshold_amount
+                thresholds: Thresholds = Thresholds(
+                    Metrics[threshold_type], alrt_amount=threshold_alrt_amount, disp_amount=threshold_disp_amount
                 )
-
-            except KeyError as e:
-                logging.error(f"Unsupported dispute threshold:{e} \n")
+            except KeyError:
+                logging.error(f"Unsupported threshold: {thresholds}\n")
                 return None
-
-            monitored_feeds.append(MonitoredFeed(datafeed, threshold))
+            monitored_feeds.append(MonitoredFeed(datafeed, thresholds))
 
         return monitored_feeds
 
 
 if __name__ == "__main__":
 
-    print(AutoDisputerConfig(is_disputing=False, is_alerting=False))
+    print(AutoDisputerConfig(is_alerting=False, is_disputing=True, confidence_threshold=0.1))
