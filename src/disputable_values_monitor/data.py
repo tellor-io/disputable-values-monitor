@@ -107,29 +107,29 @@ class MonitoredFeed(Base):
             logger.error("Need reported value to check alertability")
             return None
 
-        #        if get_query_type(self.feed.query) == "EVMCall":
-        #
-        #            if not isinstance(reported_val, tuple):
-        #                return True
-        #
-        #            block_timestamp = reported_val[1]
-        #            reported_val = HexBytes(reported_val[0])
-        #            cfg.main.chain_id = self.feed.query.chainId
-        #
-        #            block_number = get_block_number_at_timestamp(cfg, block_timestamp)
-        #
-        #            trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
-        #            if not isinstance(trusted_val, tuple):
-        #                logger.warning(f"Bad value response for EVMCall: {trusted_val}")
-        #                return None
-        #
-        #            if trusted_val[0] is None:
-        #                logger.warning(f"Unable to fetch trusted value for EVMCall: {trusted_val}")
-        #                return None
-        #            trusted_val = HexBytes(trusted_val[0])
-        #
-        #        else:
-        trusted_val, _ = await general_fetch_new_datapoint(self.feed)
+        if get_query_type(self.feed.query) == "EVMCall":
+
+            if not isinstance(reported_val, tuple):
+                return True
+
+            block_timestamp = reported_val[1]
+            reported_val = HexBytes(reported_val[0])
+            cfg.main.chain_id = self.feed.query.chainId
+
+            block_number = get_block_number_at_timestamp(cfg, block_timestamp)
+
+            trusted_val, _ = await general_fetch_new_datapoint(self.feed, block_number)
+            if not isinstance(trusted_val, tuple):
+                logger.warning(f"Bad value response for EVMCall: {trusted_val}")
+                return None
+
+            if trusted_val[0] is None:
+                logger.warning(f"Unable to fetch trusted value for EVMCall: {trusted_val}")
+                return None
+            trusted_val = HexBytes(trusted_val[0])
+
+        else:
+            trusted_val, _ = await general_fetch_new_datapoint(self.feed)
 
         if trusted_val is None:
             logger.warning(f"trusted val was {trusted_val}")
@@ -172,17 +172,17 @@ class MonitoredFeed(Base):
                 range_: float = abs(reported_val - trusted_val)
                 return range_ >= self.thresholds.alrt_amount
 
-            #            elif self.thresholds.metric == Metrics.Equality:
-            #
-            #                # if we have two bytes strings (not raw bytes)
-            #                if (
-            #                    (isinstance(reported_val, str))
-            #                    and (isinstance(trusted_val, str))
-            #                    and reported_val.startswith("0x")
-            #                    and trusted_val.startswith("0x")
-            #                ):
-            #                    return trusted_val.lower() != reported_val.lower()
-            #                return bool(trusted_val != reported_val)
+            elif self.thresholds.metric == Metrics.Equality:
+
+                # if we have two bytes strings (not raw bytes)
+                if (
+                    (isinstance(reported_val, str))
+                    and (isinstance(trusted_val, str))
+                    and reported_val.startswith("0x")
+                    and trusted_val.startswith("0x")
+                ):
+                    return trusted_val.lower() != reported_val.lower()
+                return bool(trusted_val != reported_val)
 
             else:
                 logger.error("Attemping comparison with unknown threshold metric")
@@ -248,22 +248,22 @@ class MonitoredFeed(Base):
                 if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate percent difference on text/addresses/bytes")
                     return None
-                if self.thresholds.alrt_amount is None:
+                if self.thresholds.disp_amount is None:
                     logger.error("Please set a threshold amount to measure percent difference")
                     return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
-                return float(abs(percent_diff)) >= self.thresholds.alrt_amount
+                return float(abs(percent_diff)) >= self.thresholds.disp_amount
 
             elif self.thresholds.metric == Metrics.Range:
 
                 if isinstance(trusted_val, (str, bytes, tuple)) or isinstance(reported_val, (str, bytes, tuple)):
                     logger.error("Cannot evaluate range on text/addresses/bytes")
 
-                if self.thresholds.alrt_amount is None:
+                if self.thresholds.disp_amount is None:
                     logger.error("Please set a threshold amount to measure range")
                     return None
                 range_: float = abs(reported_val - trusted_val)
-                return range_ >= self.thresholds.alrt_amount
+                return range_ >= self.thresholds.disp_amount
 
             elif self.thresholds.metric == Metrics.Equality:
 
@@ -591,7 +591,7 @@ async def parse_new_report_event(
     if (new_report.query_id[2:] != monitored_query_id) or (not monitored_feed):
 
         # build a monitored feed for all feeds not configured
-        thresholds = Thresholds(metric=Metrics.Percentage, alrt_amount=confidence_threshold, thresholds=None)
+        thresholds = Thresholds(metric=Metrics.Percentage, alrt_amount=confidence_threshold)
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag

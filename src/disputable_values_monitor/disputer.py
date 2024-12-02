@@ -147,8 +147,8 @@ async def dispute(
         )
         return ""
 
-    new_report.status_str_1 += ": disputed!"
-    new_report.status_str_2 += ": alerted!"
+    new_report.alertable_str += ": disputed!"
+    new_report.disputable_str += ": alerted!"
     explorer = endpoint.explorer
     if not explorer:
         dispute_tx_link = str(tx_receipt.transactionHash.hex())
