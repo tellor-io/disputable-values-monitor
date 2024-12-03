@@ -158,7 +158,7 @@ class MonitoredFeed(Base):
                     logger.error("Please set a disp_amount amount to measure percent difference")
                     return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
-                print(float(abs(percent_diff)) >= self.thresholds.alrt_amount)
+
                 return bool(float(abs(percent_diff)) >= self.thresholds.alrt_amount)
 
             elif self.thresholds.metric == Metrics.Range:

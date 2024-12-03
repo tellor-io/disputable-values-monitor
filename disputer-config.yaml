@@ -5,13 +5,13 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
     threshold:
       type: Percentage
       disp_amount: 0.75 # 75
-      alrt_amount: 0.10 # 75
+      alrt_amount: 0.25 # 75
 #BTC/USD
-  - query_id: "0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
-    threshold:
-      type: Percentage
-      disp_amount: 0.85 # 75
-      alrt_amount: 0.20 # 75
+#  - query_id: "0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
+#    threshold:
+#      type: Percentage
+#      disp_amount: 0.85 # 75
+#      alrt_amount: 0.20 # 75
 #EVMCALL
 #  - query_type: EVMCall
 #    threshold:
