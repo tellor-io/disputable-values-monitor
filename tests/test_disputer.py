@@ -41,7 +41,7 @@ async def test_not_meant_to_dispute(caplog, disputer_account):
     )
 
     cfg = TelliotConfig()
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report.query_id = "hi how are you"
 
@@ -60,7 +60,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report = NewReport(
         "0xabc123",
@@ -114,7 +114,7 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report = NewReport(
         "0xabc123",
@@ -174,7 +174,7 @@ async def test_dispute_using_sample_log(
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     threshold = Threshold(Metrics.Percentage, 0.50)
     monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]

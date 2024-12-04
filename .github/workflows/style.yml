@@ -32,4 +32,4 @@ jobs:
           poetry env use 3.9 && poetry install
       - name: "Run poetry style on ${{ matrix.python-version }}"
         run:
-          poetry run pre-commit run --all-files 
+          poetry run pre-commit run --all-files

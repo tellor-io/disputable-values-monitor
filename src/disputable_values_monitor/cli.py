@@ -214,7 +214,6 @@ async def start(
                     (
                         new_report.tx_hash,
                         new_report.submission_timestamp,
-                        new_report.link,
                         new_report.query_type,
                         new_report.value,
                         new_report.alertable_str,
@@ -222,6 +221,7 @@ async def start(
                         new_report.asset,
                         new_report.currency,
                         new_report.chain_id,
+                        new_report.link,
                     )
                 )
 

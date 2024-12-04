@@ -93,26 +93,26 @@ class AutoDisputerConfig:
             try:
                 # parse query type from YAML
                 try:
-                    threshold_type = self.box.feeds[i].threshold.type
+                    threshold_type = self.box.feeds[i].thresholds.type
                     if threshold_type.lower() == "equality":
                         threshold_alrt_amount = None
                         threshold_disp_amount = None
                     else:
                         threshold_alrt_amount = (
-                            self.box.feeds[i].threshold.alrt_amount
-                            if self.box.feeds[i].threshold.alrt_amount
+                            self.box.feeds[i].thresholds.alrt_amount
+                            if self.box.feeds[i].thresholds.alrt_amount
                             else self.confidence
                         )
                         if not self.is_disputing:
                             threshold_disp_amount = (
-                                self.box.feeds[i].threshold.alrt_amount
-                                if self.box.feeds[i].threshold.alrt_amount
+                                self.box.feeds[i].thresholds.alrt_amount
+                                if self.box.feeds[i].thresholds.alrt_amount
                                 else self.confidence
                             )
                         else:
                             threshold_disp_amount = (
-                                self.box.feeds[i].threshold.disp_amount
-                                if self.box.feeds[i].threshold.disp_amount
+                                self.box.feeds[i].thresholds.disp_amount
+                                if self.box.feeds[i].thresholds.disp_amount
                                 else self.confidence
                             )
                 except AttributeError as e:

@@ -168,7 +168,7 @@ async def check_dispute(oracle, query_id, timestamp):
     return indispute
 
 
-async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=""):
+async def setup_and_start(is_disputing, config, config_patches=None):
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
@@ -190,7 +190,7 @@ async def setup_and_start(is_disputing, config, config_patches=None, skip_confir
 
         try:
             async with async_timeout.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations, password)
+                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations=False, password="")
         except asyncio.TimeoutError:
             pass
 
@@ -201,15 +201,17 @@ async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]
     """Test that the default config works as expected"""
     core = await submit_multiple_bad_values
     config = core.config
+    print(f"config = {config}")
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
-    chain_timestamp = w3.eth.get_block("latest")["timestamp"]
 
+    chain_timestamp = w3.eth.get_block("latest")["timestamp"]
     eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
     evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
     await setup_and_start(True, config)
+    print(f"config = {config}")
     assert await check_dispute(oracle, btc_query_id, btc_timestamp)
     # in config file
     assert await check_dispute(oracle, eth_query_id, eth_timestamp)
@@ -229,15 +231,17 @@ async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCo
     evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
-    btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}]}
+    btc_config = {
+        "feeds": [
+            {"query_id": btc_query_id, "threshold": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}
+        ]
+    }
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=btc_config),
     ]
     await setup_and_start(True, config, config_patches)
-
     assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # not in config file
     assert not await check_dispute(oracle, eth_query_id, eth_timestamp)
     assert not await check_dispute(oracle, evm_query_id, evm_timestamp)
 
