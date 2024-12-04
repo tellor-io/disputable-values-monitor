@@ -168,7 +168,7 @@ async def check_dispute(oracle, query_id, timestamp):
     return indispute
 
 
-async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=None):
+async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=""):
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
@@ -195,7 +195,7 @@ async def setup_and_start(is_disputing, config, config_patches=None, skip_confir
             pass
 
 
-@pytest.mark.skip(reason="default config not used")
+# @pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
 async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
     """Test that the default config works as expected"""
@@ -229,7 +229,7 @@ async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCo
     evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
-    btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
+    btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}]}
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=btc_config),

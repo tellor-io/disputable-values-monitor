@@ -154,9 +154,6 @@ class MonitoredFeed(Base):
                 if self.thresholds.alrt_amount is None:
                     logger.error("Please set a alrt_amount amount to measure percent difference")
                     return None
-                if self.thresholds.disp_amount is None:
-                    logger.error("Please set a disp_amount amount to measure percent difference")
-                    return None
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
 
                 return bool(float(abs(percent_diff)) >= self.thresholds.alrt_amount)
@@ -250,7 +247,7 @@ class MonitoredFeed(Base):
                     return None
                 if self.thresholds.disp_amount is None:
                     logger.error("Please set a threshold amount to measure percent difference")
-                    return None
+                    return False
                 percent_diff: float = (reported_val - trusted_val) / trusted_val
                 return float(abs(percent_diff)) >= self.thresholds.disp_amount
 
@@ -261,7 +258,7 @@ class MonitoredFeed(Base):
 
                 if self.thresholds.disp_amount is None:
                     logger.error("Please set a threshold amount to measure range")
-                    return None
+                    return False
                 range_: float = abs(reported_val - trusted_val)
                 return range_ >= self.thresholds.disp_amount
 
@@ -589,9 +586,10 @@ async def parse_new_report_event(
         monitored_query_id = None
 
     if (new_report.query_id[2:] != monitored_query_id) or (not monitored_feed):
-
         # build a monitored feed for all feeds not configured
-        thresholds = Thresholds(metric=Metrics.Percentage, alrt_amount=confidence_threshold)
+        thresholds = Thresholds(
+            metric=Metrics.Percentage, alrt_amount=confidence_threshold, disp_amount=confidence_threshold
+        )
         catalog = query_catalog.find(query_id=new_report.query_id)
         if catalog:
             tag = catalog[0].tag

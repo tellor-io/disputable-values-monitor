@@ -48,7 +48,6 @@ def print_title_info() -> None:
 @click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
 @click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-art", "--is-alerting", help="enable custom alerting for configured feeds.", is_flag=True)
 @click.option(
     "-d",
     "--is-disputing",
@@ -74,7 +73,6 @@ async def main(
     all_values: bool,
     wait: int,
     account_name: str,
-    is_alerting: bool,
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
@@ -88,7 +86,6 @@ async def main(
         all_values=all_values,
         wait=wait,
         account_name=account_name,
-        is_alerting=is_alerting,
         is_disputing=is_disputing,
         confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
@@ -101,7 +98,6 @@ async def start(
     all_values: bool,
     wait: int,
     account_name: str,
-    is_alerting: bool,
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
@@ -113,7 +109,6 @@ async def start(
     cfg.main.chain_id = 1
     disp_cfg = AutoDisputerConfig(
         is_disputing=is_disputing,
-        is_alerting=is_alerting,
         confidence_threshold=confidence_threshold,
     )
     print_title_info()
@@ -128,17 +123,9 @@ async def start(
         logger.error("auto-disputing enabled, but no account provided (see --help)")
         return
 
-    elif is_alerting:
-        click.echo("DVM is NOT auto-disputing at congigured thresholds.")
-        click.echo("📣 DVM is alerting configured feeds at custom alert thresholds 📣")
-        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
     if is_disputing:
         click.echo("🛡️ DVM is auto-disputing configured feeds at custom thresholds 🛡️")
-        click.echo(".DVM is NOT alerting configured feeds at custom alert thresholds.")
-        click.echo("DVM is alerting unconfigured spot prices at global percentage...")
-    elif is_disputing and is_alerting:
-        click.echo("DVM is NOT auto-disputing at congigured thresholds.")
-        click.echo("📣 DVM is alerting configured feeds at custom alert thresholds 📣")
+        click.echo("DVM is alerting configured feeds at custom alert thresholds.")
         click.echo("DVM is alerting unconfigured spot prices at global percentage...")
     else:
         click.echo("DVM is alerting at global percentage 📣")
@@ -213,9 +200,6 @@ async def start(
                 clear_console()
                 print_title_info()
 
-                if is_alerting:
-                    click.echo("Valid alerting scheme loaded...")
-
                 if is_disputing:
                     click.echo("Valid disputing scheme loaded...")
 
@@ -273,7 +257,6 @@ async def start(
                 # reset config to clear object attributes that were set during loop
 
                 disp_cfg = AutoDisputerConfig(
-                    is_alerting=is_alerting,
                     is_disputing=is_disputing,
                     confidence_threshold=confidence_threshold,
                 )

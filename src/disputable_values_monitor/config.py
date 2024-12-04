@@ -25,10 +25,9 @@ class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
 
-    def __init__(self, is_disputing: bool, is_alerting: bool, confidence_threshold: float) -> None:
+    def __init__(self, is_disputing: bool, confidence_threshold: float) -> None:
         self.confidence = confidence_threshold
         self.is_disputing = is_disputing
-        self.is_alerting = is_alerting
 
         try:
             with open("disputer-config.yaml", "r") as f:
@@ -99,16 +98,17 @@ class AutoDisputerConfig:
                         threshold_alrt_amount = None
                         threshold_disp_amount = None
                     else:
-                        if not self.is_alerting:
-                            threshold_alrt_amount = self.confidence
-                        else:
-                            threshold_alrt_amount = (
+                        threshold_alrt_amount = (
+                            self.box.feeds[i].threshold.alrt_amount
+                            if self.box.feeds[i].threshold.alrt_amount
+                            else self.confidence
+                        )
+                        if not self.is_disputing:
+                            threshold_disp_amount = (
                                 self.box.feeds[i].threshold.alrt_amount
                                 if self.box.feeds[i].threshold.alrt_amount
                                 else self.confidence
                             )
-                        if not self.is_disputing:
-                            threshold_disp_amount = threshold_alrt_amount if threshold_alrt_amount else self.confidence
                         else:
                             threshold_disp_amount = (
                                 self.box.feeds[i].threshold.disp_amount
@@ -135,4 +135,4 @@ class AutoDisputerConfig:
 
 if __name__ == "__main__":
 
-    print(AutoDisputerConfig(is_alerting=False, is_disputing=True, confidence_threshold=0.05))
+    print(AutoDisputerConfig(is_disputing=False, confidence_threshold=0.05))
