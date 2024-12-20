@@ -37,7 +37,7 @@ def test_disputable_str():
     disputable1 = False
     disp_str1 = disputable_str(disputable1, query_id)
     assert isinstance(disp_str1, str)
-    assert disp_str1 == "no ✔️"
+    assert disp_str1 == "no ✔️ "
 
 
 def test_logger():
