@@ -52,13 +52,26 @@ source vars.sh
 
 ### Set the chains you want to monitor
 
+- Edit `monitored-chains.json` with the desired set of networks that you wish to monitor with the disputanble values monitor.
+
+example, if you would like to monitor values only on mainnet Ethereum, sepolia, Amoy and localhost:
+```
+{
+  "monitored_chains": [1, 11155111, 80002, 1337]
+}
+```
+*Note: Ethereum, sepolia, Amoy and localhost are required for testing.*
+
+### Set RPC Endpoints
 - Initialize telliot configuration:
 ```bash
 poetry run telliot config init
 ```
 You should now have a `telliot` folder in your home directory.
 
-- Open `~/telliot/endpoints.yaml` with your favorite text editor. The Disputable-Values-Monitor will check reports on each chain that is configured in this list. Remove the networks that you don't want to monitor, and provide and endpoint url for those that you do. For example, if you want to monitor reports on Ethereum Mainnet and Sepolia testnet, your endpoints.yaml file should look like this:
+- Open `~/telliot/endpoints.yaml` with your favorite text editor. Provide a reliable endpoint url for each chain that you would like to monitor. If any chain endpoints are needed by telliot-feeds for the data that you wish to monitor, add those to this file as well.
+
+Example continued: You want to monitor reports on Sepolia (11155111) and Amoy (80002), but you want to make sure that any incorrect wsteth-usd-spot reports get flagged. Because the `wsteth-usd-spot` telliot feed requireds a mainnet (1) endpoint, you need to have a working endpoint for sepolia, Amoy, and mainnet:
 ```
 type: EndpointList
 endpoints:
@@ -74,6 +87,13 @@ endpoints:
   provider: Infura
   url: https://YOUR_SEPOLIA_ENDPOINT
   explorer: https://sepolia.etherscan.io/
+- type: RPCEndpoint
+  chain_id: 80002
+  network: polygon-amoy
+  provider: Matic
+  url: https://YOUR_AMOY_ENDPOINT
+  explorer: https://amoy.polygonscan.com/
+  monitored: True
 ```
 
 ### Run the DVM for Alerts Only
@@ -91,6 +111,10 @@ Enter `y` to confirm alerts only.
 `-w` or `--wait`: The wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds or `-w 7`
 
 `-av`: to get an alert for all `NewReport` events (regardless of whether they are disputable or not).
+
+`--initial_block_offset` : The number of blocks to look back when first starting the DVM. (CAUTION: stale data can cause false positives if this value is set too large, or if prices moved drastically in the recent past)
+
+`-sc` : Use "skip confirmations" when running the DVM as a system service to skip config checks.
 
 ### Run the DVM for Automatic Disputes
 

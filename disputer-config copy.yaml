@@ -1,0 +1,102 @@
+ # AutoDisputer configuration file
+feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
+#ETH/USD
+  - query_id: "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+      alert_amt: 0.10
+#BTC/USD
+  - query_id: "0xa6f013ee236804827b77696d350e9f0ac3e879328f2a3021d473a0b778ad78ac"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#OP/USD
+  - query_id: "0xafc6a3f6c18df31f1078cf038745b48e55623330715d90efe3dc7935efd44938"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#STETH/USD
+  - query_id: "0x907154958baee4fb0ce2bbe50728141ac76eb2dc1731b3d40f0890746dd07e62"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#TRB/USD
+  - query_id: "0x5c13cd9c97dbb98f2429c101a2a8150e6c7a0ddaff6124ee176a3a411067ded0"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#BRL/USD
+  - query_id: "0x7f3fc5bbf0bcc372beece1d2711095b6c884c69e21dad1180f2160adfcd8b044"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#CNY/USD
+  - query_id: "0x2c81613b335c890096fd1c9a89766a2d71da2c9636505a9cb3b3dc7877cdad4b"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#WSTETH/USD
+  - query_id: "0x1962cde2f19178fe2bb2229e78a6d386e6406979edc7b9a1966d89d83b3ebf2e"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#RETH/USD
+  - query_id: "0x0bc2d41117ae8779da7623ee76a109c88b84b9bf4d9b404524df04f7d0ca4ca7"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#CBETH/USD
+  - query_id: "0xbb5e0a51ab0e06354439f377e326ca71ec8149249d163f75f543fcdc25818e76"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#OETH/USD
+  - query_id: "0xf30c232070ffa631fc6fc7b350ba261dab4d43cc98d43f4a29bff453b06e0911"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#USDC/USD
+  - query_id: "0x8ee44cd434ed5b0e007eee581fbe0855336f3f84484e8d9989a620a4a49aa0f7"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#USDT/USD
+  - query_id: "0x68a37787e65e85768d4aa6e385fb15760d46df0f67a18ec032d8fd5848aca264"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#WBTC/USD
+  - query_id: "0x6fad0305c4cbd56b25a8ff90ec4e40031d1a74a5512f38c361514198d6184b6d"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#WMNT/USD
+  - query_id: "0x931529a866017d1d1356bf4098b91e48060da9cede36f019446209a246abbef8"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#METH/USD
+  - query_id: "0x3a9e54c25e1da43fe0321b83f173cf8db9026d012a9012422c2029b42bce0c09"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#wUSDM/USD
+  - query_id: "0x6908dd654640ba7c223a7bfb615a6b6238b839f31e3cdcc8804483a620439912"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#sDAI/USD
+  - query_id: "0x05cddb6b67074aa61fcbe1d2fd5924e028bb699b506267df28c88f7deac4edc6"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#sFRAX/USD
+  - query_id: "0x53895ab7997ea4c92803bf333392bdbf8a79b10df9f1ef098ff3cea77a87f6b5"
+    threshold:
+      type: Percentage
+      amount: 0.75 # 75%
+#EVMCALL
+  - query_type: EVMCall
+    threshold:
+      type: Equality

@@ -16,7 +16,7 @@ from disputable_values_monitor.config import AutoDisputerConfig
 from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
 from disputable_values_monitor.data import parse_new_report_event
-from disputable_values_monitor.data import Threshold
+from disputable_values_monitor.data import Thresholds
 from disputable_values_monitor.disputer import dispute
 from disputable_values_monitor.disputer import get_dispute_fee
 from disputable_values_monitor.utils import NewReport
@@ -41,7 +41,7 @@ async def test_not_meant_to_dispute(caplog, disputer_account):
     )
 
     cfg = TelliotConfig()
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report.query_id = "hi how are you"
 
@@ -60,7 +60,7 @@ async def test_dispute_on_empty_block(setup, caplog: pytest.LogCaptureFixture, d
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report = NewReport(
         "0xabc123",
@@ -114,7 +114,7 @@ async def test_dispute_on_disputable_block(setup, caplog: pytest.LogCaptureFixtu
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
     report = NewReport(
         "0xabc123",
@@ -174,10 +174,12 @@ async def test_dispute_using_sample_log(
     """
 
     cfg = setup
-    disp_config = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+    disp_config = AutoDisputerConfig(is_disputing=True, confidence_threshold=None)
 
-    threshold = Threshold(Metrics.Percentage, 0.50)
-    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, threshold)]
+    thresholds = Thresholds(
+        metric=Metrics.Percentage, alrt_amount=0.25, disp_amount=0.50  # Alert threshold  # Dispute threshold
+    )
+    monitored_feeds = [MonitoredFeed(eth_usd_median_feed, thresholds)]
 
     mock_telliot_val = 1
     mock_approve_tx = (EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT[0], ResponseStatus(ok=True))

@@ -41,7 +41,7 @@ def dispute_alert(msg: str) -> None:
 def alert(all_values: bool, new_report: Any) -> None:
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
-        msg = generate_alert_msg(False, new_report.link)
+        msg = generate_alert_msg(False, False, new_report.link)
         send_discord_msg(msg)
 
         return
@@ -49,25 +49,30 @@ def alert(all_values: bool, new_report: Any) -> None:
     # Account for unsupported queryIDs
     if new_report.disputable is not None:
         if new_report.disputable:
-            msg = generate_alert_msg(True, new_report.link)
+            msg = generate_alert_msg(True, True, new_report.link)
 
     # If user wants ALL NewReports
     if all_values:
-        msg = generate_alert_msg(False, new_report.link)
+        msg = generate_alert_msg(True, False, new_report.link)
         send_discord_msg(msg)
 
     else:
-        if new_report.disputable:
-            msg = generate_alert_msg(True, new_report.link)
+        if new_report.alertable and not new_report.disputable:
+            msg = generate_alert_msg(True, False, new_report.link)
+            send_discord_msg(msg)
+        elif new_report.alertable and new_report.disputable:
+            msg = generate_alert_msg(True, True, new_report.link)
             send_discord_msg(msg)
 
 
-def generate_alert_msg(disputable: bool, link: str) -> str:
+def generate_alert_msg(alertable: bool, disputable: bool, link: str) -> str:
     """Generate an alert message string that
     includes a link to a relevant expolorer."""
 
     if disputable:
         return f"\n❗DISPUTABLE VALUE❗\n{link}"
+    elif alertable:
+        return f"\n *DEVIANT (ALERTABLE) VALUE* \n{link}"
     else:
         return f"\n❗NEW VALUE❗\n{link}"
 

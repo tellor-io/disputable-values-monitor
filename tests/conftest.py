@@ -53,7 +53,7 @@ def eth_usd_report_log():
 def evm_call_log():
     return AttributeDict(
         {
-            "address": "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0",
+            "address": "0x8cFc184c877154a8F9ffE0fe75649dbe5e2DBEbf",
             "topics": [
                 HexBytes("0x48e9e2c732ba278de6ac88a3a57a5c5ba13d3d8370e709b3b98333a57876ca95"),
                 HexBytes("0xd7472d51b2cd65a9c6b81da09854efdeeeff8afcda1a2934566f54b731a922f3"),

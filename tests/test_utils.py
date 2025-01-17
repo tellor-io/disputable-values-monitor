@@ -37,7 +37,7 @@ def test_disputable_str():
     disputable1 = False
     disp_str1 = disputable_str(disputable1, query_id)
     assert isinstance(disp_str1, str)
-    assert disp_str1 == "no ✔️"
+    assert disp_str1 == "no ✔️ "
 
 
 def test_logger():
@@ -58,10 +58,10 @@ def test_select_account():
     cfg = TelliotConfig()
 
     if not find_accounts("disputer-test-acct"):
-        ChainedAccount.add("disputer-test-acct1", [1, 5, 4, 1337, 80001], os.getenv("PRIVATE_KEY"), "")
+        ChainedAccount.add("disputer-test-acct", [1, 5, 4, 1337, 80001, 80002, 11155111], os.getenv("PRIVATE_KEY"), "")
 
     with mock.patch("click.confirm", return_value=True):
-        account = select_account(cfg, None)
+        account = select_account(cfg, None, False, None)
 
     assert not account
 

@@ -39,7 +39,7 @@ def test_notify_typical_disputable(capsys):
 
 def test_generate_alert_msg():
     link = "example transaction link"
-    msg = generate_alert_msg(True, link)
+    msg = generate_alert_msg(alertable=True, disputable=True, link=link)
 
     assert isinstance(msg, str)
     assert "example transaction link" in msg
