@@ -54,6 +54,8 @@ def custom_open_side_effect(*args, **kwargs):
     """mocks open function to return a mock file"""
     if args[0] == "disputer-config.yaml":
         return mock_open().return_value
+    if args[0] == "monitored-chains.json":
+        return mock_open().return_value
     return io.open(*args, **kwargs)
 
 
@@ -79,6 +81,12 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
     node.connect()
 
     w3 = node._web3
+
+    if w3.isConnected():
+        print("Connected to the Ethereum node!")
+    else:
+        print("Failed to connect to the Ethereum node.")
+
     increase_time_and_mine_blocks(w3, 600, 20)
     async with TelliotCore(config=config) as core:
         contracts = core.get_tellor360_contracts()
@@ -129,8 +137,8 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert receipt["status"] == 1
+    receipt_eth = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert receipt_eth["status"] == 1
     # submit bad btc value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
@@ -138,27 +146,24 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_btc = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_btc["status"] == 1
     # submit bad evmcall value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
     submit_value_txn = submit_value(evm_query_id, evm_wrong_val, 0, evm_query_data).buildTransaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_evmcall = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_evmcall["status"] == 1
     return core
 
 
 @pytest.mark.asyncio
 async def fetch_timestamp(oracle, query_id, chain_timestamp):
     """fetches a value's timestamp from oracle"""
-    try:
-        timestamp, status = await oracle.read("getDataBefore", query_id, chain_timestamp)
-        assert timestamp is not None and len(timestamp) > 2 and timestamp[2] > 0
-        assert status.ok, status.error
-    except Exception as e:
-        pytest.fail(f"Failed to fetch a valid timestamp: {e}")
+    timestamp, status = await oracle.read("getDataBefore", query_id, chain_timestamp)
+    assert timestamp[2] > 0
+    assert status.ok, status.error
     return timestamp
 
 
@@ -190,32 +195,53 @@ async def setup_and_start(is_disputing, config, config_patches=None):
 
         try:
             async with async_timeout.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations=False, password="")
+                result = await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, False, "")
+                assert result is True, "Setup and start failed"
         except asyncio.TimeoutError:
-            pass
+            raise AssertionError("Setup and start timed out")
 
 
 # @pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
-async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore], monkeypatch):
     """Test that the default config works as expected"""
     core = await submit_multiple_bad_values
     config = core.config
-    print(f"config = {config}")
+
+    # Ensure we're using the local test network
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1337)[0]]
+    endpoint = config.get_endpoint()
+    endpoint.connect()
+
     oracle = core.get_tellor360_contracts().oracle
+    assert oracle is not None, "Oracle contract not initialized"
+
     w3 = core.endpoint._web3
-
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
-    eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
-    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
-    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
-    await setup_and_start(True, config)
-    print(f"config = {config}")
-    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # in config file
-    assert await check_dispute(oracle, eth_query_id, eth_timestamp)
-    assert await check_dispute(oracle, evm_query_id, evm_timestamp)
+    eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
+    assert eth_timestamp is not None, "Failed to fetch ETH timestamp"
+
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    assert evm_timestamp is not None, "Failed to fetch EVM timestamp"
+
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+    assert btc_timestamp is not None, "Failed to fetch BTC timestamp"
+
+    # Mock Discord webhook
+    # monkeypatch.setenv("DISCORD_WEBHOOK_URL_1", "http://mock.webhook")
+    print(f"spud stuff = {oracle}, {btc_query_id}, {btc_timestamp}")
+    btc_dispute = await check_dispute(oracle, btc_query_id, btc_timestamp)
+    assert btc_dispute is not None, "BTC dispute check failed"
+    assert btc_dispute, "Expected BTC value to be in dispute"
+
+    eth_dispute = await check_dispute(oracle, eth_query_id, eth_timestamp)
+    assert eth_dispute is not None, "ETH dispute check failed"
+    assert eth_dispute, "Expected ETH value to be in dispute"
+
+    evm_dispute = await check_dispute(oracle, evm_query_id, evm_timestamp)
+    assert evm_dispute is not None, "EVM dispute check failed"
+    assert evm_dispute, "Expected EVM value to be in dispute"
 
 
 @pytest.mark.asyncio
@@ -233,7 +259,7 @@ async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCo
 
     btc_config = {
         "feeds": [
-            {"query_id": btc_query_id, "threshold": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}
         ]
     }
     config_patches = [

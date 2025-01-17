@@ -131,10 +131,6 @@ async def start(
         logger.error("No account selected for disputing")
         return None
 
-    # For testing purposes, allow early return after initial setup
-    if initial_block_offset == 0 and wait == 8:  # These are the test values
-        return True  # Return True to indicate successful setup
-
     display_rows = []
     displayed_events = set()
 
@@ -209,7 +205,8 @@ async def start(
                 alert(all_values, new_report)
 
                 if is_disputing and new_report.disputable:
-                    print(f"DISPUTING new_report.value = {new_report.value}")
+                    disputed_report = new_report.value
+                    print(f"DISPUTING new_report.value = {disputed_report!r}")
                     success_msg = await dispute(cfg, disp_cfg, account, new_report)
                     if success_msg:
                         dispute_alert(success_msg)
@@ -237,9 +234,18 @@ async def start(
                     del display_rows[0]
 
                 # Display table
-                _, timestamp, query_type, values, alertable_strs, disputable_strs, assets, currencies, chain, links = zip(
-                    *display_rows
-                )
+                (
+                    _,
+                    timestamp,
+                    query_type,
+                    values,
+                    alertable_strs,
+                    disputable_strs,
+                    assets,
+                    currencies,
+                    chain,
+                    links,
+                ) = zip(*display_rows)
 
                 dataframe_state = dict(
                     When=timestamp,
