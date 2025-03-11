@@ -42,12 +42,10 @@ def txn_kwargs(w3: Web3) -> dict:
 
 eth = SpotPrice("eth", "usd")
 btc = SpotPrice("btc", "usd")
-eth_query_id, eth_query_data = Web3.toHex(eth.query_id), Web3.toHex(eth.query_data)
-btc_query_id, btc_query_data = Web3.toHex(btc.query_id), Web3.toHex(btc.query_data)
-evm_query_id, evm_query_data = Web3.toHex(evm_call_feed_example.query.query_id), Web3.toHex(
-    evm_call_feed_example.query.query_data
-)
-evm_wrong_val = evm_call_feed_example.query.value_type.encode((int.to_bytes(12345, 32, "big"), 1683131435)).hex()
+eth_query_id, eth_query_data = eth.query_id, eth.query_data
+btc_query_id, btc_query_data = Web3.to_hex(btc.query_id), Web3.to_hex(btc.query_data)
+evm_query_id, evm_query_data = evm_call_feed_example.query.query_id, evm_call_feed_example.query.query_data
+evm_wrong_val = evm_call_feed_example.query.value_type.encode((int.to_bytes(12345, 32, "big"), 1683131435))
 
 
 def custom_open_side_effect(*args, **kwargs):
@@ -84,9 +82,9 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
         contracts = core.get_tellor360_contracts()
         # transfer trb to disputer account for disputing
         transfer_function = contracts.token.contract.get_function_by_name("transfer")
-        transfer_txn = transfer_function(w3.toChecksumAddress(disputer_account.address), int(100e18)).buildTransaction(
-            txn_kwargs(w3)
-        )
+        transfer_txn = transfer_function(
+            w3.to_checksum_address(disputer_account.address), int(100e18)
+        ).build_transaction(txn_kwargs(w3))
         transfer_hash = w3.eth.send_transaction(transfer_txn)
         reciept = w3.eth.wait_for_transaction_receipt(transfer_hash)
         assert reciept["status"] == 1
@@ -104,12 +102,12 @@ async def stake_deposited(environment_setup: TelliotCore):
     approve = token.contract.get_function_by_name("approve")
     deposit = oracle.contract.get_function_by_name("depositStake")
     # approve oracle to spend trb for submitting values
-    approve_txn = approve(oracle.address, int(10000e18)).buildTransaction(txn_kwargs(w3))
+    approve_txn = approve(oracle.address, int(10000e18)).build_transaction(txn_kwargs(w3))
     approve_hash = w3.eth.send_transaction(approve_txn)
     reciept = w3.eth.wait_for_transaction_receipt(approve_hash)
     assert reciept["status"] == 1
     # deposit stake
-    deposit_txn = deposit(_amount=int(10000e18)).buildTransaction(txn_kwargs(w3))
+    deposit_txn = deposit(_amount=int(10000e18)).build_transaction(txn_kwargs(w3))
     deposit_hash = w3.eth.send_transaction(deposit_txn)
     receipt = w3.eth.wait_for_transaction_receipt(deposit_hash)
     assert receipt["status"] == 1
@@ -125,7 +123,7 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
     oracle = contracts.oracle
     submit_value = oracle.contract.get_function_by_name("submitValue")
     # submit bad eth value
-    submit_value_txn = submit_value(eth_query_id, int.to_bytes(14, 32, "big"), 0, eth_query_data).buildTransaction(
+    submit_value_txn = submit_value(eth_query_id, int.to_bytes(14, 32, "big"), 0, eth_query_data).build_transaction(
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
@@ -134,7 +132,7 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
     # submit bad btc value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
-    submit_value_txn = submit_value(btc_query_id, int.to_bytes(13, 32, "big"), 0, btc_query_data).buildTransaction(
+    submit_value_txn = submit_value(btc_query_id, int.to_bytes(13, 32, "big"), 0, btc_query_data).build_transaction(
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
@@ -143,7 +141,7 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
     # submit bad evmcall value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
-    submit_value_txn = submit_value(evm_query_id, evm_wrong_val, 0, evm_query_data).buildTransaction(txn_kwargs(w3))
+    submit_value_txn = submit_value(evm_query_id, evm_wrong_val, 0, evm_query_data).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
     reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
     assert reciept["status"] == 1
@@ -312,11 +310,11 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
     oracle = contracts.oracle
     config = core.config
     feed = DATAFEED_BUILDER_MAPPING["AmpleforthCustomSpotPrice"]
-    qid = Web3.toHex(feed.query.query_id)
-    qdata = Web3.toHex(feed.query.query_data)
+    qid = Web3.to_hex(feed.query.query_id)
+    qdata = Web3.to_hex(feed.query.query_data)
     submit_value = oracle.contract.get_function_by_name("submitValue")
     # submit bad ampl value, and check if alert; ampl is a custom type and a SpotPrice type
-    submit_value_txn = submit_value(qid, int.to_bytes(1, 32, "big"), 0, qdata).buildTransaction(txn_kwargs(w3))
+    submit_value_txn = submit_value(qid, int.to_bytes(1, 32, "big"), 0, qdata).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
     receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
     assert receipt["status"] == 1
@@ -343,12 +341,12 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
     feed = DATAFEED_BUILDER_MAPPING["GasPriceOracle"]
     feed.query.chainId = 1
     feed.query.timestamp = 1679569268
-    qid = Web3.toHex(feed.query.query_id)
-    qdata = Web3.toHex(feed.query.query_data)
-    val = Web3.toHex(feed.query.value_type.encode(46.613))
+    qid = Web3.to_hex(feed.query.query_id)
+    qdata = Web3.to_hex(feed.query.query_data)
+    val = Web3.to_hex(feed.query.value_type.encode(46.613))
     submit_value = oracle.contract.get_function_by_name("submitValue")
 
-    submit_value_txn = submit_value(qid, val, 0, qdata).buildTransaction(txn_kwargs(w3))
+    submit_value_txn = submit_value(qid, val, 0, qdata).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
     receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
     assert receipt["status"] == 1
@@ -415,7 +413,7 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
     # submit fake eth value
     submit_value_txn = submit_value(
         eth_query_id, int.to_bytes(int(value * 1e18), 20, "big"), 0, eth_query_data
-    ).buildTransaction(txn_kwargs(w3))
+    ).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
     receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
     assert receipt["status"] == 1
@@ -451,7 +449,7 @@ async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
     # submit fake eth value
     submit_value_txn = submit_value(
         eth_query_id, int.to_bytes(int(value * 1e18), 33, "big"), 0, eth_query_data
-    ).buildTransaction(txn_kwargs(w3))
+    ).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
     receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
     assert receipt["status"] == 1

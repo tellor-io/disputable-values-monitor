@@ -44,7 +44,7 @@ async def test_disputability_mimicry_nft_index_type(setup, disputer_account):
     # fake val to avoid hitting api since api requires key
     val = 11287512.476225
     value = mimicry_nft_market_index_usd_feed.query.value_type.encode(val)
-    wallet = Web3.toChecksumAddress("0x39e419ba25196794b595b2a595ea8e527ddc9856")
+    wallet = Web3.to_checksum_address("0x39e419ba25196794b595b2a595ea8e527ddc9856")
     tellorflex = w3.eth.contract(address=oracle.address, abi=oracle.abi)
     token = w3.eth.contract(address=token.address, abi=token.abi)
     approve_txn = token.functions.approve(spender=oracle.address, amount=int(5000e18)).buildTransaction(

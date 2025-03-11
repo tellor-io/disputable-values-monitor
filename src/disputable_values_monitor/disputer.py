@@ -70,7 +70,7 @@ async def dispute(
         return ""
 
     # read balance of user and log it
-    user_token_balance, status = await token.read("balanceOf", Web3.toChecksumAddress(account.address))
+    user_token_balance, status = await token.read("balanceOf", Web3.to_checksum_address(account.address))
 
     if not status.ok:
         logger.error("Unable to retrieve Disputer account balance")
@@ -94,7 +94,7 @@ async def dispute(
         return ""
 
     try:
-        acc_nonce = w3.eth.get_transaction_count(Web3.toChecksumAddress(account.address))
+        acc_nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(account.address))
     except Exception as e:
         logger.error(f"Unable to dispute on chain_id {new_report.chain_id}: could not retrieve account nonce: {e}")
         return ""
@@ -105,7 +105,7 @@ async def dispute(
         spender=governance.address,
         amount=dispute_fee * 100,
         gas_limit=60000,
-        legacy_gas_price=w3.fromWei(w3.eth.gas_price, "gwei"),
+        legacy_gas_price=w3.from_wei(w3.eth.gas_price, "gwei"),
         acc_nonce=acc_nonce,
     )
 
@@ -123,7 +123,7 @@ async def dispute(
     try:
         msg = f"Unable to estimate gas usage for dispute on chain_id {new_report.chain_id}:"
         # Estimate gas usage amount
-        gas_limit: int = begin_dispute_tx.estimateGas({"from": Web3.toChecksumAddress(account.address)})
+        gas_limit: int = begin_dispute_tx.estimate_gas({"from": Web3.to_checksum_address(account.address)})
     except ContractLogicError as e:
         logger.error(f"{msg} {e}")
         return ""
@@ -135,7 +135,7 @@ async def dispute(
         _queryId=new_report.query_id,
         _timestamp=new_report.submission_timestamp,
         gas_limit=int(gas_limit * 1.2),
-        legacy_gas_price=w3.fromWei(w3.eth.gas_price, "gwei"),
+        legacy_gas_price=w3.from_wei(w3.eth.gas_price, "gwei"),
         acc_nonce=acc_nonce + 1,
     )
 

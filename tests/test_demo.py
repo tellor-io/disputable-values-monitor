@@ -30,7 +30,7 @@ async def test_demo(setup: TelliotConfig):
     oracle.connect()
     token.connect()
 
-    oracle_address = Web3.toChecksumAddress(oracle.address)
+    oracle_address = Web3.to_checksum_address(oracle.address)
 
     gas_price = await fetch_gas_price()
     stake_amount, status = await oracle.read(func_name="getStakeAmount")
@@ -79,7 +79,7 @@ async def test_evm_call_demo(setup: TelliotConfig):
     oracle.connect()
     token.connect()
 
-    oracle_address = Web3.toChecksumAddress(oracle.address)
+    oracle_address = Web3.to_checksum_address(oracle.address)
 
     gas_price = await fetch_gas_price()
     stake_amount, status = await oracle.read(func_name="getStakeAmount")

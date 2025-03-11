@@ -363,7 +363,7 @@ def get_query_from_data(query_data: bytes) -> Optional[Union[AbiQuery, JsonQuery
 def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
     """Recreate data source using query type thats decoded from query data field"""
     try:
-        query_type, encoded_param_values = eth_abi.decode_abi(["string", "bytes"], query_data)
+        query_type, encoded_param_values = eth_abi.decode(["string", "bytes"], query_data)
     except OverflowError:
         logger.error("OverflowError while decoding query data.")
         return None
@@ -375,7 +375,7 @@ def get_source_from_data(query_data: bytes) -> Optional[DataSource]:
     params_abi = cls.abi
     param_names = [p["name"] for p in params_abi]
     param_types = [p["type"] for p in params_abi]
-    param_values = eth_abi.decode_abi(param_types, encoded_param_values)
+    param_values = eth_abi.decode(param_types, encoded_param_values)
 
     source = DATAFEED_BUILDER_MAPPING[query_type].source
     for key, value in zip(param_names, param_values):
