@@ -253,7 +253,7 @@ async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[Telli
     btc_eth_config = {
         "feeds": [
             {"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
-            {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
+            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
         ]
     }
     config_patches = [
@@ -421,7 +421,7 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
+            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
         ]
     }
     config_patches = [
@@ -457,7 +457,7 @@ async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": eth_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
+            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
         ]
     }
     config_patches = [
