@@ -3,7 +3,9 @@ module.exports = {
     hardhat: {
       chainId: 1337,
       forking: {
-        url: process.env.MAINNET_URL,
+        url: process.env.MAINNET_URL.startsWith('https://') 
+            ? process.env.MAINNET_URL 
+            : `https://${process.env.MAINNET_URL}`,
         blockNumber: 22026011
       },
       accounts: {
