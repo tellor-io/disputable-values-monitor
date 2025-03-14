@@ -35,19 +35,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-              node-version: '22'
+          node-version: '22'
 
       - name: "Install hardhat"
-        run: npm install --save-dev hardhat
+        run: npm install --save-dev hardhat dotenv
       - name: Install dependencies
         run: |
-          apt-get update && apt-get install -y npm
           poetry env use 3.9 && poetry install
           pip freeze
       - name: Start node
-        run: npx hardhat node
+        run: npx hardhat node &
       - name: "Run poetry pytest for ${{ matrix.python-version }}"
-        run:
-          poetry run pytest
+        run: poetry run pytest
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2

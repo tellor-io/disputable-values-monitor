@@ -1,9 +1,17 @@
+require("dotenv").config();
+
+const MAINNET_URL = process.env.MAINNET_URL;
+if (!MAINNET_URL || !MAINNET_URL.startsWith('http')) {
+  console.error('Invalid or missing MAINNET_URL. Must be an absolute URL starting with http:// or https://');
+  process.exit(1);
+}
+
 module.exports = {
   networks: {
     hardhat: {
       chainId: 1337,
       forking: {
-        url: process.env.MAINNET_URL,
+        url: MAINNET_URL,
         blockNumber: 22026011
       },
       accounts: {
