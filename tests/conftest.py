@@ -12,7 +12,7 @@ from web3 import Web3
 from web3.datastructures import AttributeDict
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -83,14 +83,14 @@ def disputer_account():
 
     w3 = Web3(Web3.HTTPProvider("http://127.0.0.1:8545"))
 
-    multisig = Web3.toChecksumAddress("0x39e419ba25196794b595b2a595ea8e527ddc9856")
+    multisig = Web3.to_checksum_address("0x39e419ba25196794b595b2a595ea8e527ddc9856")
 
     w3.eth.send_transaction(
         {
             "chainId": 1337,
             "gasPrice": w3.eth.gas_price,
             "from": multisig,
-            "to": Web3.toChecksumAddress(disputer.address),
+            "to": Web3.to_checksum_address(disputer.address),
             "value": int(1e19),
         }
     )
@@ -125,7 +125,8 @@ def setup():
     transfer = token.get_function_by_name("transfer")
     multisig_address = "0x39E419bA25196794B595B2a595Ea8E527ddC9856"
     # transfer 100 TRB to the disputer account
-    token_txn = transfer("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1", int(100e18)).buildTransaction(
+    w3.provider.make_request("hardhat_impersonateAccount", ["0x39e419ba25196794b595b2a595ea8e527ddc9856"])
+    token_txn = transfer("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1", int(100e18)).build_transaction(
         {
             "gas": 500000,
             "gasPrice": w3.eth.gas_price,
