@@ -7,7 +7,10 @@ from telliot_feeds.queries.tellor.tellor_oracle_address import TellorOracleAddre
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
+from disputable_values_monitor.config import AutoDisputerConfig
 from disputable_values_monitor.data import parse_new_report_event
+from disputable_values_monitor.disputer import dispute
+from disputable_values_monitor.utils import NewReport
 
 
 EXPECTED_ORACLE = "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
@@ -131,6 +134,33 @@ async def test_tellor_oracle_address_no_config_returns_alert_only():
     assert new_report is not None
     assert new_report.query_type == "TellorOracleAddress"
     assert new_report.disputable is None
+
+
+@pytest.mark.asyncio
+async def test_tellor_oracle_address_dispute_skipped_on_non_allowed_chain(caplog):
+    """TellorOracleAddress reports on chains other than mainnet/Sepolia are never auto-disputed."""
+    cfg = TelliotConfig()
+    disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+
+    report = NewReport(
+        tx_hash="0x" + "ab" * 32,
+        submission_timestamp=1679425719,
+        chain_id=137,  # Polygon — not in the allowed set
+        link="https://polygonscan.com/tx/0x" + "ab" * 32,
+        query_type="TellorOracleAddress",
+        value="0x000000000000000000000000000000000000dEaD",
+        asset="N/A",
+        currency="N/A",
+        query_id="0x" + "ff" * 32,
+        disputable=True,
+        status_str="",
+    )
+
+    # account=None is fine: the chain-allowlist guard fires before any on-chain work
+    result = await dispute(cfg, disp_cfg, account=None, new_report=report)
+
+    assert result == ""
+    assert "not in allowed chains" in caplog.text
 
 
 @pytest.mark.asyncio

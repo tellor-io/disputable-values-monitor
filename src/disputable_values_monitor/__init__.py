@@ -7,6 +7,10 @@ WAIT_PERIOD = 7  # seconds between checks for new events
 
 ALWAYS_ALERT_QUERY_TYPES = ("AutopayAddresses", "TellorOracleAddress")
 
+# TellorOracleAddress reports only make sense on these canonical chains.
+# Auto-disputing on any other chain is never warranted.
+TELLOR_ORACLE_ADDRESS_DISPUTE_CHAIN_IDS = frozenset({1, 11155111})
+
 
 # https://goerli.etherscan.io/tx/0x3cb2ac6017b9c2282aba271ac658c55db428edcdd391df646a1928bbe28dd9bd
 EXAMPLE_NEW_REPORT_EVENT = AttributeDict(

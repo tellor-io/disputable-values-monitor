@@ -6,6 +6,7 @@ from telliot_core.apps.telliot_config import TelliotConfig
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
+from disputable_values_monitor import TELLOR_ORACLE_ADDRESS_DISPUTE_CHAIN_IDS
 from disputable_values_monitor.config import AutoDisputerConfig
 from disputable_values_monitor.data import get_contract
 from disputable_values_monitor.utils import get_logger
@@ -27,13 +28,23 @@ async def dispute(
     for feed in disp_cfg.monitored_feeds:
         try:
             disputable_query_id = feed.feed.query.query_id.hex()
+            disputable_query_ids.append(disputable_query_id)
         except Exception:
             pass
-        disputable_query_ids.append(disputable_query_id)
 
     oracle_address_for_chain = (
         disp_cfg.oracle_address.get(new_report.chain_id) if disp_cfg.oracle_address else None
     )
+    if (
+        new_report.query_type == "TellorOracleAddress"
+        and new_report.chain_id not in TELLOR_ORACLE_ADDRESS_DISPUTE_CHAIN_IDS
+    ):
+        logger.info(
+            f"Skipping TellorOracleAddress auto-dispute on chain_id {new_report.chain_id}:"
+            " chain_id not in allowed chains (mainnet and Sepolia only)"
+        )
+        return ""
+
     meant_to_dispute = (
         new_report.query_type == "TellorOracleAddress" and bool(oracle_address_for_chain)
     ) or new_report.query_id[2:] in disputable_query_ids

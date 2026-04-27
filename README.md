@@ -72,7 +72,7 @@ endpoints:
   chain_id: 11155111
   network: sepolia
   provider: Infura
-  url: https://YOUR_SEPOLIA_ENDPOINT
+  url: https://YOUR_SEPOLIA_ENDPOINTF
   explorer: https://sepolia.etherscan.io/
 ```
 
@@ -103,9 +103,9 @@ telliot account add AccountName 0xYOUR_PRIVATE_KEY 1 10 137 11155111
 ```
 Where `1 10 137 11155111` are the network IDs for the networks you want to be able to use with this account.
 
-2) Edit `dipsuter-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added  by providing the `query_id`, `threshold` `type` and `amount`.
+2) Edit `disputer-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added by providing the `query_id`, `threshold` `type` and `amount`.
 
-The provided configuation is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM:
+The provided configuration is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM:
 ```yaml
 # AutoDisputer configuration file
 feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
@@ -114,6 +114,25 @@ feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types
       type: Percentage
       amount: 0.75 # 75%
 ```
+
+### Auto-disputing `TellorOracleAddress` reports
+
+The `TellorOracleAddress` query type is used to report the address of the canonical Tellor oracle contract on a given chain. Any report that differs from the known correct address is **immediately disputable** — no threshold comparison is needed.
+
+To enable auto-disputing for this query type, add an `oracle_address` map to `disputer-config.yaml` that lists the **expected** oracle address for each chain you monitor:
+
+```yaml
+oracle_address:
+  1: "0x6ec401744008f4B018Ed9A36f76e6629799Ee50E"        # Ethereum mainnet
+  11155111: "0x55355157703A44f7516FBB831333317E98944e32"  # Sepolia testnet
+```
+
+- If a `TellorOracleAddress` report on a monitored chain contains **any address other than the one configured here**, the DVM will automatically dispute it.
+- If the chain is **not** in the `oracle_address` map, the report is flagged for manual review but **not** auto-disputed.
+- Auto-disputing `TellorOracleAddress` is only supported on **Ethereum mainnet (chain_id 1)** and **Sepolia (chain_id 11155111)**. Reports detected on other chains are always skipped.
+
+> **Note:** Your disputer account must hold enough TRB to cover the dispute fee (retrieved live from the governance contract). If the balance is insufficient the dispute is skipped and a warning is written to `log.txt`. Check your TRB balance and top up if needed before relying on auto-disputing.
+
 3) Start the Disputable-Values-Monitor with the Auto-Disputer enabled:
 ```bash
 cli -d -a AccountName

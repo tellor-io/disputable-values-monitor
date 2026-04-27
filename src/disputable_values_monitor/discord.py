@@ -69,7 +69,7 @@ def generate_alert_msg(disputable: bool, link: str) -> str:
     if disputable:
         return f"\n❗DISPUTABLE VALUE❗\n{link}"
     else:
-        return f"\n❗NEW VALUE❗\n{link}"
+        return f"\n❗WRONG ORACLE ADDRESS❗\n{link}"
 
 
 def send_discord_msg(msg: str) -> None:

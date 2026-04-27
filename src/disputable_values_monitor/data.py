@@ -416,8 +416,39 @@ async def parse_new_report_event(
     q = get_query_from_data(event_data.args._queryData)
 
     if q is None:
-        logger.error(f"Unable to form query from queryData of query type {new_report.query_type}")
-        return None
+        # Even when the query type isn't registered in telliot_feeds, try to handle
+        # ALWAYS_ALERT_QUERY_TYPES (e.g. TellorOracleAddress) by decoding the type
+        # directly from the raw ABI-encoded query data.
+        try:
+            raw_query_type, _ = eth_abi.decode(["string", "bytes"], event_data.args._queryData)
+        except Exception:
+            raw_query_type = None
+
+        if raw_query_type not in ALWAYS_ALERT_QUERY_TYPES:
+            logger.error(f"Unable to form query from queryData of query type {raw_query_type}")
+            return None
+
+        new_report.tx_hash = event_data.transactionHash.hex()
+        new_report.chain_id = chain_id
+        new_report.query_id = "0x" + event_data.args._queryId.hex()
+        new_report.query_type = raw_query_type
+        new_report.link = get_tx_explorer_url(tx_hash=new_report.tx_hash, cfg=cfg)
+        new_report.submission_timestamp = event_data.args._time
+        new_report.asset = "N/A"
+        new_report.currency = "N/A"
+        try:
+            (new_report.value,) = eth_abi.decode(["address"], event_data.args._value)
+        except Exception:
+            new_report.value = event_data.args._value
+
+        new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
+        if raw_query_type == "TellorOracleAddress" and oracle_address:
+            expected = oracle_address.get(chain_id)
+            if expected is not None:
+                disputable = expected.lower() != str(new_report.value).lower()
+                new_report.disputable = disputable
+                new_report.status_str = disputable_str(disputable, new_report.query_id)
+        return new_report
 
     new_report.tx_hash = event_data.transactionHash.hex()
     new_report.chain_id = chain_id
