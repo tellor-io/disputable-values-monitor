@@ -2,6 +2,7 @@
 import logging
 from dataclasses import dataclass
 from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -24,7 +25,7 @@ logger = get_logger(__name__)
 class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
-    oracle_address: Optional[str]
+    oracle_address: Optional[Dict[int, str]]
 
     def __init__(self, is_disputing: bool, confidence_flag: float) -> None:
         self.confidence = None if is_disputing else confidence_flag
@@ -44,7 +45,16 @@ class AutoDisputerConfig:
             return
 
         if hasattr(self.box, "oracle_address") and self.box.oracle_address:
-            self.oracle_address = str(self.box.oracle_address)
+            raw = self.box.oracle_address
+            if isinstance(raw, dict):
+                self.oracle_address = {int(chain_id): str(addr) for chain_id, addr in raw.items()}
+            else:
+                # Legacy single-address format — assume Ethereum mainnet (chain_id 1)
+                logger.warning(
+                    "oracle_address should be a chain_id->address mapping. "
+                    "Falling back to treating the value as a mainnet (chain_id 1) address."
+                )
+                self.oracle_address = {1: str(raw)}
 
         self.monitored_feeds = self.build_monitored_feeds_from_yaml()
 

@@ -31,8 +31,11 @@ async def dispute(
             pass
         disputable_query_ids.append(disputable_query_id)
 
+    oracle_address_for_chain = (
+        disp_cfg.oracle_address.get(new_report.chain_id) if disp_cfg.oracle_address else None
+    )
     meant_to_dispute = (
-        new_report.query_type == "TellorOracleAddress" and bool(disp_cfg.oracle_address)
+        new_report.query_type == "TellorOracleAddress" and bool(oracle_address_for_chain)
     ) or new_report.query_id[2:] in disputable_query_ids
 
     if not meant_to_dispute:

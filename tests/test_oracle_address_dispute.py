@@ -70,7 +70,7 @@ async def test_tellor_oracle_address_disputable_when_mismatch():
         log=log,
         confidence_threshold=0.0,
         monitored_feeds=[],
-        oracle_address=EXPECTED_ORACLE,
+        oracle_address={1: EXPECTED_ORACLE},
     )
 
     assert new_report is not None
@@ -89,7 +89,7 @@ async def test_tellor_oracle_address_not_disputable_when_match():
         log=log,
         confidence_threshold=0.0,
         monitored_feeds=[],
-        oracle_address=EXPECTED_ORACLE,
+        oracle_address={1: EXPECTED_ORACLE},
     )
 
     assert new_report is not None
@@ -108,7 +108,7 @@ async def test_tellor_oracle_address_not_disputable_case_insensitive_match():
         log=log,
         confidence_threshold=0.0,
         monitored_feeds=[],
-        oracle_address=EXPECTED_ORACLE.lower(),
+        oracle_address={1: EXPECTED_ORACLE.lower()},
     )
 
     assert new_report is not None
@@ -126,6 +126,25 @@ async def test_tellor_oracle_address_no_config_returns_alert_only():
         log=log,
         confidence_threshold=0.0,
         monitored_feeds=[],
+    )
+
+    assert new_report is not None
+    assert new_report.query_type == "TellorOracleAddress"
+    assert new_report.disputable is None
+
+
+@pytest.mark.asyncio
+async def test_tellor_oracle_address_no_entry_for_chain_returns_alert_only():
+    """If oracle_address map has no entry for the report's chain, it is alert-only."""
+    log = _build_oracle_address_log(WRONG_ORACLE)
+    cfg = _build_cfg()  # chain_id = 1
+
+    new_report = await parse_new_report_event(
+        cfg=cfg,
+        log=log,
+        confidence_threshold=0.0,
+        monitored_feeds=[],
+        oracle_address={137: EXPECTED_ORACLE},  # Polygon address only, not mainnet
     )
 
     assert new_report is not None

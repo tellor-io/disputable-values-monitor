@@ -79,7 +79,31 @@ def test_invalid_yaml_config():
 
 
 def test_oracle_address_parsed_from_yaml():
-    """test that an oracle_address is read from the YAML config"""
+    """test that an oracle_address map is read from the YAML config"""
+
+    yaml_content = """
+    oracle_address:
+      1: "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+      137: "0x1234567890abcdef1234567890abcdef12345678"
+
+    feeds:
+    - query_id: "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
+      threshold:
+        type: Percentage
+        amount: 0.95
+    """
+
+    with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
+        auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
+
+    assert auto_disp_cfg.oracle_address == {
+        1: "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0",
+        137: "0x1234567890abcdef1234567890abcdef12345678",
+    }
+
+
+def test_oracle_address_legacy_single_string_falls_back_to_mainnet():
+    """test that a bare string oracle_address is treated as a mainnet (chain_id 1) address"""
 
     yaml_content = """
     oracle_address: "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
@@ -94,7 +118,7 @@ def test_oracle_address_parsed_from_yaml():
     with mock.patch("builtins.open", mock.mock_open(read_data=yaml_content)):
         auto_disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_flag=None)
 
-    assert auto_disp_cfg.oracle_address == "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"
+    assert auto_disp_cfg.oracle_address == {1: "0xD9157453E2668B2fc45b7A803D3FEF3642430cC0"}
 
 
 def test_oracle_address_absent_from_yaml():
