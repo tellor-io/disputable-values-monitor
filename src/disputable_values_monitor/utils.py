@@ -1,10 +1,13 @@
 """Helper functions."""
+import json
 import logging
 import os
+import pathlib
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 from typing import Optional
+from typing import Set
 from typing import Union
 
 import click
@@ -12,6 +15,23 @@ from chained_accounts import ChainedAccount
 from chained_accounts import find_accounts
 from telliot_core.apps.telliot_config import TelliotConfig
 from telliot_feeds.utils.cfg import setup_account
+
+
+ALERTED_EVENTS_PATH = pathlib.Path("alerted_events.json")
+
+
+def load_alerted_events() -> Set[str]:
+    """Load persisted tx_hashes from disk; return empty set if missing."""
+    if ALERTED_EVENTS_PATH.exists():
+        return set(json.loads(ALERTED_EVENTS_PATH.read_text()))
+    return set()
+
+
+def save_alerted_event(tx_hash: str) -> None:
+    """Append tx_hash to the persisted set on disk."""
+    existing = load_alerted_events()
+    existing.add(tx_hash)
+    ALERTED_EVENTS_PATH.write_text(json.dumps(list(existing)))
 
 
 def get_tx_explorer_url(tx_hash: str, cfg: TelliotConfig) -> str:

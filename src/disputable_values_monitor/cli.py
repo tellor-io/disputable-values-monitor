@@ -24,6 +24,8 @@ from disputable_values_monitor.utils import clear_console
 from disputable_values_monitor.utils import format_values
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
+from disputable_values_monitor.utils import load_alerted_events
+from disputable_values_monitor.utils import save_alerted_event
 from disputable_values_monitor.utils import select_account
 from disputable_values_monitor.utils import Topics
 
@@ -107,7 +109,7 @@ async def start(
         click.echo("...Now with auto-disputing!")
 
     display_rows = []
-    displayed_events = set()
+    displayed_events = load_alerted_events()
 
     # Build query if filter is set
     while True:
@@ -158,6 +160,7 @@ async def start(
                         monitored_feeds=disp_cfg.monitored_feeds,
                         log=event,
                         confidence_threshold=confidence_threshold,
+                        oracle_address=disp_cfg.oracle_address,
                     )
                 except Exception as e:
                     logger.error(f"unable to parse new report event on chain_id {chain_id}: {e}")
@@ -167,6 +170,7 @@ async def start(
                 if new_report is None or new_report.tx_hash in displayed_events:
                     continue
                 displayed_events.add(new_report.tx_hash)
+                save_alerted_event(new_report.tx_hash)
 
                 # Refesh
                 clear_console()
@@ -200,7 +204,7 @@ async def start(
                 if len(display_rows) > 10:
                     # sort by timestamp
                     display_rows = sorted(display_rows, key=lambda x: x[1])
-                    displayed_events.remove(display_rows[0][0])
+                    # keep tx_hash in displayed_events so we don't re-alert
                     del display_rows[0]
 
                 # Display table

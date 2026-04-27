@@ -1,4 +1,9 @@
  # AutoDisputer configuration file
+
+# Expected oracle contract address on Ethereum mainnet.
+# TellorOracleAddress reports that differ from this will be auto-disputed.
+# oracle_address: "0xD9157453E2668B2fc45b7A803D3FEF3642BCCF8D"
+
 feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
 #ETH/USD
   - query_id: "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"

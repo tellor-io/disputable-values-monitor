@@ -24,9 +24,11 @@ logger = get_logger(__name__)
 class AutoDisputerConfig:
 
     monitored_feeds: Optional[List[MonitoredFeed]]
+    oracle_address: Optional[str]
 
     def __init__(self, is_disputing: bool, confidence_flag: float) -> None:
         self.confidence = None if is_disputing else confidence_flag
+        self.oracle_address = None
 
         try:
             with open("disputer-config.yaml", "r") as f:
@@ -40,6 +42,9 @@ class AutoDisputerConfig:
         except KeyError as e:
             logging.error(f"Dictionary-style indexing error: {e}")
             return
+
+        if hasattr(self.box, "oracle_address") and self.box.oracle_address:
+            self.oracle_address = str(self.box.oracle_address)
 
         self.monitored_feeds = self.build_monitored_feeds_from_yaml()
 

@@ -31,7 +31,9 @@ async def dispute(
             pass
         disputable_query_ids.append(disputable_query_id)
 
-    meant_to_dispute = new_report.query_id[2:] in disputable_query_ids
+    meant_to_dispute = (
+        new_report.query_type == "TellorOracleAddress" and bool(disp_cfg.oracle_address)
+    ) or new_report.query_id[2:] in disputable_query_ids
 
     if not meant_to_dispute:
         logger.info(

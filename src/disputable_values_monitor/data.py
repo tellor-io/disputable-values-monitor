@@ -389,6 +389,7 @@ async def parse_new_report_event(
     confidence_threshold: float,
     monitored_feeds: List[MonitoredFeed],
     see_all_values: bool = False,
+    oracle_address: Optional[str] = None,
 ) -> Optional[NewReport]:
     """Parse a NewReport event."""
 
@@ -477,6 +478,10 @@ async def parse_new_report_event(
 
     if new_report.query_type in ALWAYS_ALERT_QUERY_TYPES:
         new_report.status_str = "❗❗❗❗ VERY IMPORTANT DATA SUBMISSION ❗❗❗❗"
+        if new_report.query_type == "TellorOracleAddress" and oracle_address:
+            disputable = oracle_address.lower() != str(new_report.value).lower()
+            new_report.disputable = disputable
+            new_report.status_str = disputable_str(disputable, new_report.query_id)
         return new_report
 
     if monitored_feed is not None:
