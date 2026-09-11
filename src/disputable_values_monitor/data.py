@@ -1,6 +1,7 @@
 """Get and parse NewReport events from Tellor oracles."""
 import asyncio
 import math
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -50,7 +51,17 @@ class Metrics(Enum):
     Range = "range"
 
 
-start_block: Dict[int, int] = {}
+# Many public Ethereum RPCs cap eth_getLogs to ~1000 blocks (inclusive).
+# Querying a wider window in one call fails and, if the cursor is not advanced,
+# every later poll keeps requesting the same oversized range.
+MAX_GETLOGS_BLOCK_RANGE = 1000
+_RANGE_LIMIT_RE = re.compile(
+    r"(?:narrow your filter|max (?:block )?range)[:\s]+(\d+)",
+    re.IGNORECASE,
+)
+
+LogCursorKey = Tuple[int, str, Tuple[str, ...]]
+start_block: Dict[LogCursorKey, int] = {}
 
 
 @dataclass
@@ -257,6 +268,75 @@ def mk_filter(
     }
 
 
+def _log_cursor_key(chain_id: int, addr: str, topics: list[str]) -> LogCursorKey:
+    return (chain_id, addr.lower(), tuple(topics))
+
+
+def _is_block_range_error(msg: str) -> bool:
+    lowered = msg.lower()
+    markers = (
+        "query block range exceeds",
+        "block range is too large",
+        "block range too large",
+        "exceeds max block range",
+        "exceeds the block range",
+        "narrow your filter",
+        "range limit",
+        "block range limit",
+    )
+    return any(marker in lowered for marker in markers)
+
+
+def _parse_range_limit(msg: str) -> Optional[int]:
+    match = _RANGE_LIMIT_RE.search(msg)
+    if not match:
+        return None
+    limit = int(match.group(1))
+    return limit if limit > 0 else None
+
+
+def get_logs_chunked(
+    web3: Web3,
+    from_block: int,
+    to_block: int,
+    addr: str,
+    topics: list[str],
+    max_range: int = MAX_GETLOGS_BLOCK_RANGE,
+) -> list[Any]:
+    """Fetch logs in windows that stay under typical eth_getLogs block-range caps.
+
+    If the node still rejects a window, shrink it using the limit in the error
+    (or by half) and retry so a too-wide lookback cannot wedge the cursor.
+    """
+    if from_block > to_block:
+        return []
+
+    events: list[Any] = []
+    current_max = max(1, max_range)
+    chunk_start = from_block
+    while chunk_start <= to_block:
+        chunk_end = min(chunk_start + current_max - 1, to_block)
+        event_filter = mk_filter(chunk_start, chunk_end, addr, topics)
+        try:
+            events.extend(web3.eth.get_logs(event_filter))  # type: ignore
+            chunk_start = chunk_end + 1
+        except Exception as e:
+            msg = str(e)
+            span = chunk_end - chunk_start + 1
+            if _is_block_range_error(msg) and span > 1:
+                parsed = _parse_range_limit(msg)
+                if parsed is not None and parsed < span:
+                    current_max = parsed
+                else:
+                    current_max = max(1, span - 1 if parsed == span else span // 2)
+                logger.debug(
+                    f"eth_getLogs range {chunk_start}-{chunk_end} rejected; retrying with max {current_max} blocks"
+                )
+                continue
+            raise
+    return events
+
+
 async def log_loop(
     web3: Web3, chain_id: int, addr: str, topics: list[str], inital_block_offset: int
 ) -> list[tuple[int, Any]]:
@@ -269,12 +349,22 @@ async def log_loop(
         else:
             logger.warning(f"unable to retrieve latest block number from chain_id {chain_id}: {e}")
         return []
-    from_block = start_block.get(chain_id, block_number - inital_block_offset)
+    cursor_key = _log_cursor_key(chain_id, addr, topics)
+    from_block = start_block.get(cursor_key, block_number - inital_block_offset)
     from_block -= 10  # go back 10 more blocks to account for reorgs
-    event_filter = mk_filter(from_block, block_number, addr, topics)
+    from_block = max(0, from_block)
+    if from_block > block_number:
+        return []
+
+    lookback = block_number - from_block + 1
+    if lookback > MAX_GETLOGS_BLOCK_RANGE:
+        logger.info(
+            f"gathering eth event logs on chain_id {chain_id} from {from_block} to {block_number} "
+            f"in chunks of {MAX_GETLOGS_BLOCK_RANGE} (rpc range limit)"
+        )
 
     try:
-        events = web3.eth.get_logs(event_filter)  # type: ignore
+        events = get_logs_chunked(web3, from_block, block_number, addr, topics)
     except Exception as e:
         msg = str(e)
         if "unknown block" in msg:
@@ -291,7 +381,7 @@ async def log_loop(
     for event in events:
         if (chain_id, event) not in unique_events_list:
             unique_events_list.append((chain_id, event))
-    start_block[chain_id] = block_number
+    start_block[cursor_key] = block_number
     return unique_events_list
 
 
