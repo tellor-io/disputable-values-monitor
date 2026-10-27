@@ -13,6 +13,10 @@ dependencies = [
     "tabulate>=0.10,<0.11",
     "python-box>=7.4,<8",
     "telliot-feeds>=0.4.20,<0.5",
+    # telliot_feeds.reporters.layer imports terra_sdk but telliot-feeds does
+    # not declare it; 4.0.0 is the version the layer reporter code targets.
+    # Also brings nest-asyncio, which telliot-core's CLI imports undeclared.
+    "terra-sdk==4.0.0",
     # declared explicitly: imported directly but previously only transitively present
     "web3>=7.14,<8",
     "eth-abi>=5.2,<6",
@@ -57,6 +61,13 @@ include = ["src", "tests", "vars.example.sh", "disputer-config.yaml", "README.md
 # (ipfshttpclient==0.8.0a2, eth-tester==0.13.0b1, aiohttp==3.11.13); without
 # this uv refuses them during resolution.
 prerelease = "allow"
+# terra-sdk 4.0.0 (and its deps) pin attrs<22-23 and protobuf<4, while
+# telliot-feeds 0.4.20 requires attrs>=24 and protobuf>=5.29.3 (the
+# CVE-2024-7254 security floor). The old manual "pip install terra-sdk" step
+# silently DOWNGRADED both, re-introducing that protobuf CVE. Runtime is fine
+# on modern versions (verified by import + test suite), so we force single
+# modern attrs/protobuf for everyone.
+override-dependencies = ["attrs>=24", "protobuf>=5.29.3"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
