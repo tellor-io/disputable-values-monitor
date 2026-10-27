@@ -1,7 +1,7 @@
 # Use disputable monitor via NIX-SHELL
 
 ##### Install Nix
-- Ubuntu 22.04:
+- Linux:
 ```sh
 sh <(curl -L https://nixos.org/nix/install) --daemon
 ````
@@ -12,11 +12,11 @@ sh <(curl -L https://nixos.org/nix/install) --daemon
 nix-shell
 ```
 
-`poetry config virtualenvs.in-project true` (optional)
-
 ```sh
-poetry install
+uv sync
 ```
+
+(uv always creates `.venv/` in the project directory)
 
 ```sh
 mv vars.example.sh vars.sh
@@ -29,11 +29,11 @@ source vars.sh
 ```
 
 ```sh
-poetry run telliot config init
+uv run telliot config init
 ```
 
 Add project id to ~/telliot/endpoints.yaml
 
 ```sh
-poetry run cli
+uv run cli
 ```

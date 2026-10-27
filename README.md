@@ -25,7 +25,7 @@ Python 3.12.XX
 **Note:**
 *Other versions (e.g. Python 3.9 or 3.13) are not compatible with the Disputable Values Monitor.*
 
-- Install [uv](https://docs.astral.sh/uv/) (e.g. `pip install uv`, `pacman -S uv`, or the standalone installer). Python 3.12 is pinned in `.python-version`; uv downloads a suitable interpreter automatically if you don't have one.
+- Install [uv](https://docs.astral.sh/uv/) (e.g. `pip install uv`, `pacman -S uv`, or the standalone installer; uv 0.7+ reads the committed `uv.lock`). Python 3.12 is pinned in `.python-version`; uv downloads a suitable interpreter automatically if you don't have one.
 - Clone the repo and change directory:
 ```bash
 git clone https://github.com/tellor-io/disputable-values-monitor

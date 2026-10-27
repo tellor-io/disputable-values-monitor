@@ -30,7 +30,6 @@ dependencies = [
 
 [project.scripts]
 cli = "disputable_values_monitor.cli:main"
-data = "disputable_values_monitor.data:main"
 
 [dependency-groups]
 dev = [
