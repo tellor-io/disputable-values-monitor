@@ -93,7 +93,7 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
 @pytest.fixture(scope="function")
 async def stake_deposited(environment_setup: TelliotCore):
     """tests depositing stakes for reporting"""
-    core = await environment_setup
+    core = environment_setup
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -114,9 +114,9 @@ async def stake_deposited(environment_setup: TelliotCore):
 
 
 @pytest.fixture(scope="function")
-async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
+async def submit_multiple_bad_values(stake_deposited: TelliotCore):
     """tests submission of multiple bad values by same reporter"""
-    core = await stake_deposited
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -170,7 +170,7 @@ async def setup_and_start(is_disputing, config, config_patches=None):
             patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
         )
         stack.enter_context(patch("disputable_values_monitor.cli.TelliotConfig", new=lambda: config))
-        stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
+        stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.evm_call_feed_example.source.cfg", config))
         stack.enter_context(
             patch(
                 "telliot_feeds.sources.ampleforth.ampl_usd_vwap.BitfinexSource.fetch_new_datapoint",
@@ -191,9 +191,9 @@ async def setup_and_start(is_disputing, config, config_patches=None):
 
 @pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
-async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_default_config(submit_multiple_bad_values: TelliotCore):
     """Test that the default config works as expected"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
@@ -211,9 +211,9 @@ async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]
 
 
 @pytest.mark.asyncio
-async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_custom_btc_config(submit_multiple_bad_values: TelliotCore):
     """Test that a custom btc config works as expected"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
@@ -237,9 +237,9 @@ async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCo
 
 
 @pytest.mark.asyncio
-async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_custom_eth_btc_config(submit_multiple_bad_values: TelliotCore):
     """Test that eth and btc in dispute config"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
@@ -268,9 +268,9 @@ async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[Telli
 
 
 @pytest.mark.asyncio
-async def test_get_source_from_data(submit_multiple_bad_values: Awaitable[TelliotCore], caplog):
+async def test_get_source_from_data(submit_multiple_bad_values: TelliotCore, caplog):
     """Test when get_source_from_data function returns None"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
 
     config_patches = [
@@ -281,9 +281,9 @@ async def test_get_source_from_data(submit_multiple_bad_values: Awaitable[Tellio
 
 
 @pytest.mark.asyncio
-async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore], caplog):
+async def test_evm_type_alert(submit_multiple_bad_values: TelliotCore, caplog):
     """Test when evm type alert is triggered should display message that difference can't be evaluated"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     # dispute config requires at least 1 item
     mock_btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
@@ -302,8 +302,8 @@ async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore]
 
 
 @pytest.mark.asyncio
-async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
-    core = await stake_deposited
+async def test_custom_spot_type(stake_deposited: TelliotCore):
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -331,8 +331,8 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
 
 
 @pytest.mark.asyncio
-async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
-    core = await stake_deposited
+async def test_gas_oracle_type(stake_deposited: TelliotCore):
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -368,9 +368,9 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
 
 
 @pytest.mark.asyncio
-async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: TelliotCore):
     """Test when evm call response has the same value response but different timestamp"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     # evm value that has same value but different block timestamp
     evm_val = (int.to_bytes(12345, 32, "big"), 0)
@@ -401,9 +401,9 @@ class FakeDataSource(DataSource[float]):
 
 
 @pytest.mark.asyncio
-async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys):
+async def test_spot_short_value(stake_deposited: TelliotCore, capsys):
 
-    core = await stake_deposited
+    core = stake_deposited
     core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
@@ -437,9 +437,9 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
 
 
 @pytest.mark.asyncio
-async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
+async def test_spot_long_value(stake_deposited: TelliotCore, capsys):
 
-    core = await stake_deposited
+    core = stake_deposited
     core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3

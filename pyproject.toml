@@ -44,3 +44,4 @@ data = "disputable_values_monitor.data:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+asyncio_mode = "auto"
