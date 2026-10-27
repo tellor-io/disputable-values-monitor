@@ -1,4 +1,5 @@
 """Utilities for the auto-disputer on Tellor on any EVM network"""
+
 from typing import Optional
 
 from chained_accounts import ChainedAccount
@@ -8,8 +9,8 @@ from web3.exceptions import ContractLogicError
 
 from disputable_values_monitor.config import AutoDisputerConfig
 from disputable_values_monitor.data import get_contract
-from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import NewReport
+from disputable_values_monitor.utils import get_logger
 
 logger = get_logger(__name__)
 

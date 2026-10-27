@@ -1,4 +1,5 @@
 """Send text messages using Discord webhooks."""
+
 import os
 from typing import Any
 

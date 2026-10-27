@@ -1,5 +1,6 @@
 """Disputable Values Monitor - CLI dashboard & alerts for potential
 bad values reported to Tellor oracles."""
+
 from hexbytes import HexBytes
 from web3.datastructures import AttributeDict
 

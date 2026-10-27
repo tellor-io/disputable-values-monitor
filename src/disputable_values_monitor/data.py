@@ -1,4 +1,5 @@
 """Get and parse NewReport events from Tellor oracles."""
+
 import asyncio
 import math
 from dataclasses import dataclass
@@ -35,11 +36,11 @@ from web3.types import LogReceipt
 from disputable_values_monitor import ALWAYS_ALERT_QUERY_TYPES
 from disputable_values_monitor import NEW_REPORT_ABI
 from disputable_values_monitor.discord import send_discord_msg
+from disputable_values_monitor.utils import NewReport
 from disputable_values_monitor.utils import are_all_attributes_none
 from disputable_values_monitor.utils import disputable_str
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
-from disputable_values_monitor.utils import NewReport
 
 logger = get_logger(__name__)
 

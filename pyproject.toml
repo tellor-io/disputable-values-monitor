@@ -45,3 +45,12 @@ data = "disputable_values_monitor.data:main"
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 asyncio_mode = "auto"
+
+[tool.isort]
+# black-compatible replacement for reorder-python-imports (black>=24 and
+# reorder-python-imports have an unresolvable docstring-blank-line conflict).
+# force_single_line keeps the repo's merge-conflict-minimizing import style.
+profile = "black"
+force_single_line = true
+known_first_party = ["disputable_values_monitor"]
+line_length = 120

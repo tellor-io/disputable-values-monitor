@@ -1,4 +1,5 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
+
 import logging
 import warnings
 from time import sleep
@@ -20,12 +21,12 @@ from disputable_values_monitor.discord import dispute_alert
 from disputable_values_monitor.discord import generic_alert
 from disputable_values_monitor.discord import get_alert_bot_1
 from disputable_values_monitor.disputer import dispute
+from disputable_values_monitor.utils import Topics
 from disputable_values_monitor.utils import clear_console
 from disputable_values_monitor.utils import format_values
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
 from disputable_values_monitor.utils import select_account
-from disputable_values_monitor.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
 price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")

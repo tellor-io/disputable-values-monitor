@@ -11,12 +11,11 @@ repos:
         args: [-vv, -i, --fail-under=50]
         additional_dependencies:
         - setuptools
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.19.0
+  - repo: https://github.com/PyCQA/isort
+    rev: 9.0.2
     hooks:
-      - id: reorder-python-imports
-        name: Reorder Python imports
-        args: ["--application-directories=.:src:tests"]
+      - id: isort
+        name: Reorder Python imports (isort, black-compatible)
   - repo: https://github.com/psf/black
     rev: 26.10.1
     hooks:

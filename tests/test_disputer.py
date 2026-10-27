@@ -1,4 +1,5 @@
 """tests for dispute logic of auto-disputer"""
+
 import os
 import time
 from unittest import mock
@@ -6,8 +7,8 @@ from unittest import mock
 import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
-from telliot_core.model.endpoints import default_endpoint_list
 from telliot_core.model.endpoints import RPCEndpoint
+from telliot_core.model.endpoints import default_endpoint_list
 from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
@@ -15,8 +16,8 @@ from disputable_values_monitor import EXAMPLE_NEW_REPORT_EVENT_TX_RECEIPT
 from disputable_values_monitor.config import AutoDisputerConfig
 from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
-from disputable_values_monitor.data import parse_new_report_event
 from disputable_values_monitor.data import Threshold
+from disputable_values_monitor.data import parse_new_report_event
 from disputable_values_monitor.disputer import dispute
 from disputable_values_monitor.disputer import get_dispute_fee
 from disputable_values_monitor.utils import NewReport

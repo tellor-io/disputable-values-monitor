@@ -1,4 +1,5 @@
 """test AutoDisputerConfig"""
+
 from unittest import mock
 
 from telliot_feeds.feeds import evm_call_feed

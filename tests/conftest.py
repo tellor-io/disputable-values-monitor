@@ -11,7 +11,6 @@ from telliot_core.model.endpoints import RPCEndpoint
 from web3 import Web3
 from web3.datastructures import AttributeDict
 
-
 load_dotenv(override=True)
 
 

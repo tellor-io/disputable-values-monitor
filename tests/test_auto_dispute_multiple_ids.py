@@ -2,7 +2,6 @@ import asyncio
 import csv
 import io
 from contextlib import ExitStack
-from typing import Awaitable
 from typing import Optional
 from unittest.mock import AsyncMock
 from unittest.mock import mock_open
@@ -13,8 +12,8 @@ from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
 from telliot_feeds.datasource import DataSource
-from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.dtypes.datapoint import OptionalDataPoint
+from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.feeds import eth_usd_median_feed
 from telliot_feeds.feeds import evm_call_feed_example

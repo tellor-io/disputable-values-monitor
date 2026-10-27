@@ -1,7 +1,8 @@
 """Tests for generating alert messages."""
+
 import time
-from unittest import mock
 from unittest import TestCase
+from unittest import mock
 
 from discord_webhook import DiscordWebhook
 
@@ -17,7 +18,7 @@ def test_notify_typical_disputable(capsys):
     def first_alert():
         print("alert sent")
 
-    with (mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert()])):
+    with mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert()]):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -63,9 +64,7 @@ def test_notify_non_disputable(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (
-        mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])
-    ):
+    with mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()]):
         r = NewReport(
             "0xabc123",
             time.time(),
@@ -98,9 +97,7 @@ def test_notify_always_alertable_value(capsys):
     def second_alert():
         print("second alert sent")
 
-    with (
-        mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()])
-    ):
+    with mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert(), second_alert()]):
         r = NewReport(
             "0xabc123",
             time.time(),

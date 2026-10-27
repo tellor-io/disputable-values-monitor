@@ -1,4 +1,5 @@
 """contains AutoDisputerConfig class for adjusting the settings of the auto-disputer"""
+
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -8,8 +9,8 @@ from typing import Optional
 import yaml
 from box import Box
 from telliot_feeds.feeds import CATALOG_FEEDS
-from telliot_feeds.feeds import DataFeed
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
+from telliot_feeds.feeds import DataFeed
 from telliot_feeds.queries.query_catalog import query_catalog
 
 from disputable_values_monitor.data import Metrics
