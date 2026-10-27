@@ -8,7 +8,6 @@ import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.model.endpoints import RPCEndpoint
-from telliot_core.model.endpoints import default_endpoint_list
 from telliot_core.utils.response import ResponseStatus
 from telliot_feeds.feeds.eth_usd_feed import eth_usd_median_feed
 
@@ -215,21 +214,27 @@ async def test_dispute_using_sample_log(
 
 @pytest.mark.asyncio
 async def test_get_dispute_fee():
-    rpc = RPCEndpoint(
-        chain_id=80002,
-        provider="polygon",
-        network="amoy",
-        url="https://rpc-amoy.polygon.technology",
-        explorer="https://amoy.polygonscan.com/",
-    )
-    # todo: use mock instead
-    cfg = TelliotConfig()
-    for i, ep in enumerate(default_endpoint_list):
-        if ep.chain_id == 80002:
-            default_endpoint_list[i] = rpc
-            break
-    cfg.endpoints.endpoints = default_endpoint_list
-    cfg.main.chain_id = 80002
+    ok = ResponseStatus(ok=True)
+    base_fee = 1_000_000_000_000_000_000
+    stake = 3_000_000_000_000_000_000
+
+    async def governance_read(*args, **kwargs):
+        func_name = kwargs.get("func_name", args[0] if args else "")
+        if func_name == "getDisputeFee":
+            return base_fee, ok
+        if func_name == "getVoteRounds":
+            return [1], ok
+        if func_name == "getOpenDisputesOnId":
+            return 2, ok
+        raise AssertionError(f"unexpected read: {func_name}")
+
+    governance = mock.MagicMock()
+    governance.read = mock.AsyncMock(side_effect=governance_read)
+    oracle = mock.MagicMock()
+    oracle.read = mock.AsyncMock(return_value=(stake, ok))
+
+    def fake_get_contract(cfg, name, account):
+        return governance if name == "tellor-governance" else oracle
 
     report = NewReport(
         "0xabc123",
@@ -245,5 +250,8 @@ async def test_get_dispute_fee():
         "status ",
     )
 
-    dispute_fee = await get_dispute_fee(cfg, report)
-    assert dispute_fee == 1_000_000_000_000_000_000
+    with mock.patch("disputable_values_monitor.disputer.get_contract", side_effect=fake_get_contract):
+        dispute_fee = await get_dispute_fee(TelliotConfig(), report)
+
+    # one open dispute on the id doubles the base fee, capped below the stake
+    assert dispute_fee == 2_000_000_000_000_000_000
