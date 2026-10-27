@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 from unittest.mock import mock_open
 from unittest.mock import patch
 
-import async_timeout
 import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
@@ -184,7 +183,7 @@ async def setup_and_start(is_disputing, config, config_patches=None):
                 stack.enter_context(p)
 
         try:
-            async with async_timeout.timeout(9):
+            async with asyncio.timeout(9):
                 await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0)
         except asyncio.TimeoutError:
             pass
