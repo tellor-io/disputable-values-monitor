@@ -3,7 +3,7 @@ import time
 from unittest import mock
 from unittest import TestCase
 
-from discordwebhook import Discord
+from discord_webhook import DiscordWebhook
 
 from disputable_values_monitor.data import NewReport
 from disputable_values_monitor.discord import alert
@@ -51,7 +51,7 @@ def test_get_alert_bot(mock_getenv):
     mock_getenv.return_value = "a"
     alert_bot = get_alert_bot_1()
 
-    assert isinstance(alert_bot, Discord)
+    assert isinstance(alert_bot, DiscordWebhook)
 
 
 def test_notify_non_disputable(capsys):
@@ -125,8 +125,8 @@ def test_notify_always_alertable_value(capsys):
 
 def test_discord_object_return_if_no_webhook():
     """test that None is returned if no webhook"""
-    alert_bot = Discord(url=None)
-    assert isinstance(alert_bot, Discord)
+    alert_bot = DiscordWebhook(url=None)
+    assert isinstance(alert_bot, DiscordWebhook)
     assert alert_bot is not None
 
 
@@ -139,6 +139,6 @@ def test_alert_bot_if_no_webhook(mock_getenv):
     assert "At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'." in str(context.exception)
     mock_getenv.return_value = "a"
     alert_bot = get_alert_bot_1()
-    assert isinstance(alert_bot, Discord)
+    assert isinstance(alert_bot, DiscordWebhook)
     assert alert_bot.url == "a"
     assert alert_bot.url is not None

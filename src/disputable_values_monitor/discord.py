@@ -1,9 +1,9 @@
-"""Send text messages using Twilio."""
+"""Send text messages using Discord webhooks."""
 import os
 from typing import Any
 
 import click
-from discordwebhook import Discord
+from discord_webhook import DiscordWebhook
 
 from disputable_values_monitor import ALWAYS_ALERT_QUERY_TYPES
 
@@ -14,21 +14,21 @@ def generic_alert(msg: str) -> None:
     return
 
 
-def get_alert_bot_1() -> Discord:
+def get_alert_bot_1(content: str = "") -> DiscordWebhook:
     """Read the Discord webhook url from the environment."""
     DISCORD_WEBHOOK_URL_1 = os.getenv("DISCORD_WEBHOOK_URL_1")
     if DISCORD_WEBHOOK_URL_1 is None:
         raise Exception("At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'.")
-    alert_bot_1 = Discord(url=DISCORD_WEBHOOK_URL_1)
+    alert_bot_1 = DiscordWebhook(url=DISCORD_WEBHOOK_URL_1, content=content)
     return alert_bot_1
 
 
-def get_alert_bot_2() -> Discord:
-    return Discord(url=os.getenv("DISCORD_WEBHOOK_URL_2"))
+def get_alert_bot_2(content: str = "") -> DiscordWebhook:
+    return DiscordWebhook(url=os.getenv("DISCORD_WEBHOOK_URL_2"), content=content)
 
 
-def get_alert_bot_3() -> Discord:
-    return Discord(url=os.getenv("DISCORD_WEBHOOK_URL_3"))
+def get_alert_bot_3(content: str = "") -> DiscordWebhook:
+    return DiscordWebhook(url=os.getenv("DISCORD_WEBHOOK_URL_3"), content=content)
 
 
 def dispute_alert(msg: str) -> None:
@@ -76,14 +76,14 @@ def send_discord_msg(msg: str) -> None:
     """Send Discord alert."""
     MONITOR_NAME = os.getenv("MONITOR_NAME")
     message = f"❗{MONITOR_NAME} Found Something❗\n"
-    get_alert_bot_1().post(content=message + msg)
+    get_alert_bot_1(message + msg).execute()
     try:
-        get_alert_bot_2().post(content=message + msg)
+        get_alert_bot_2(message + msg).execute()
     except Exception as e:
         click.echo(f"alert bot 2 not used? {e}")
         pass
     try:
-        get_alert_bot_3().post(content=message + msg)
+        get_alert_bot_3(message + msg).execute()
     except Exception as e:
         click.echo(f"alert bot 3 not used? {e}")
         pass
