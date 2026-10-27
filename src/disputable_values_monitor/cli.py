@@ -3,6 +3,7 @@
 import logging
 import warnings
 from time import sleep
+from typing import List
 
 import click
 import pandas as pd
@@ -13,6 +14,7 @@ from telliot_core.cli.utils import async_run
 
 from disputable_values_monitor import WAIT_PERIOD
 from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.data import MonitoredFeed
 from disputable_values_monitor.data import chain_events
 from disputable_values_monitor.data import get_events
 from disputable_values_monitor.data import parse_new_report_event
@@ -62,7 +64,7 @@ def print_title_info() -> None:
     type=int,
     default=0,
 )
-@async_run
+@async_run  # type: ignore[untyped-decorator]  # async_run ships no annotations
 async def main(
     all_values: bool,
     wait: int,
@@ -101,6 +103,7 @@ async def start(
     if not disp_cfg.monitored_feeds:
         logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
         return
+    monitored_feeds: List[MonitoredFeed] = disp_cfg.monitored_feeds
 
     account: ChainedAccount = select_account(cfg, account_name)
 
@@ -156,7 +159,7 @@ async def start(
                 try:
                     new_report = await parse_new_report_event(
                         cfg=cfg,
-                        monitored_feeds=disp_cfg.monitored_feeds,
+                        monitored_feeds=monitored_feeds,
                         log=event,
                         confidence_threshold=confidence_threshold,
                     )

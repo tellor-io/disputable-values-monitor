@@ -163,7 +163,9 @@ class MonitoredFeed(Base):
                 if self.threshold.amount is None:
                     logger.error("Please set a threshold amount to measure range")
                     return None
-                range_: float = abs(reported_val - trusted_val)
+                # text/bytes values log an error above and raise TypeError here; the
+                # caller catches it, matching the pre-typing behavior exactly.
+                range_: float = abs(reported_val - trusted_val)  # type: ignore[operator]
                 return range_ >= self.threshold.amount
 
             elif self.threshold.metric == Metrics.Equality:
