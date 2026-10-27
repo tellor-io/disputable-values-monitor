@@ -5,5 +5,5 @@ eval="$(find /nix/store -name libstdc++.so.6 -path '*gcc-11.3.0-lib*' -printf '%
 
 [devshell]
 name = "DVM"
-packages = [ "python312Packages.poetry" ]
+packages = [ "uv" ]
 motd = "{202}{bold}🔨Disputable Values Monitor\n"

@@ -25,23 +25,20 @@ Python 3.12.XX
 **Note:**
 *Other versions (e.g. Python 3.9 or 3.13) are not compatible with the Disputable Values Monitor.*
 
+- Install [uv](https://docs.astral.sh/uv/) (e.g. `pip install uv`, `pacman -S uv`, or the standalone installer). Python 3.12 is pinned in `.python-version`; uv downloads a suitable interpreter automatically if you don't have one.
 - Clone the repo and change directory:
 ```bash
 git clone https://github.com/tellor-io/disputable-values-monitor
 cd disputable-values-monitor
 ```
-- Create a python environment for installation:
+- Install (creates `.venv/` on Python 3.12 and installs all dependencies):
 ```bash
-python3 -m venv env
-```
-- Install
-```bash
-pip install poetry && poetry install
+uv sync
 ```
 
 ### Update environment variables:
 ```bash
-mv venv/lib/python3.12/site-packages/vars.example.sh vars.sh
+cp vars.example.sh vars.sh
 ```
 - Edit `vars.sh` with your favorite text editor replacing the dummy url with the url for your Discord bot's webhook.
 - Set `MONITOR_NAME` with a memorable name for your DVM process.
@@ -54,9 +51,11 @@ source vars.sh
 
 - Initialize telliot configuration:
 ```bash
-poetry run telliot config init
+uv run telliot config init
 ```
 You should now have a `telliot` folder in your home directory.
+
+**Note:** `telliot` CLI 0.4.2 has a broken `config init` (undeclared `nest_asyncio` dependency in telliot-core). Until that is fixed upstream, create `~/telliot/endpoints.yaml` by hand following the example below.
 
 - Open `~/telliot/endpoints.yaml` with your favorite text editor. The Disputable-Values-Monitor will check reports on each chain that is configured in this list. Remove the networks that you don't want to monitor, and provide and endpoint url for those that you do. For example, if you want to monitor reports on Ethereum Mainnet and Sepolia testnet, your endpoints.yaml file should look like this:
 ```
@@ -80,7 +79,7 @@ endpoints:
 
 - Start the Disputable-Values-Monitor for Alerts only:
 ```bash
-poetry run cli
+uv run cli
 ```
 Enter `y` to confirm alerts only.
 
@@ -160,7 +159,7 @@ Ex. If the reported value is "abc123", and the telliot value is "abc1234", then 
 ## Contributing:
 
 - Install Python 3.12
-- Install [Poetry](https://github.com/python-poetry/poetry)
+- Install [uv](https://docs.astral.sh/uv/)
 
 Clone repo:
 ```bash
@@ -170,28 +169,27 @@ Change directory:
 ```bash
 cd disputable-values-monitor
 ```
-Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
+Install dependencies with [uv](https://docs.astral.sh/uv/):
 
 ```
-poetry env use 3.12
-poetry install
+uv sync
 ```
 
 Run tests:
 ```
-poetry run pytest
+uv run pytest
 ```
 Format/lint code:
 ```
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 Check type hinting:
 ```
-poetry run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
+uv run mypy --strict src --implicit-reexport --ignore-missing-imports --disable-error-code misc
 ```
 Generate requirements.txt in case you have installed new dependencies:
 ```
-poetry export -f requirements.txt --output requirements.txt --without-hashes
+uv export --no-hashes --no-dev --no-editable -o requirements.txt
 ```
 
 ### Publishing a release
