@@ -29,7 +29,7 @@ from telliot_feeds.queries.query_catalog import query_catalog
 from web3 import Web3
 from web3._utils.events import get_event_data
 from web3.exceptions import ExtraDataLengthError
-from web3.middleware import geth_poa_middleware
+from web3.middleware import ExtraDataToPOAMiddleware
 from web3.types import LogReceipt
 
 from disputable_values_monitor import ALWAYS_ALERT_QUERY_TYPES
@@ -554,7 +554,7 @@ def get_block_number_at_timestamp(cfg: TelliotConfig, timestamp: int) -> Any:
         try:
             block = w3.eth.get_block(midpoint)
         except ExtraDataLengthError:
-            w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+            w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
             block = w3.eth.get_block(midpoint)
 
         if block.timestamp == timestamp:
