@@ -12,18 +12,18 @@ jobs:
   build:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Build and publish to pypi
         if: "github.event.release.prerelease"
         uses: JRubics/poetry-publish@v1.16
         with:
           repository_name: "testpypi"
           repository_url: "https://test.pypi.org/legacy/"
-          python_version: "3.9.5"
+          python_version: "3.12"
           pypi_token: ${{ secrets.DISPUTABLE_VALUES_MONITOR_TEST_PYPI_API_TOKEN }}
       - name: Build and publish to pypi
         if: "!github.event.release.prerelease"
         uses: JRubics/poetry-publish@v1.16
         with:
-          python_version: "3.9.5"
+          python_version: "3.12"
           pypi_token: ${{ secrets.DISPUTABLE_VALUES_MONITOR_PYPI_API_TOKEN }}

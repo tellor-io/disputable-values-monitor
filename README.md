@@ -14,16 +14,16 @@ The Disputable Values Monitor is a tool that anyone can use to:
 
 ### Prerequisites:
 - A discord server where you can create a channel and a bot for recieving alerts sent by the Disputable Values Monitor via webhook. See the "Making a Webhook" section of the Discord documentation [here](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks/).
-- Install Python 3.9 and/or verify that it is the current version:
+- Install Python 3.12 and/or verify that it is the current version:
 ```bash
 python -V
 ```
 The output should be:
 ```bash
-Python 3.9.XX
+Python 3.12.XX
 ```
 **Note:**
-*Other versions (e.g. Python 3.8 or 3.10) are not compatible with the Disputable Values Monitor.*
+*Other versions (e.g. Python 3.9 or 3.13) are not compatible with the Disputable Values Monitor.*
 
 - Clone the repo and change directory:
 ```bash
@@ -41,7 +41,7 @@ pip install poetry && poetry install
 
 ### Update environment variables:
 ```bash
-mv venv/lib/python3.9/site-packages/vars.example.sh vars.sh
+mv venv/lib/python3.12/site-packages/vars.example.sh vars.sh
 ```
 - Edit `vars.sh` with your favorite text editor replacing the dummy url with the url for your Discord bot's webhook.
 - Set `MONITOR_NAME` with a memorable name for your DVM process.
@@ -159,7 +159,7 @@ Ex. If the reported value is "abc123", and the telliot value is "abc1234", then 
 
 ## Contributing:
 
-- Install Python 3.9
+- Install Python 3.12
 - Install [Poetry](https://github.com/python-poetry/poetry)
 
 Clone repo:
@@ -173,7 +173,7 @@ cd disputable-values-monitor
 Install dependencies with [Poetry](https://github.com/python-poetry/poetry):
 
 ```
-poetry env use 3.9
+poetry env use 3.12
 poetry install
 ```
 
