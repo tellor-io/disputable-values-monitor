@@ -153,7 +153,7 @@ async def dispute(
         chain_id=new_report.chain_id,
     )
 
-    if not status.ok:
+    if not status.ok or tx_receipt is None:
         logger.error(f"unable to approve tokens on chain_id {new_report.chain_id} for dispute fee: " + status.error)
         return ""
 
@@ -200,7 +200,7 @@ async def dispute(
         chain_id=new_report.chain_id,
     )
 
-    if not status.ok:
+    if not status.ok or tx_receipt is None:
         logger.error(
             f"unable to begin dispute on {new_report.query_id}"
             + f"at submission timestamp {new_report.submission_timestamp}:"
