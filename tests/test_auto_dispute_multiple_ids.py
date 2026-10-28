@@ -2,6 +2,7 @@ import asyncio
 import csv
 import io
 from contextlib import ExitStack
+from pathlib import Path
 from typing import Optional
 from unittest.mock import AsyncMock
 from unittest.mock import mock_open
@@ -179,6 +180,10 @@ async def setup_and_start(is_disputing, config, config_patches=None, skip_confir
         if polls > 1:
             raise asyncio.TimeoutError
         return await orig_get_events(*args, **kwargs)
+
+    # table.csv is appended to by start(); clear it so assertions can't match
+    # stale rows from earlier tests or earlier runs
+    Path("table.csv").unlink(missing_ok=True)
 
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
@@ -434,7 +439,7 @@ async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: T
         ),
     ]
     await setup_and_start(True, config, config_patches)
-    expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
+    expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,no ✔️,1337"
 
     with open("table.csv", "r") as f:
         reader = csv.reader(f)
