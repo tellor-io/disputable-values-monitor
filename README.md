@@ -49,6 +49,17 @@ source vars.sh
 
 ### Set the chains you want to monitor
 
+- Edit `monitored-chains.json` with the desired set of networks that you wish to monitor with the disputable values monitor. Chains in `endpoints.yaml` that are not listed in this file are skipped. The file is required; the DVM will exit if it is missing.
+
+example, if you would like to monitor values only on mainnet Ethereum, sepolia, Amoy and localhost:
+```
+{
+  "monitored_chains": [1, 11155111, 80002, 1337]
+}
+```
+*Note: Ethereum, sepolia, Amoy and localhost are required for testing.*
+
+### Set RPC Endpoints
 - Initialize telliot configuration:
 ```bash
 uv run telliot config init
@@ -57,7 +68,8 @@ You should now have a `telliot` folder in your home directory.
 
 **Note:** `telliot` CLI 0.4.2 has a broken `config init` (undeclared `nest_asyncio` dependency in telliot-core). Until that is fixed upstream, create `~/telliot/endpoints.yaml` by hand following the example below.
 
-- Open `~/telliot/endpoints.yaml` with your favorite text editor. The Disputable-Values-Monitor will check reports on each chain that is configured in this list. Remove the networks that you don't want to monitor, and provide and endpoint url for those that you do. For example, if you want to monitor reports on Ethereum Mainnet and Sepolia testnet, your endpoints.yaml file should look like this:
+- Open `~/telliot/endpoints.yaml` with your favorite text editor. Provide a reliable endpoint url for network 1 (mainnet ethereum) for fundamental feed contract reads. Configure an endpoint that you trust for each chain that you would like to monitor.
+
 ```
 type: EndpointList
 endpoints:
@@ -73,6 +85,13 @@ endpoints:
   provider: Infura
   url: https://YOUR_SEPOLIA_ENDPOINT
   explorer: https://sepolia.etherscan.io/
+- type: RPCEndpoint
+  chain_id: 80002
+  network: polygon-amoy
+  provider: Matic
+  url: https://YOUR_AMOY_ENDPOINT
+  explorer: https://amoy.polygonscan.com/
+  monitored: True
 ```
 
 ### Run the DVM for Alerts Only
@@ -85,11 +104,17 @@ Enter `y` to confirm alerts only.
 
 ### Options / Flags
 
-`-c` or `--confidence-threshold`: to specify a percentage threshold for recieving alerts (unavailable if -d is used). The default is 10% or `-c 0.1`
+`-c` or `--confidence-threshold`: to specify a global percentage fallback threshold. When `-d` is also used, `-c` is still applied as the fallback for any configured feed that does not set its own `alrt_amount` / `disp_amount`. The default is 10% or `-c 0.1`
 
 `-w` or `--wait`: The wait time (in seconds) between event checks to reduce calls to the RPC endpoint. The default is seven seconds or `-w 7`
 
 `-av`: to get an alert for all `NewReport` events (regardless of whether they are disputable or not).
+
+`--initial_block_offset` : The number of blocks to look back when first starting the DVM. (CAUTION: stale data can cause false positives if this value is set too large, or if prices moved drastically in the recent past)
+
+`-pwd` or `--password` : password for your account (required if `-sc` is used).
+
+`-sc` : Use "skip confirmations" when running the DVM as a system service to skip config checks (unsafe start).
 
 ### Run the DVM for Automatic Disputes
 
@@ -102,22 +127,25 @@ telliot account add AccountName 0xYOUR_PRIVATE_KEY 1 10 137 11155111
 ```
 Where `1 10 137 11155111` are the network IDs for the networks you want to be able to use with this account.
 
-2) Edit `dipsuter-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added  by providing the `query_id`, `threshold` `type` and `amount`.
+2) Edit `disputer-config.yaml`. Each spot price query must be configured here for auto-disputing. ETH/USD Spot price and EVM call query type are included by default. Different spot price feeds can be added  by providing the `query_id`, `thresholds` `type`, `alrt_amount` and `disp_amount`.
 
-The provided configuation is for auto-disputing any ETH/USD value that is 75% different from the value calculated by the DVM:
+Two thresholds can be configured per feed: `alrt_amount` controls when a value is flagged as deviant (alertable), and `disp_amount` controls when a value is considered disputable. In alerts-only mode (no `-d`), `disp_amount` mirrors `alrt_amount`. Any amount omitted in the yaml falls back to the `-c` confidence threshold.
+
+The provided configuation alerts on any ETH/USD value that is 25% different from the value calculated by the DVM, and auto-disputes values 75% off:
 ```yaml
 # AutoDisputer configuration file
 feeds: # please reference https://github.com/tellor-io/dataSpecs/tree/main/types for examples of QueryTypes w/ Query Parameters
   - query_id: "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992"
-    threshold:
+    thresholds:
       type: Percentage
-      amount: 0.75 # 75%
+      alrt_amount: 0.25 # 25%
+      disp_amount: 0.75 # 75%
 ```
 3) Start the Disputable-Values-Monitor with the Auto-Disputer enabled:
 ```bash
 cli -d -a AccountName
 ```
-*Note: If the `-c` and `-d` are used at the same time, the confidence-threshold for alerts only will be ignored. Alternate configuations may require a seperate instance of the DVM.*
+*Note: When `-c` and `-d` are used together, `-c` acts as the fallback threshold for feeds that don't define their own `alrt_amount` / `disp_amount`. Alternate configuations may require a seperate instance of the DVM.*
 
 ### Options / Flags
 

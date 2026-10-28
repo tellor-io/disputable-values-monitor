@@ -50,6 +50,9 @@ def custom_open_side_effect(*args, **kwargs):
     """mocks open function to return a mock file"""
     if args[0] == "disputer-config.yaml":
         return mock_open().return_value
+    if args[0] == "monitored-chains.json":
+        # read the real repo-root file so json.load() gets valid content
+        return io.open(*args, **kwargs)
     return io.open(*args, **kwargs)
 
 
@@ -125,8 +128,8 @@ async def submit_multiple_bad_values(stake_deposited: TelliotCore):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert receipt["status"] == 1
+    receipt_eth = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert receipt_eth["status"] == 1
     # submit bad btc value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
@@ -134,15 +137,15 @@ async def submit_multiple_bad_values(stake_deposited: TelliotCore):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_btc = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_btc["status"] == 1
     # submit bad evmcall value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
     submit_value_txn = submit_value(evm_query_id, evm_wrong_val, 0, evm_query_data).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_evmcall = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_evmcall["status"] == 1
     return core
 
 
@@ -161,10 +164,11 @@ async def check_dispute(oracle, query_id, timestamp):
     return indispute
 
 
-async def setup_and_start(is_disputing, config, config_patches=None):
+async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=None):
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
+        stack.enter_context(patch("disputable_values_monitor.cli.sleep", lambda _: None))
         stack.enter_context(
             patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
         )
@@ -183,30 +187,55 @@ async def setup_and_start(is_disputing, config, config_patches=None):
 
         try:
             async with asyncio.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0)
+                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations, password or "")
         except asyncio.TimeoutError:
-            pass
+            pass  # start() loops forever by design; the timeout is how the test exits it
 
 
-@pytest.mark.skip(reason="default config not used")
+# @pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
 async def test_default_config(submit_multiple_bad_values: TelliotCore):
     """Test that the default config works as expected"""
     core = submit_multiple_bad_values
     config = core.config
+
+    # Ensure we're using the local test network
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1337)[0]]
+    endpoint = config.get_endpoint()
+    endpoint.connect()
+
     oracle = core.get_tellor360_contracts().oracle
+    assert oracle is not None, "Oracle contract not initialized"
+
     w3 = core.endpoint._web3
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
 
     eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
-    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
-    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+    assert eth_timestamp is not None, "Failed to fetch ETH timestamp"
 
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    assert evm_timestamp is not None, "Failed to fetch EVM timestamp"
+
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+    assert btc_timestamp is not None, "Failed to fetch BTC timestamp"
+
+    # Mock Discord webhook
+    # monkeypatch.setenv("DISCORD_WEBHOOK_URL_1", "http://mock.webhook")
+    # run the DVM against the real repo disputer-config.yaml + monitored-chains.json
     await setup_and_start(True, config)
-    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # in config file
-    assert await check_dispute(oracle, eth_query_id, eth_timestamp)
-    assert await check_dispute(oracle, evm_query_id, evm_timestamp)
+    btc_dispute = await check_dispute(oracle, btc_query_id, btc_timestamp)
+    assert btc_dispute is not None, "BTC dispute check failed"
+    assert btc_dispute, "Expected BTC value to be in dispute"
+
+    eth_dispute = await check_dispute(oracle, eth_query_id, eth_timestamp)
+    assert eth_dispute is not None, "ETH dispute check failed"
+    assert eth_dispute, "Expected ETH value to be in dispute"
+
+    # The default-config EVMCall entry is a query template (null chainId/contract/calldata),
+    # so its query id can never match a specific reported EVMCall query; it must NOT dispute.
+    evm_dispute = await check_dispute(oracle, evm_query_id, evm_timestamp)
+    assert evm_dispute is not None, "EVM dispute check failed"
+    assert not evm_dispute, "Expected template EVMCall config entry to leave value undisputed"
 
 
 @pytest.mark.asyncio
@@ -222,15 +251,17 @@ async def test_custom_btc_config(submit_multiple_bad_values: TelliotCore):
     evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
-    btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
+    btc_config = {
+        "feeds": [
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}
+        ]
+    }
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=btc_config),
     ]
     await setup_and_start(True, config, config_patches)
-
     assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # not in config file
     assert not await check_dispute(oracle, eth_query_id, eth_timestamp)
     assert not await check_dispute(oracle, evm_query_id, evm_timestamp)
 
@@ -250,8 +281,11 @@ async def test_custom_eth_btc_config(submit_multiple_bad_values: TelliotCore):
 
     btc_eth_config = {
         "feeds": [
-            {"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [
@@ -285,7 +319,11 @@ async def test_evm_type_alert(submit_multiple_bad_values: TelliotCore, caplog):
     core = submit_multiple_bad_values
     config = core.config
     # dispute config requires at least 1 item
-    mock_btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
+    mock_btc_config = {
+        "feeds": [
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75}}
+        ]
+    }
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=mock_btc_config),
@@ -296,7 +334,7 @@ async def test_evm_type_alert(submit_multiple_bad_values: TelliotCore, caplog):
     ]
     # not disputing just alerting
     # if evm type is in dispute config it will be checked for equality
-    await setup_and_start(False, config, config_patches)
+    await setup_and_start(False, config, config_patches, skip_confirmations=True, password=None)
     assert "Cannot evaluate percent difference on text/addresses/bytes" in caplog.text
 
 
@@ -419,7 +457,10 @@ async def test_spot_short_value(stake_deposited: TelliotCore, capsys):
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [
@@ -455,7 +496,10 @@ async def test_spot_long_value(stake_deposited: TelliotCore, capsys):
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [

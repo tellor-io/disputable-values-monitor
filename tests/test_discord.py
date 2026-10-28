@@ -29,8 +29,7 @@ def test_notify_typical_disputable(capsys):
             "eth",
             "usd",
             "query id",
-            True,
-            "status ",
+            disputable=True,
         )
 
         alert(False, r)
@@ -40,11 +39,38 @@ def test_notify_typical_disputable(capsys):
 
 def test_generate_alert_msg():
     link = "example transaction link"
-    msg = generate_alert_msg(True, link)
+    msg = generate_alert_msg(alertable=True, disputable=True, link=link)
 
     assert isinstance(msg, str)
     assert "example transaction link" in msg
     assert "DISPUTABLE VALUE" in msg
+
+
+def test_disputable_but_not_alertable_still_alerts(capsys):
+    """a disputable report must always send an alert, even when alertable is False
+    (possible when disp_amount < alrt_amount)"""
+
+    def first_alert():
+        print("alert sent")
+
+    with mock.patch("disputable_values_monitor.discord.send_discord_msg", side_effect=[first_alert()]):
+        r = NewReport(
+            "0xabc123",
+            time.time(),
+            1,
+            "etherscan.io/abc",
+            "query type",
+            15.5,
+            "eth",
+            "usd",
+            "query id",
+            alertable=False,
+            disputable=True,
+        )
+
+        alert(False, r)
+
+        assert "alert sent" in capsys.readouterr().out
 
 
 @mock.patch("os.getenv")
@@ -75,8 +101,7 @@ def test_notify_non_disputable(capsys):
             "trb",
             "usd",
             "query id",
-            None,
-            "status ",
+            disputable=None,
         )
         alert(True, r)
 
@@ -108,8 +133,7 @@ def test_notify_always_alertable_value(capsys):
             None,
             None,
             "query id",
-            None,
-            "status ",
+            disputable=None,
         )
         alert(True, r)
 
