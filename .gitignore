@@ -148,3 +148,4 @@ package.json
 cache/
 # Hermes agent scratch (plans, logs, local scripts)
 .hermes/
+monitored-chains.json
