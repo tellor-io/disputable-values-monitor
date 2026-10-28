@@ -1,7 +1,10 @@
 """CLI dashboard to display recent values reported to Tellor oracles."""
+
 import logging
 import warnings
 from time import sleep
+from typing import List
+from typing import Optional
 
 import click
 import pandas as pd
@@ -12,6 +15,7 @@ from telliot_core.cli.utils import async_run
 
 from disputable_values_monitor import WAIT_PERIOD
 from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.data import MonitoredFeed
 from disputable_values_monitor.data import chain_events
 from disputable_values_monitor.data import get_events
 from disputable_values_monitor.data import parse_new_report_event
@@ -20,12 +24,12 @@ from disputable_values_monitor.discord import dispute_alert
 from disputable_values_monitor.discord import generic_alert
 from disputable_values_monitor.discord import get_alert_bot_1
 from disputable_values_monitor.disputer import dispute
+from disputable_values_monitor.utils import Topics
 from disputable_values_monitor.utils import clear_console
 from disputable_values_monitor.utils import format_values
 from disputable_values_monitor.utils import get_logger
 from disputable_values_monitor.utils import get_tx_explorer_url
 from disputable_values_monitor.utils import select_account
-from disputable_values_monitor.utils import Topics
 
 warnings.simplefilter("ignore", UserWarning)
 price_aggregator_logger = logging.getLogger("telliot_feeds.sources.price_aggregator")
@@ -38,7 +42,7 @@ logger = get_logger(__name__)
 
 def print_title_info() -> None:
     """Prints the title info."""
-    click.echo("Disputable Values Monitor 📒🔎📲")
+    click.echo("Disputable Values Monitor Starting... 📒🔎📲")
 
 
 @click.command()
@@ -46,8 +50,14 @@ def print_title_info() -> None:
     "-av", "--all-values", is_flag=True, default=False, show_default=True, help="if set, get alerts for all values"
 )
 @click.option("-a", "--account-name", help="the name of a ChainedAccount to dispute with", type=str)
+@click.option("-pwd", "--password", help="password for your account (req'd if -sc is used)", type=str)
 @click.option("-w", "--wait", help="how long to wait between checks", type=int, default=WAIT_PERIOD)
-@click.option("-d", "--is-disputing", help="enable auto-disputing on chain", is_flag=True)
+@click.option(
+    "-d",
+    "--is-disputing",
+    help="enable automatic disputing on chain (CAUTION: BE SURE YOU UNDERSTAND HOW DISPUTES WORK)",
+    is_flag=True,
+)
 @click.option(
     "-c",
     "--confidence-threshold",
@@ -61,7 +71,8 @@ def print_title_info() -> None:
     type=int,
     default=0,
 )
-@async_run
+@click.option("-sc", "skip_confirmations", help="skip confirm configuration (unsafe start)", is_flag=True)
+@async_run  # type: ignore[untyped-decorator]  # async_run ships no annotations
 async def main(
     all_values: bool,
     wait: int,
@@ -69,6 +80,8 @@ async def main(
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
+    skip_confirmations: bool,
+    password: Optional[str],
 ) -> None:
     """CLI dashboard to display recent values reported to Tellor oracles."""
     # Raises exception if no webhook url is found
@@ -80,6 +93,8 @@ async def main(
         is_disputing=is_disputing,
         confidence_threshold=confidence_threshold,
         initial_block_offset=initial_block_offset,
+        skip_confirmations=skip_confirmations,
+        password=password,
     )
 
 
@@ -90,24 +105,42 @@ async def start(
     is_disputing: bool,
     confidence_threshold: float,
     initial_block_offset: int,
+    skip_confirmations: bool,
+    password: Optional[str],
 ) -> None:
     """Start the CLI dashboard."""
     cfg = TelliotConfig()
     cfg.main.chain_id = 1
-    disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
+    disp_cfg = AutoDisputerConfig(
+        is_disputing=is_disputing,
+        confidence_threshold=confidence_threshold,
+    )
     print_title_info()
 
     if not disp_cfg.monitored_feeds:
-        logger.error("No feeds set for monitoring, please add feeds to ./disputer-config.yaml")
+        logger.error("No feeds set for monitoring, please check configs in ./disputer-config.yaml")
         return
 
-    account: ChainedAccount = select_account(cfg, account_name)
+    monitored_feeds: List[MonitoredFeed] = disp_cfg.monitored_feeds
 
-    if account and is_disputing:
-        click.echo("...Now with auto-disputing!")
+    if not account_name and is_disputing:
+        logger.error("auto-disputing enabled, but no account provided (see --help)")
+        return
+
+    if is_disputing:
+        click.echo("🛡️ DVM is auto-disputing configured feeds at custom thresholds 🛡️")
+    else:
+        click.echo("DVM is alerting at global percentage 📣")
+
+    account: ChainedAccount = select_account(cfg, account_name, password, skip_confirmations)
+    if account is None and is_disputing:
+        logger.error("No account selected for disputing")
+        return
 
     display_rows = []
     displayed_events = set()
+
+    sleep(10)
 
     # Build query if filter is set
     while True:
@@ -116,12 +149,6 @@ async def start(
         event_lists = await get_events(
             cfg=cfg,
             contract_name="tellor360-oracle",
-            topics=[Topics.NEW_REPORT],
-            inital_block_offset=initial_block_offset,
-        )
-        tellor_flex_report_events = await get_events(
-            cfg=cfg,
-            contract_name="tellorflex-oracle",
             topics=[Topics.NEW_REPORT],
             inital_block_offset=initial_block_offset,
         )
@@ -135,7 +162,7 @@ async def start(
             topics=[[Topics.NEW_ORACLE_ADDRESS], [Topics.NEW_PROPOSED_ORACLE_ADDRESS]],
             inital_block_offset=initial_block_offset,
         )
-        event_lists += tellor360_events + tellor_flex_report_events
+        event_lists += tellor360_events
         for event_list in event_lists:
             # event_list = [(80001, EXAMPLE_NEW_REPORT_EVENT)]
             if not event_list:
@@ -155,7 +182,7 @@ async def start(
                 try:
                     new_report = await parse_new_report_event(
                         cfg=cfg,
-                        monitored_feeds=disp_cfg.monitored_feeds,
+                        monitored_feeds=monitored_feeds,
                         log=event,
                         confidence_threshold=confidence_threshold,
                     )
@@ -173,7 +200,7 @@ async def start(
                 print_title_info()
 
                 if is_disputing:
-                    click.echo("...Now with auto-disputing!")
+                    click.echo("Valid disputing scheme loaded...")
 
                 alert(all_values, new_report)
 
@@ -186,13 +213,14 @@ async def start(
                     (
                         new_report.tx_hash,
                         new_report.submission_timestamp,
-                        new_report.link,
                         new_report.query_type,
                         new_report.value,
-                        new_report.status_str,
+                        new_report.alertable_str,
+                        new_report.disputable_str,
                         new_report.asset,
                         new_report.currency,
                         new_report.chain_id,
+                        new_report.link,
                     )
                 )
 
@@ -204,18 +232,30 @@ async def start(
                     del display_rows[0]
 
                 # Display table
-                _, times, links, query_type, values, disputable_strs, assets, currencies, chain = zip(*display_rows)
+                (
+                    _,
+                    timestamp,
+                    query_type,
+                    values,
+                    alertable_strs,
+                    disputable_strs,
+                    assets,
+                    currencies,
+                    chain,
+                    links,
+                ) = zip(*display_rows)
 
                 dataframe_state = dict(
-                    When=times,
-                    Transaction=links,
+                    When=timestamp,
                     QueryType=query_type,
                     Asset=assets,
                     Currency=currencies,
                     # split length of characters in the Values' column that overflow when displayed in cli
                     Value=values,
+                    Alertable=alertable_strs,
                     Disputable=disputable_strs,
                     ChainId=chain,
+                    Transaction=links,
                 )
                 df = pd.DataFrame.from_dict(dataframe_state)
                 df = df.sort_values("When")
@@ -223,7 +263,10 @@ async def start(
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
                 # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig(is_disputing=is_disputing, confidence_flag=confidence_threshold)
+                disp_cfg = AutoDisputerConfig(
+                    is_disputing=is_disputing,
+                    confidence_threshold=confidence_threshold,
+                )
 
         sleep(wait)
 

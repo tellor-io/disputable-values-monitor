@@ -1,0 +1,43 @@
+---
+name: CI
+
+on:
+  push:
+    branches: ["dvm-main", "auto-disputer-main", "main"]
+  pull_request:
+    branches: ["dvm-main", "auto-disputer-main", "main"]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: "Python 3.12"
+    runs-on: "ubuntu-latest"
+    env:
+      USING_COVERAGE: '3.12'
+      NODE_URL: ${{ secrets.NODE_URL }}
+      MAINNET_URL: ${{ secrets.MAINNET_URL }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+
+    steps:
+      - uses: "actions/checkout@v4"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          enable-cache: true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: "Install hardhat"
+        run: npm install --save-dev "hardhat@^2" dotenv
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+          uv pip list
+      - name: Start node
+        run: npx hardhat node &
+      - name: "Run pytest"
+        run: uv run pytest
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4

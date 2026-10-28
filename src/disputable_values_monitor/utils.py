@@ -1,4 +1,5 @@
 """Helper functions."""
+
 import logging
 import os
 from dataclasses import dataclass
@@ -52,8 +53,17 @@ class NewReport:
     asset: str = ""
     currency: str = ""
     query_id: str = ""
+    alertable: Optional[bool] = None
     disputable: Optional[bool] = None
-    status_str: str = ""
+    alertable_str: str = ""
+    disputable_str: str = ""
+
+
+def alertable_str(alertable: Optional[bool], query_id: str) -> str:
+    """Return a string indicating whether the query is alertable."""
+    if alertable is not None:
+        return "yes ❗📲" if alertable else "no ✔️"
+    return f"❗unsupported query ID: {query_id}"
 
 
 def disputable_str(disputable: Optional[bool], query_id: str) -> str:
@@ -73,24 +83,34 @@ def clear_console() -> None:
         _ = os.system("clear")
 
 
-def select_account(cfg: TelliotConfig, account: Optional[str]) -> Optional[ChainedAccount]:
+def select_account(
+    cfg: TelliotConfig, account: Optional[str], password: Optional[str], skip_confirmations: Optional[bool]
+) -> Optional[ChainedAccount]:
     """Select an account for disputing, allow no account to be chosen."""
-
-    if account is not None:
-        accounts = find_accounts(name=account)
-        click.echo(f"Your account name: {accounts[0].name if accounts else None}")
-    else:
-        run_alerts_only = click.confirm("Missing an account to send disputes. Run alerts only?")
-        if not run_alerts_only:
-            new_account = setup_account(cfg.main.chain_id)
-            if new_account is not None:
-                click.echo(f"{new_account.name} selected!")
-                return new_account
+    accounts = None
+    if account is None:
+        if skip_confirmations:
             return None
         else:
+            run_alerts_only = click.confirm("Missing an account to send disputes. Run alerts only?")
+            if not run_alerts_only:
+                new_account = setup_account(cfg.main.chain_id)
+                if new_account is not None:
+                    click.echo(f"{new_account.name} selected!")
+                    return new_account
+                return None
+            else:
+                return None
+    else:
+        accounts = find_accounts(name=account)
+        if not accounts:
+            click.echo(f"No account found with name: {account}")
             return None
-
-    accounts[0].unlock()
+        click.echo(f"Your account name: {accounts[0].name}")
+        if password is None:
+            accounts[0].unlock()
+        else:
+            accounts[0].unlock(password=password)
     return accounts[0]
 
 

@@ -1,4 +1,5 @@
 """Test helper functions."""
+
 import os
 from unittest import mock
 
@@ -40,6 +41,13 @@ def test_disputable_str():
     assert disp_str1 == "no ✔️"
 
 
+def test_select_account_unknown_name(capsys):
+    """select_account with a name that matches no account must return None, not IndexError"""
+    account = select_account(TelliotConfig(), "nonexistent-acct-dvm-test", None, True)
+    assert account is None
+    assert "No account found with name: nonexistent-acct-dvm-test" in capsys.readouterr().out
+
+
 def test_logger():
     """Test logger working."""
     logger = get_logger(__name__)
@@ -58,10 +66,10 @@ def test_select_account():
     cfg = TelliotConfig()
 
     if not find_accounts("disputer-test-acct"):
-        ChainedAccount.add("disputer-test-acct1", [1, 5, 4, 1337, 80001], os.getenv("PRIVATE_KEY"), "")
+        ChainedAccount.add("disputer-test-acct", [1, 5, 4, 1337, 80001, 80002, 11155111], os.getenv("PRIVATE_KEY"), "")
 
     with mock.patch("click.confirm", return_value=True):
-        account = select_account(cfg, None)
+        account = select_account(cfg, None, False, None)
 
     assert not account
 

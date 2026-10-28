@@ -1,6 +1,6 @@
 {
     inputs = {
-        nixpkgs.url = "github:nixos/nixpkgs/release-22.05";
+        nixpkgs.url = "github:nixos/nixpkgs/release-26.05";
 
         flake-utils.url = "github:numtide/flake-utils";
 
@@ -26,7 +26,7 @@
         flake-utils.lib.eachDefaultSystem (system: let
             pkgs = import nixpkgs {
                 inherit system;
-                overlays = [devshell.overlay];
+                overlays = [devshell.overlays.default];
             };
         in {
             devShell = pkgs.devshell.mkShell {

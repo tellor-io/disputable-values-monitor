@@ -12,18 +12,19 @@ jobs:
   build:
     runs-on: "ubuntu-latest"
     steps:
-      - uses: actions/checkout@v2
-      - name: Build and publish to pypi
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.3.2
+      - name: Build distributions
+        run: uv build
+      - name: Publish to TestPyPI
         if: "github.event.release.prerelease"
-        uses: JRubics/poetry-publish@v1.16
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository_name: "testpypi"
-          repository_url: "https://test.pypi.org/legacy/"
-          python_version: "3.9.5"
-          pypi_token: ${{ secrets.DISPUTABLE_VALUES_MONITOR_TEST_PYPI_API_TOKEN }}
-      - name: Build and publish to pypi
+          repository-url: https://test.pypi.org/legacy/
+          password: ${{ secrets.DISPUTABLE_VALUES_MONITOR_TEST_PYPI_API_TOKEN }}
+      - name: Publish to PyPI
         if: "!github.event.release.prerelease"
-        uses: JRubics/poetry-publish@v1.16
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          python_version: "3.9.5"
-          pypi_token: ${{ secrets.DISPUTABLE_VALUES_MONITOR_PYPI_API_TOKEN }}
+          password: ${{ secrets.DISPUTABLE_VALUES_MONITOR_PYPI_API_TOKEN }}
