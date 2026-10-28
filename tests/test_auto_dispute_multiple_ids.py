@@ -51,10 +51,14 @@ evm_wrong_val = evm_call_feed_example.query.value_type.encode((int.to_bytes(1234
 def custom_open_side_effect(*args, **kwargs):
     """mocks open function to return a mock file"""
     if args[0] == "disputer-config.yaml":
-        return mock_open().return_value
-    if args[0] == "monitored-chains.json":
-        # read the real repo-root file so json.load() gets valid content
+        # tracked file; read it for real so tests without a yaml.safe_load patch
+        # (e.g. test_default_config) still get the repo's config content
         return io.open(*args, **kwargs)
+    if args[0] == "monitored-chains.json":
+        # monitored-chains.json is user-supplied (gitignored), so it may not exist
+        # on a fresh checkout; serve canned content for the test chains instead.
+        # Only chains with configured test endpoints are needed (1 and 1337).
+        return mock_open(read_data='{"monitored_chains": [1, 1337]}').return_value
     return io.open(*args, **kwargs)
 
 
@@ -189,6 +193,7 @@ async def setup_and_start(is_disputing, config, config_patches=None, skip_confir
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
         stack.enter_context(patch("disputable_values_monitor.cli.sleep", lambda _: None))
+        stack.enter_context(patch("builtins.open", side_effect=custom_open_side_effect))
         stack.enter_context(patch("disputable_values_monitor.cli.get_events", get_events_single_pass))
         stack.enter_context(
             patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
