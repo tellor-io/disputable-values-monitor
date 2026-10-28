@@ -17,6 +17,7 @@ from disputable_values_monitor.data import Metrics
 from disputable_values_monitor.data import MonitoredFeed
 from disputable_values_monitor.data import Thresholds
 from disputable_values_monitor.data import parse_new_report_event
+from disputable_values_monitor.disputer import _submit_tx_with_retries
 from disputable_values_monitor.disputer import dispute
 from disputable_values_monitor.disputer import get_dispute_fee
 from disputable_values_monitor.utils import NewReport
@@ -253,3 +254,129 @@ async def test_get_dispute_fee():
 
     # one open dispute on the id doubles the base fee, capped below the stake
     assert dispute_fee == 2_000_000_000_000_000_000
+
+
+def _fee_mock_governance(reads: dict, seen: dict):
+    ok = ResponseStatus(ok=True)
+
+    async def governance_read(*args, **kwargs):
+        func_name = kwargs.get("func_name", args[0] if args else "")
+        seen[func_name] = kwargs
+        if func_name in reads:
+            return reads[func_name], ok
+        raise AssertionError(f"unexpected read: {func_name}")
+
+    governance = mock.MagicMock()
+    governance.read = mock.AsyncMock(side_effect=governance_read)
+    return governance
+
+
+def _fee_report():
+    return NewReport(
+        "0xabc123",
+        1793202096,
+        11155111,
+        "sepolia.etherscan.io/",
+        "SpotPrice",
+        69.0,
+        "eth",
+        "usd",
+        "0x83a7f3d48786ac2667503a61e8c415438ed2922eb86a2906e4ee66d9a2ce4992",  # eth/usd query id
+        disputable=True,
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_dispute_fee_uses_identifier_hash_and_open_dispute_cap():
+    """Sepolia regression: governance keys rounds by keccak(queryId, timestamp),
+    and with >4 (open disputes + this one) the fee is the full stake."""
+
+    base_fee = 10_000_000_000_000_000_000
+    stake = 100_000_000_000_000_000_000
+
+    report = _fee_report()
+    seen: dict = {}
+    governance = _fee_mock_governance(
+        {"getDisputeFee": base_fee, "getVoteRounds": [], "getOpenDisputesOnId": 5},
+        seen,
+    )
+    oracle = mock.MagicMock()
+    oracle.read = mock.AsyncMock(return_value=(stake, ResponseStatus(ok=True)))
+
+    def fake_get_contract(cfg, name, account):
+        return governance if name == "tellor-governance" else oracle
+
+    with mock.patch("disputable_values_monitor.disputer.get_contract", side_effect=fake_get_contract):
+        dispute_fee = await get_dispute_fee(TelliotConfig(), report)
+
+    # vote rounds are looked up by the identifier hash, not the raw query id
+    from web3 import Web3
+
+    expected_hash = Web3.solidity_keccak(
+        ["bytes32", "uint256"],
+        [bytes.fromhex(report.query_id[2:]), report.submission_timestamp],
+    )
+    assert seen["getVoteRounds"]["_hash"] == expected_hash
+
+    # 5 open disputes + this round > 4, so the fee is capped at the full stake,
+    # far above the flat base fee the old code reported
+    assert dispute_fee == stake
+
+
+@pytest.mark.asyncio
+async def test_get_dispute_fee_first_round_doubles_per_open_dispute():
+    """First dispute on a report with 1 open dispute on the id pays 2x base fee
+    (governance increments the open count before charging)."""
+
+    base_fee = 1_000_000_000_000_000_000
+    stake = 10_000_000_000_000_000_000
+
+    seen: dict = {}
+    governance = _fee_mock_governance(
+        {"getDisputeFee": base_fee, "getVoteRounds": [], "getOpenDisputesOnId": 1},
+        seen,
+    )
+    oracle = mock.MagicMock()
+    oracle.read = mock.AsyncMock(return_value=(stake, ResponseStatus(ok=True)))
+
+    def fake_get_contract(cfg, name, account):
+        return governance if name == "tellor-governance" else oracle
+
+    with mock.patch("disputable_values_monitor.disputer.get_contract", side_effect=fake_get_contract):
+        dispute_fee = await get_dispute_fee(TelliotConfig(), _fee_report())
+
+    assert dispute_fee == 2 * base_fee
+
+
+@pytest.mark.asyncio
+async def test_submit_tx_with_retries_transient_failure(caplog):
+    """A failed write with no receipt (send/confirm hiccup) is retried."""
+
+    ok = ResponseStatus(ok=True)
+    fail = ResponseStatus(ok=False, error="Connection aborted")
+    receipt = mock.MagicMock()
+
+    send = mock.AsyncMock(side_effect=[(None, fail), (None, fail), (receipt, ok)])
+
+    tx_receipt, status = await _submit_tx_with_retries(send, label="Dispute", chain_id=11155111, delay=0)
+
+    assert status.ok
+    assert tx_receipt is receipt
+    assert send.await_count == 3
+    assert "not sent/confirmed (attempt 1/3)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_submit_tx_with_retries_no_retry_on_revert():
+    """A mined revert (receipt present, status failed) is never re-broadcast."""
+
+    revert_receipt = mock.MagicMock()
+    reverted = ResponseStatus(ok=False, error="beginDispute transaction reverted.")
+
+    send = mock.AsyncMock(return_value=(revert_receipt, reverted))
+
+    tx_receipt, status = await _submit_tx_with_retries(send, label="Dispute", chain_id=11155111, delay=0)
+
+    assert not status.ok
+    assert tx_receipt is revert_receipt
+    assert send.await_count == 1
