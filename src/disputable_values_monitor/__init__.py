@@ -1,8 +1,28 @@
 """Disputable Values Monitor - CLI dashboard & alerts for potential
 bad values reported to Tellor oracles."""
 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from hexbytes import HexBytes
 from web3.datastructures import AttributeDict
+
+
+def _load_vars_sh() -> None:
+    """Load vars.sh automatically so users don't have to `source vars.sh`.
+
+    python-dotenv understands the `export KEY="value"` syntax vars.sh uses.
+    override=False keeps the old precedence: variables already exported in
+    the shell (e.g. by sourcing vars.sh) win over the file. Set DVM_VARS to
+    point at a vars.sh living somewhere other than the current directory.
+    """
+    vars_path = Path(os.environ.get("DVM_VARS", "vars.sh"))
+    if vars_path.is_file():
+        load_dotenv(vars_path, override=False)
+
+
+_load_vars_sh()
 
 WAIT_PERIOD = 7  # seconds between checks for new events
 

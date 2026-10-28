@@ -19,7 +19,11 @@ def get_alert_bot_1(content: str = "") -> DiscordWebhook:
     """Read the Discord webhook url from the environment."""
     DISCORD_WEBHOOK_URL_1 = os.getenv("DISCORD_WEBHOOK_URL_1")
     if DISCORD_WEBHOOK_URL_1 is None:
-        raise Exception("At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'.")
+        raise Exception(
+            "At least one DISCORD_WEBHOOK_URL is required. Set it in ./vars.sh "
+            "(cp vars.example.sh vars.sh; it is loaded automatically at startup). "
+            "See docs."
+        )
     alert_bot_1 = DiscordWebhook(url=DISCORD_WEBHOOK_URL_1, content=content)
     return alert_bot_1
 

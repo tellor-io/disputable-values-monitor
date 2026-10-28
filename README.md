@@ -42,10 +42,10 @@ cp vars.example.sh vars.sh
 ```
 - Edit `vars.sh` with your favorite text editor replacing the dummy url with the url for your Discord bot's webhook.
 - Set `MONITOR_NAME` with a memorable name for your DVM process.
-- Export environment variables:
-```bash
-source vars.sh
-```
+- `vars.sh` is loaded automatically when the monitor starts (and when the package is
+  imported), so you do **not** need to run `source vars.sh` in every shell. Variables
+  you have exported in your shell still take precedence; set `DVM_VARS=/path/to/vars.sh`
+  if your vars file lives somewhere other than the current directory.
 
 ### Set the chains you want to monitor
 

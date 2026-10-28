@@ -157,7 +157,7 @@ def test_alert_bot_if_no_webhook(mock_getenv):
     mock_getenv.return_value = None
     with TestCase().assertRaises(Exception) as context:
         get_alert_bot_1()
-    assert "At least one DISCORD_WEBHOOK_URL is required. See docs or try source 'vars.sh'." in str(context.exception)
+    assert "At least one DISCORD_WEBHOOK_URL is required. Set it in ./vars.sh" in str(context.exception)
     mock_getenv.return_value = "a"
     alert_bot = get_alert_bot_1()
     assert isinstance(alert_bot, DiscordWebhook)

@@ -24,9 +24,7 @@ mv vars.example.sh vars.sh
 
 fill in variables with appropriate values see [README](./README.md)
 
-```sh
-source vars.sh
-```
+`vars.sh` is loaded automatically at startup — no need to `source vars.sh`.
 
 ```sh
 uv run telliot config init

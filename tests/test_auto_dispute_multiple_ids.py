@@ -20,6 +20,7 @@ from telliot_feeds.feeds import evm_call_feed_example
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
+from disputable_values_monitor import cli as dvm_cli
 from disputable_values_monitor import data
 from disputable_values_monitor.cli import start
 
@@ -165,10 +166,25 @@ async def check_dispute(oracle, query_id, timestamp):
 
 
 async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=None):
+    # one full event pass is all these tests need (events are mined before start() is
+    # called); exit start()'s while-True loop when it polls for events a second time.
+    # Ending the loop with a wall-clock timeout instead was flaky on CI, where the live
+    # price fetches in pass 1 could exceed the budget before the EVMCall event was processed.
+    orig_get_events = dvm_cli.get_events
+    polls = 0
+
+    async def get_events_single_pass(*args, **kwargs):
+        nonlocal polls
+        polls += 1
+        if polls > 1:
+            raise asyncio.TimeoutError
+        return await orig_get_events(*args, **kwargs)
+
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
         stack.enter_context(patch("disputable_values_monitor.cli.sleep", lambda _: None))
+        stack.enter_context(patch("disputable_values_monitor.cli.get_events", get_events_single_pass))
         stack.enter_context(
             patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
         )
@@ -186,10 +202,10 @@ async def setup_and_start(is_disputing, config, config_patches=None, skip_confir
                 stack.enter_context(p)
 
         try:
-            async with asyncio.timeout(9):
+            async with asyncio.timeout(60):  # safety net for hangs only; loop ends after one pass
                 await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations, password or "")
         except asyncio.TimeoutError:
-            pass  # start() loops forever by design; the timeout is how the test exits it
+            pass  # start() loops forever by design; the single-pass get_events ends it
 
 
 # @pytest.mark.skip(reason="default config not used")
