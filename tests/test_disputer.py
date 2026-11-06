@@ -23,6 +23,16 @@ from disputable_values_monitor.disputer import get_dispute_fee
 from disputable_values_monitor.utils import NewReport
 
 
+@pytest.fixture(autouse=True)
+def _reset_equality_warning_once():
+    """The Equality advisory is intentionally logged once per process; reset the
+    guard between tests so each test's caplog assertion sees its own emission."""
+    from disputable_values_monitor import data as dvm_data
+
+    dvm_data._EQUALITY_WARNING_SHOWN = False
+    yield
+
+
 @pytest.mark.asyncio
 async def test_not_meant_to_dispute(caplog, disputer_account):
     """test when dispute() is called but a dispute is not meant to be sent"""

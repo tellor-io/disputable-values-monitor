@@ -55,6 +55,10 @@ class Metrics(Enum):
 
 start_block: Dict[int, int] = {}
 
+# The Equality advisory is re-triggered every time config is rebuilt (each poll),
+# so log it once per process instead of spamming the dashboard.
+_EQUALITY_WARNING_SHOWN = False
+
 
 @dataclass
 class Thresholds(Base):
@@ -78,8 +82,14 @@ class Thresholds(Base):
 
     def __post_init__(self) -> None:
 
+        global _EQUALITY_WARNING_SHOWN
+
         if self.metric == Metrics.Equality:
-            logger.warning("Equality threshold selected, ignoring amount")
+            if not _EQUALITY_WARNING_SHOWN:
+                # Thresholds is constructed per parsed report and on every config
+                # rebuild, so without this guard the message repeats endlessly.
+                logger.warning("Equality threshold selected, ignoring amount")
+                _EQUALITY_WARNING_SHOWN = True
             self.alrt_amount = None
             self.disp_amount = None
 
