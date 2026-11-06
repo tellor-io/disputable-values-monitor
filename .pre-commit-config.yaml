@@ -1,29 +1,28 @@
 exclude: '.git'
-default_stages: [commit]
+default_stages: [pre-commit]
 fail_fast: true
 
 repos:
   - repo: https://github.com/econchick/interrogate
-    rev: 1.4.0
+    rev: 1.7.0
     hooks:
       - id: interrogate
         name: Check for docstrings
         args: [-vv, -i, --fail-under=50]
         additional_dependencies:
         - setuptools
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v2.6.0
+  - repo: https://github.com/PyCQA/isort
+    rev: 9.0.2
     hooks:
-      - id: reorder-python-imports
-        name: Reorder Python imports
-        args: ["--application-directories=.:src:tests"]
+      - id: isort
+        name: Reorder Python imports (isort, black-compatible)
   - repo: https://github.com/psf/black
-    rev: 22.3.0
+    rev: 26.10.1
     hooks:
       - id: black
         args: [--line-length, '120']
   - repo: https://github.com/PyCQA/flake8
-    rev: 3.9.2
+    rev: 7.4.1
     hooks:
       - id: flake8
         additional_dependencies:
@@ -31,7 +30,7 @@ repos:
           - flake8-implicit-str-concat
         args: ["--ignore=ISC003,W503", --max-line-length, '120', src]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v6.0.0
     hooks:
       - id: detect-private-key
       - id: fix-byte-order-marker
