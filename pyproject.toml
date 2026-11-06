@@ -15,10 +15,6 @@ dependencies = [
     "telliot-feeds>=0.5.0,<0.6",
     # imported directly; telliot-feeds 0.5.0 pins telliot-core==0.5.0 exactly
     "telliot-core==0.5.0",
-    # telliot_feeds.reporters.layer imports terra_sdk but telliot-feeds does
-    # not declare it; 4.0.0 is the version the layer reporter code targets.
-    # Also brings nest-asyncio, which telliot-core's CLI imports undeclared.
-    "terra-sdk==4.0.0",
     # declared explicitly: imported directly but previously only transitively present
     "web3>=7.14,<8",
     "eth-abi>=5.2,<6",

@@ -145,6 +145,21 @@ async def start(
     # Build query if filter is set
     while True:
 
+        # Reload config every poll: picks up live disputer-config.yaml edits, and
+        # resets monitored-feed attributes that matching mutates during the loop
+        # (a generic query_type feed like EVMCall is replaced in-place with the
+        # concrete feed of whichever report matched it first, which would
+        # otherwise stop later reports with different params from matching).
+        disp_cfg = AutoDisputerConfig(
+            is_disputing=is_disputing,
+            confidence_threshold=confidence_threshold,
+        )
+        if not disp_cfg.monitored_feeds:
+            logger.error("No feeds set for monitoring, please check configs in ./disputer-config.yaml")
+            sleep(wait)
+            continue
+        monitored_feeds = disp_cfg.monitored_feeds
+
         # Fetch NewReport events
         event_lists = await get_events(
             cfg=cfg,
@@ -262,11 +277,6 @@ async def start(
                 df["Value"] = df["Value"].apply(format_values)
                 print(df.to_markdown(index=False), end="\r")
                 df.to_csv("table.csv", mode="a", header=False)
-                # reset config to clear object attributes that were set during loop
-                disp_cfg = AutoDisputerConfig(
-                    is_disputing=is_disputing,
-                    confidence_threshold=confidence_threshold,
-                )
 
         sleep(wait)
 

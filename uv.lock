@@ -155,18 +155,6 @@ wheels = [
 ]
 
 [[package]]
-name = "bip32utils"
-version = "0.3.post4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "ecdsa" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/20/b8/943d5835a2deacf9438e950e8b5707dd43892fd08dbe9da5c637c0f6ae52/bip32utils-0.3.post4.tar.gz", hash = "sha256:5970f40fbb727a89d3cc06b6387b348252f7c8af6b3470df704276de728c48c2", size = 12917, upload-time = "2018-10-19T19:01:19.248Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/87/6cb42de832d524b6b6d7e111aaa9bfb5e82182e6958bdfbd8fbdeb24b3da/bip32utils-0.3.post4-py3-none-any.whl", hash = "sha256:86125e16732101f17dbf4307ca0311a06ded0aca94220ac961e5bce0a444e972", size = 9902, upload-time = "2018-10-19T19:01:17.908Z" },
-]
-
-[[package]]
 name = "bitarray"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -408,7 +396,6 @@ dependencies = [
     { name = "tabulate" },
     { name = "telliot-core" },
     { name = "telliot-feeds" },
-    { name = "terra-sdk" },
     { name = "web3" },
 ]
 
@@ -440,7 +427,6 @@ requires-dist = [
     { name = "tabulate", specifier = ">=0.10,<0.11" },
     { name = "telliot-core", specifier = "==0.5.0" },
     { name = "telliot-feeds", specifier = ">=0.5.0,<0.6" },
-    { name = "terra-sdk", specifier = "==4.0.0" },
     { name = "web3", specifier = ">=7.14,<8" },
 ]
 
@@ -760,15 +746,6 @@ name = "markupsafe"
 version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bf/10/ff66fea6d1788c458663a84d88787bae15d45daa16f6b3ef33322a51fc7e/MarkupSafe-2.0.1.tar.gz", hash = "sha256:594c67807fb16238b30c44bdf74f36c02cdf22d1c8cda91ef8a0ed8dabf5620a", size = 18596, upload-time = "2021-05-18T17:18:22.856Z" }
-
-[[package]]
-name = "mnemonic"
-version = "0.19"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/80/0d/63de5efd5585fd6eb79eb35d3feb91deee8003e60997d61e3759eaf1ea66/mnemonic-0.19.tar.gz", hash = "sha256:4e37eb02b2cbd56a0079cabe58a6da93e60e3e4d6e757a586d9f23d96abea931", size = 61592, upload-time = "2019-10-04T12:33:39.352Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6b/cd/db2d853ec8d6d2b020b3647c062583c297070ac071f6a9ba0473141a6a1e/mnemonic-0.19-py2.py3-none-any.whl", hash = "sha256:a8d78c5100acfa7df9bab6b9db7390831b0e54490934b718ff9efd68f0d731a6", size = 61008, upload-time = "2019-10-04T12:33:37.515Z" },
-]
 
 [[package]]
 name = "multicall"
@@ -1381,30 +1358,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b8/c2/54c338afc10f61e24dc9f998cd6ded400d0fdce3d200590123b49bec53c9/terra_proto-4.0.2.tar.gz", hash = "sha256:f59fc5081d21441c514c83ea32551e819448ea016413ca304ee9343cb858ab21", size = 164951, upload-time = "2023-09-22T08:21:59.349Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/08/83/f58cbeedc25e8104a1373d013c56d59189575031d907910cec8491eee30e/terra_proto-4.0.2-py3-none-any.whl", hash = "sha256:e542be7d9275806f66b51e68c8736569474bda62b2f82e7c64fb619994155210", size = 245121, upload-time = "2023-09-22T08:21:56.597Z" },
-]
-
-[[package]]
-name = "terra-sdk"
-version = "4.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "attrs" },
-    { name = "bech32" },
-    { name = "betterproto" },
-    { name = "bip32utils" },
-    { name = "boltons" },
-    { name = "ecdsa" },
-    { name = "furl" },
-    { name = "mnemonic" },
-    { name = "nest-asyncio" },
-    { name = "protobuf" },
-    { name = "terra-proto" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6d/b8/37e1c5be27159ad8a705cc7724295e877d374ac7d71662ba16e2747ca2f9/terra_sdk-4.0.0.tar.gz", hash = "sha256:a288d420eb89156b130b552c88a9ad8d4d37c65639fa715e5ffeeb1a64723083", size = 86428, upload-time = "2023-09-22T08:41:42.604Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/58/d1ed83c40a4233fea937ad52c61022bf049153e1c56af92f2090dbc4076c/terra_sdk-4.0.0-py3-none-any.whl", hash = "sha256:b9664b977d8b8244962d255f5979dcd828fe86ff7a884d73f92d3e5ef957d5fb", size = 124421, upload-time = "2023-09-22T08:41:40.047Z" },
 ]
 
 [[package]]

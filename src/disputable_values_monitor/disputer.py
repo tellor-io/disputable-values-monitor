@@ -133,8 +133,13 @@ async def dispute(
         )
         return ""
 
+    def get_acc_nonce() -> int:
+        # Read the nonce fresh on every send attempt: a retry must not replay
+        # the nonce of a tx that may already be pending or mined.
+        return int(w3.eth.get_transaction_count(Web3.to_checksum_address(account.address)))
+
     try:
-        acc_nonce = w3.eth.get_transaction_count(Web3.to_checksum_address(account.address))
+        get_acc_nonce()
     except Exception as e:
         logger.error(f"Unable to dispute on chain_id {new_report.chain_id}: could not retrieve account nonce: {e}")
         return ""
@@ -147,7 +152,7 @@ async def dispute(
             amount=dispute_fee * 100,
             gas_limit=60000,
             legacy_gas_price=w3.from_wei(w3.eth.gas_price, "gwei"),
-            acc_nonce=acc_nonce,
+            acc_nonce=get_acc_nonce(),
         ),
         label="Approval",
         chain_id=new_report.chain_id,
@@ -194,7 +199,9 @@ async def dispute(
             _timestamp=new_report.submission_timestamp,
             gas_limit=int(gas_limit * 1.2),
             legacy_gas_price=w3.from_wei(w3.eth.gas_price, "gwei"),
-            acc_nonce=acc_nonce + 1,
+            # fresh read: the confirmed approval above already bumped the nonce,
+            # so this self-corrects even if the approval replayed at another nonce
+            acc_nonce=get_acc_nonce(),
         ),
         label="Dispute",
         chain_id=new_report.chain_id,
