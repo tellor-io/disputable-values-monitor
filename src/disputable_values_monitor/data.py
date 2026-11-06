@@ -558,11 +558,17 @@ async def parse_new_report_event(
     monitored_feed = None
 
     for mf in monitored_feeds:
-        try:
-            feed_qid = HexBytes(mf.feed.query.query_id).hex()
-        except Exception as e:
-            logger.error(f"Error while assembling query id for {mf.feed.query.descriptor}: {e}")
+        if are_all_attributes_none(mf.feed.query):
+            # generic query_type feed (e.g. EVMCall with no params yet): a query id
+            # is not computable until a report matches it below. Attempting the
+            # encode just to catch-and-log was ERROR spam on every parsed report.
             feed_qid = None
+        else:
+            try:
+                feed_qid = HexBytes(mf.feed.query.query_id).hex()
+            except Exception as e:
+                logger.error(f"Error while assembling query id for {mf.feed.query.descriptor}: {e}")
+                feed_qid = None
 
         if feed_qid is None:
             if get_query_type(mf.feed.query) == new_report.query_type:
