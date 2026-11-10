@@ -18,12 +18,16 @@ from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.feeds import eth_usd_median_feed
 from telliot_feeds.feeds import evm_call_feed_example
+from telliot_feeds.queries.evm_call import EVMCall
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
 from disputable_values_monitor import cli as dvm_cli
 from disputable_values_monitor import data
 from disputable_values_monitor.cli import start
+from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.utils import Topics
+from disputable_values_monitor.utils import are_all_attributes_none
 
 # during testing there aren't that many blocks so setting offset to 0
 data.inital_block_offset = 0
@@ -539,3 +543,77 @@ async def test_spot_long_value(stake_deposited: TelliotCore, capsys):
     ]
     await setup_and_start(False, core.config, config_patches)
     assert "Spot price value length is not 32 bytes" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_parsing_evmcall_report_does_not_mutate_generic_config_entry(submit_multiple_bad_values: TelliotCore):
+    """Test that parsing an EVMCall report leaves the generic EVMCall config entry untouched"""
+    core = submit_multiple_bad_values
+    config = core.config
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1337)[0]]
+    config.main.chain_id = 1337
+    w3 = core.endpoint._web3
+    oracle = core.get_tellor360_contracts().oracle
+
+    # recent blocks only; the test node is a mainnet fork
+    evm_log = None
+    from_block = max(w3.eth.block_number - 10, 0)
+    for log in w3.eth.get_logs({"fromBlock": from_block, "address": oracle.address, "topics": [Topics.NEW_REPORT]}):
+        if data.get_event_data(w3.codec, data.NEW_REPORT_ABI, log).args._queryId == evm_query_id:
+            evm_log = log
+    assert evm_log is not None
+
+    disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_threshold=0.1)
+    generic_entries = [mf for mf in disp_cfg.monitored_feeds if are_all_attributes_none(mf.feed.query)]
+    assert generic_entries
+    feeds_before = [mf.feed for mf in generic_entries]
+
+    with (
+        patch.object(data.MonitoredFeed, "is_alertable", AsyncMock(return_value=True)),
+        patch.object(data.MonitoredFeed, "is_disputable", AsyncMock(return_value=True)),
+    ):
+        new_report = await data.parse_new_report_event(
+            cfg=config, log=evm_log, confidence_threshold=0.1, monitored_feeds=disp_cfg.monitored_feeds
+        )
+
+    assert new_report is not None and new_report.query_type == "EVMCall"
+    for mf, feed_before in zip(generic_entries, feeds_before):
+        assert mf.feed is feed_before, "Generic feed was replaced."
+        assert are_all_attributes_none(mf.feed.query)
+
+
+@pytest.mark.asyncio
+async def test_two_evmcall_reports_in_one_poll_are_both_monitored(submit_multiple_bad_values: TelliotCore):
+    """Test that a second EVMCall report with different params in the same poll is also monitored"""
+    core = submit_multiple_bad_values
+    contracts = core.get_tellor360_contracts()
+    w3 = core.endpoint._web3
+    oracle = contracts.oracle
+    config = core.config
+
+    # submit a second evmcall value for a different contract
+    second_query = EVMCall(
+        chainId=1,
+        contractAddress="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        calldata=evm_call_feed_example.query.calldata,
+    )
+    second_val = second_query.value_type.encode((int.to_bytes(777, 32, "big"), 1683131435))
+    submit_value = oracle.contract.get_function_by_name("submitValue")
+    # bypass reporter lock
+    increase_time_and_mine_blocks(w3, 4300)
+    submit_value_txn = submit_value(second_query.query_id, second_val, 0, second_query.query_data).build_transaction(
+        txn_kwargs(w3)
+    )
+    receipt = w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction(submit_value_txn))
+    assert receipt["status"] == 1
+
+    config_patches = [
+        patch.object(data.MonitoredFeed, "is_alertable", AsyncMock(return_value=False)),
+        patch.object(data.MonitoredFeed, "is_disputable", AsyncMock(return_value=False)),
+    ]
+    await setup_and_start(False, config, config_patches)
+
+    # table.csv repeats rows, so count distinct report timestamps
+    with open("table.csv", "r") as f:
+        evm_report_times = {row[1] for row in csv.reader(f) if "EVMCall" in row}
+    assert len(evm_report_times) == 2, "Expected both EVMCall reports in the table."

@@ -578,8 +578,9 @@ async def parse_new_report_event(
                     if source is None:
                         logger.error(f"Unable to form source from queryData of query type {new_report.query_type}")
                         return None
-                    mf.feed = DataFeed(query=q, source=source)
-                    monitored_feed = mf
+                    # build a feed for this report without modifying the shared
+                    # config entry, so it stays generic for the next EVMCall report
+                    monitored_feed = MonitoredFeed(feed=DataFeed(query=q, source=source), thresholds=mf.thresholds)
 
         if feed_qid == new_report.query_id:
             if new_report.query_type == "SpotPrice":
