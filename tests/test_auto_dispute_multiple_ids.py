@@ -2,28 +2,32 @@ import asyncio
 import csv
 import io
 from contextlib import ExitStack
-from typing import Awaitable
+from pathlib import Path
 from typing import Optional
 from unittest.mock import AsyncMock
 from unittest.mock import mock_open
 from unittest.mock import patch
 
-import async_timeout
 import pytest
 from chained_accounts import ChainedAccount
 from telliot_core.apps.core import TelliotConfig
 from telliot_core.apps.core import TelliotCore
 from telliot_feeds.datasource import DataSource
-from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.dtypes.datapoint import OptionalDataPoint
+from telliot_feeds.dtypes.datapoint import datetime_now_utc
 from telliot_feeds.feeds import DATAFEED_BUILDER_MAPPING
 from telliot_feeds.feeds import eth_usd_median_feed
 from telliot_feeds.feeds import evm_call_feed_example
+from telliot_feeds.queries.evm_call import EVMCall
 from telliot_feeds.queries.price.spot_price import SpotPrice
 from web3 import Web3
 
+from disputable_values_monitor import cli as dvm_cli
 from disputable_values_monitor import data
 from disputable_values_monitor.cli import start
+from disputable_values_monitor.config import AutoDisputerConfig
+from disputable_values_monitor.utils import Topics
+from disputable_values_monitor.utils import are_all_attributes_none
 
 # during testing there aren't that many blocks so setting offset to 0
 data.inital_block_offset = 0
@@ -51,7 +55,14 @@ evm_wrong_val = evm_call_feed_example.query.value_type.encode((int.to_bytes(1234
 def custom_open_side_effect(*args, **kwargs):
     """mocks open function to return a mock file"""
     if args[0] == "disputer-config.yaml":
-        return mock_open().return_value
+        # tracked file; read it for real so tests without a yaml.safe_load patch
+        # (e.g. test_default_config) still get the repo's config content
+        return io.open(*args, **kwargs)
+    if args[0] == "monitored-chains.json":
+        # monitored-chains.json is user-supplied (gitignored), so it may not exist
+        # on a fresh checkout; serve canned content for the test chains instead.
+        # Only chains with configured test endpoints are needed (1 and 1337).
+        return mock_open(read_data='{"monitored_chains": [1, 1337]}').return_value
     return io.open(*args, **kwargs)
 
 
@@ -94,7 +105,7 @@ async def environment_setup(setup: TelliotConfig, disputer_account: ChainedAccou
 @pytest.fixture(scope="function")
 async def stake_deposited(environment_setup: TelliotCore):
     """tests depositing stakes for reporting"""
-    core = await environment_setup
+    core = environment_setup
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -115,9 +126,9 @@ async def stake_deposited(environment_setup: TelliotCore):
 
 
 @pytest.fixture(scope="function")
-async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
+async def submit_multiple_bad_values(stake_deposited: TelliotCore):
     """tests submission of multiple bad values by same reporter"""
-    core = await stake_deposited
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -127,8 +138,8 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    receipt = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert receipt["status"] == 1
+    receipt_eth = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert receipt_eth["status"] == 1
     # submit bad btc value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
@@ -136,15 +147,15 @@ async def submit_multiple_bad_values(stake_deposited: Awaitable[TelliotCore]):
         txn_kwargs(w3)
     )
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_btc = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_btc["status"] == 1
     # submit bad evmcall value
     # bypass reporter lock
     increase_time_and_mine_blocks(w3, 4300)
     submit_value_txn = submit_value(evm_query_id, evm_wrong_val, 0, evm_query_data).build_transaction(txn_kwargs(w3))
     submit_value_hash = w3.eth.send_transaction(submit_value_txn)
-    reciept = w3.eth.wait_for_transaction_receipt(submit_value_hash)
-    assert reciept["status"] == 1
+    reciept_evmcall = w3.eth.wait_for_transaction_receipt(submit_value_hash)
+    assert reciept_evmcall["status"] == 1
     return core
 
 
@@ -163,15 +174,36 @@ async def check_dispute(oracle, query_id, timestamp):
     return indispute
 
 
-async def setup_and_start(is_disputing, config, config_patches=None):
+async def setup_and_start(is_disputing, config, config_patches=None, skip_confirmations=False, password=None):
+    # one full event pass is all these tests need (events are mined before start() is
+    # called); exit start()'s while-True loop when it polls for events a second time.
+    # Ending the loop with a wall-clock timeout instead was flaky on CI, where the live
+    # price fetches in pass 1 could exceed the budget before the EVMCall event was processed.
+    orig_get_events = dvm_cli.get_events
+    polls = 0
+
+    async def get_events_single_pass(*args, **kwargs):
+        nonlocal polls
+        polls += 1
+        if polls > 1:
+            raise asyncio.TimeoutError
+        return await orig_get_events(*args, **kwargs)
+
+    # table.csv is appended to by start(); clear it so assertions can't match
+    # stale rows from earlier tests or earlier runs
+    Path("table.csv").unlink(missing_ok=True)
+
     # using exit stack makes nested patching easier to read
     with ExitStack() as stack:
         stack.enter_context(patch("getpass.getpass", return_value=""))
+        stack.enter_context(patch("disputable_values_monitor.cli.sleep", lambda _: None))
+        stack.enter_context(patch("builtins.open", side_effect=custom_open_side_effect))
+        stack.enter_context(patch("disputable_values_monitor.cli.get_events", get_events_single_pass))
         stack.enter_context(
             patch("disputable_values_monitor.discord.send_discord_msg", side_effect=lambda _: print("alert sent"))
         )
         stack.enter_context(patch("disputable_values_monitor.cli.TelliotConfig", new=lambda: config))
-        stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.source.cfg", config))
+        stack.enter_context(patch("telliot_feeds.feeds.evm_call_feed.evm_call_feed_example.source.cfg", config))
         stack.enter_context(
             patch(
                 "telliot_feeds.sources.ampleforth.ampl_usd_vwap.BitfinexSource.fetch_new_datapoint",
@@ -184,37 +216,62 @@ async def setup_and_start(is_disputing, config, config_patches=None):
                 stack.enter_context(p)
 
         try:
-            async with async_timeout.timeout(9):
-                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0)
+            async with asyncio.timeout(60):  # safety net for hangs only; loop ends after one pass
+                await start(False, 8, "disputer-test-acct", is_disputing, 0.1, 0, skip_confirmations, password or "")
         except asyncio.TimeoutError:
-            pass
+            pass  # start() loops forever by design; the single-pass get_events ends it
 
 
-@pytest.mark.skip(reason="default config not used")
+# @pytest.mark.skip(reason="default config not used")
 @pytest.mark.asyncio
-async def test_default_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_default_config(submit_multiple_bad_values: TelliotCore):
     """Test that the default config works as expected"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
+
+    # Ensure we're using the local test network
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1337)[0]]
+    endpoint = config.get_endpoint()
+    endpoint.connect()
+
     oracle = core.get_tellor360_contracts().oracle
+    assert oracle is not None, "Oracle contract not initialized"
+
     w3 = core.endpoint._web3
     chain_timestamp = w3.eth.get_block("latest")["timestamp"]
 
     eth_timestamp = await fetch_timestamp(oracle, eth_query_id, chain_timestamp)
-    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
-    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+    assert eth_timestamp is not None, "Failed to fetch ETH timestamp"
 
+    evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
+    assert evm_timestamp is not None, "Failed to fetch EVM timestamp"
+
+    btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
+    assert btc_timestamp is not None, "Failed to fetch BTC timestamp"
+
+    # Mock Discord webhook
+    # monkeypatch.setenv("DISCORD_WEBHOOK_URL_1", "http://mock.webhook")
+    # run the DVM against the real repo disputer-config.yaml + monitored-chains.json
     await setup_and_start(True, config)
-    assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # in config file
-    assert await check_dispute(oracle, eth_query_id, eth_timestamp)
-    assert await check_dispute(oracle, evm_query_id, evm_timestamp)
+    btc_dispute = await check_dispute(oracle, btc_query_id, btc_timestamp)
+    assert btc_dispute is not None, "BTC dispute check failed"
+    assert btc_dispute, "Expected BTC value to be in dispute"
+
+    eth_dispute = await check_dispute(oracle, eth_query_id, eth_timestamp)
+    assert eth_dispute is not None, "ETH dispute check failed"
+    assert eth_dispute, "Expected ETH value to be in dispute"
+
+    # The default-config EVMCall entry is a query template (null chainId/contract/calldata),
+    # so its query id can never match a specific reported EVMCall query; it must NOT dispute.
+    evm_dispute = await check_dispute(oracle, evm_query_id, evm_timestamp)
+    assert evm_dispute is not None, "EVM dispute check failed"
+    assert not evm_dispute, "Expected template EVMCall config entry to leave value undisputed"
 
 
 @pytest.mark.asyncio
-async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_custom_btc_config(submit_multiple_bad_values: TelliotCore):
     """Test that a custom btc config works as expected"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
@@ -224,23 +281,25 @@ async def test_custom_btc_config(submit_multiple_bad_values: Awaitable[TelliotCo
     evm_timestamp = await fetch_timestamp(oracle, evm_query_id, chain_timestamp + 5000)
     btc_timestamp = await fetch_timestamp(oracle, btc_query_id, chain_timestamp + 10000)
 
-    btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
+    btc_config = {
+        "feeds": [
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.25, "disp_amount": 0.75}}
+        ]
+    }
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=btc_config),
     ]
     await setup_and_start(True, config, config_patches)
-
     assert await check_dispute(oracle, btc_query_id, btc_timestamp)
-    # not in config file
     assert not await check_dispute(oracle, eth_query_id, eth_timestamp)
     assert not await check_dispute(oracle, evm_query_id, evm_timestamp)
 
 
 @pytest.mark.asyncio
-async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_custom_eth_btc_config(submit_multiple_bad_values: TelliotCore):
     """Test that eth and btc in dispute config"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     oracle = core.get_tellor360_contracts().oracle
     w3 = core.endpoint._web3
@@ -252,8 +311,11 @@ async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[Telli
 
     btc_eth_config = {
         "feeds": [
-            {"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}},
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [
@@ -269,9 +331,9 @@ async def test_custom_eth_btc_config(submit_multiple_bad_values: Awaitable[Telli
 
 
 @pytest.mark.asyncio
-async def test_get_source_from_data(submit_multiple_bad_values: Awaitable[TelliotCore], caplog):
+async def test_get_source_from_data(submit_multiple_bad_values: TelliotCore, caplog):
     """Test when get_source_from_data function returns None"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
 
     config_patches = [
@@ -282,12 +344,16 @@ async def test_get_source_from_data(submit_multiple_bad_values: Awaitable[Tellio
 
 
 @pytest.mark.asyncio
-async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore], caplog):
+async def test_evm_type_alert(submit_multiple_bad_values: TelliotCore, caplog):
     """Test when evm type alert is triggered should display message that difference can't be evaluated"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     # dispute config requires at least 1 item
-    mock_btc_config = {"feeds": [{"query_id": btc_query_id, "threshold": {"type": "Percentage", "amount": 0.75}}]}
+    mock_btc_config = {
+        "feeds": [
+            {"query_id": btc_query_id, "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75}}
+        ]
+    }
     config_patches = [
         patch("builtins.open", side_effect=custom_open_side_effect),
         patch("yaml.safe_load", return_value=mock_btc_config),
@@ -298,13 +364,13 @@ async def test_evm_type_alert(submit_multiple_bad_values: Awaitable[TelliotCore]
     ]
     # not disputing just alerting
     # if evm type is in dispute config it will be checked for equality
-    await setup_and_start(False, config, config_patches)
+    await setup_and_start(False, config, config_patches, skip_confirmations=True, password=None)
     assert "Cannot evaluate percent difference on text/addresses/bytes" in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
-    core = await stake_deposited
+async def test_custom_spot_type(stake_deposited: TelliotCore):
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -332,8 +398,8 @@ async def test_custom_spot_type(stake_deposited: Awaitable[TelliotCore]):
 
 
 @pytest.mark.asyncio
-async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
-    core = await stake_deposited
+async def test_gas_oracle_type(stake_deposited: TelliotCore):
+    core = stake_deposited
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
     oracle = contracts.oracle
@@ -369,9 +435,9 @@ async def test_gas_oracle_type(stake_deposited: Awaitable[TelliotCore]):
 
 
 @pytest.mark.asyncio
-async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: Awaitable[TelliotCore]):
+async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: TelliotCore):
     """Test when evm call response has the same value response but different timestamp"""
-    core = await submit_multiple_bad_values
+    core = submit_multiple_bad_values
     config = core.config
     # evm value that has same value but different block timestamp
     evm_val = (int.to_bytes(12345, 32, "big"), 0)
@@ -382,7 +448,7 @@ async def test_evmcall_right_value_wrong_timestamp(submit_multiple_bad_values: A
         ),
     ]
     await setup_and_start(True, config, config_patches)
-    expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,1337"
+    expected = "EVMCall,N/A,N/A,(b'\\x0...1435),no ✔️,no ✔️,1337"
 
     with open("table.csv", "r") as f:
         reader = csv.reader(f)
@@ -402,9 +468,9 @@ class FakeDataSource(DataSource[float]):
 
 
 @pytest.mark.asyncio
-async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys):
+async def test_spot_short_value(stake_deposited: TelliotCore, capsys):
 
-    core = await stake_deposited
+    core = stake_deposited
     core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
@@ -421,7 +487,10 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [
@@ -438,9 +507,9 @@ async def test_spot_short_value(stake_deposited: Awaitable[TelliotCore], capsys)
 
 
 @pytest.mark.asyncio
-async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
+async def test_spot_long_value(stake_deposited: TelliotCore, capsys):
 
-    core = await stake_deposited
+    core = stake_deposited
     core.config.endpoints.endpoints = [core.config.endpoints.find(chain_id=1337)[0]]
     contracts = core.get_tellor360_contracts()
     w3 = core.endpoint._web3
@@ -457,7 +526,10 @@ async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
     eth_usd_median_feed.source = FakeDataSource()
     eth_config = {
         "feeds": [
-            {"query_id": Web3.to_hex(eth_query_id), "threshold": {"type": "Percentage", "amount": 0.75}},
+            {
+                "query_id": Web3.to_hex(eth_query_id),
+                "thresholds": {"type": "Percentage", "alrt_amount": 0.75, "disp_amount": 0.75},
+            },
         ]
     }
     config_patches = [
@@ -471,3 +543,77 @@ async def test_spot_long_value(stake_deposited: Awaitable[TelliotCore], capsys):
     ]
     await setup_and_start(False, core.config, config_patches)
     assert "Spot price value length is not 32 bytes" in capsys.readouterr().out
+
+
+@pytest.mark.asyncio
+async def test_parsing_evmcall_report_does_not_mutate_generic_config_entry(submit_multiple_bad_values: TelliotCore):
+    """Test that parsing an EVMCall report leaves the generic EVMCall config entry untouched"""
+    core = submit_multiple_bad_values
+    config = core.config
+    config.endpoints.endpoints = [config.endpoints.find(chain_id=1337)[0]]
+    config.main.chain_id = 1337
+    w3 = core.endpoint._web3
+    oracle = core.get_tellor360_contracts().oracle
+
+    # recent blocks only; the test node is a mainnet fork
+    evm_log = None
+    from_block = max(w3.eth.block_number - 10, 0)
+    for log in w3.eth.get_logs({"fromBlock": from_block, "address": oracle.address, "topics": [Topics.NEW_REPORT]}):
+        if data.get_event_data(w3.codec, data.NEW_REPORT_ABI, log).args._queryId == evm_query_id:
+            evm_log = log
+    assert evm_log is not None
+
+    disp_cfg = AutoDisputerConfig(is_disputing=True, confidence_threshold=0.1)
+    generic_entries = [mf for mf in disp_cfg.monitored_feeds if are_all_attributes_none(mf.feed.query)]
+    assert generic_entries
+    feeds_before = [mf.feed for mf in generic_entries]
+
+    with (
+        patch.object(data.MonitoredFeed, "is_alertable", AsyncMock(return_value=True)),
+        patch.object(data.MonitoredFeed, "is_disputable", AsyncMock(return_value=True)),
+    ):
+        new_report = await data.parse_new_report_event(
+            cfg=config, log=evm_log, confidence_threshold=0.1, monitored_feeds=disp_cfg.monitored_feeds
+        )
+
+    assert new_report is not None and new_report.query_type == "EVMCall"
+    for mf, feed_before in zip(generic_entries, feeds_before):
+        assert mf.feed is feed_before, "Generic feed was replaced."
+        assert are_all_attributes_none(mf.feed.query)
+
+
+@pytest.mark.asyncio
+async def test_two_evmcall_reports_in_one_poll_are_both_monitored(submit_multiple_bad_values: TelliotCore):
+    """Test that a second EVMCall report with different params in the same poll is also monitored"""
+    core = submit_multiple_bad_values
+    contracts = core.get_tellor360_contracts()
+    w3 = core.endpoint._web3
+    oracle = contracts.oracle
+    config = core.config
+
+    # submit a second evmcall value for a different contract
+    second_query = EVMCall(
+        chainId=1,
+        contractAddress="0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+        calldata=evm_call_feed_example.query.calldata,
+    )
+    second_val = second_query.value_type.encode((int.to_bytes(777, 32, "big"), 1683131435))
+    submit_value = oracle.contract.get_function_by_name("submitValue")
+    # bypass reporter lock
+    increase_time_and_mine_blocks(w3, 4300)
+    submit_value_txn = submit_value(second_query.query_id, second_val, 0, second_query.query_data).build_transaction(
+        txn_kwargs(w3)
+    )
+    receipt = w3.eth.wait_for_transaction_receipt(w3.eth.send_transaction(submit_value_txn))
+    assert receipt["status"] == 1
+
+    config_patches = [
+        patch.object(data.MonitoredFeed, "is_alertable", AsyncMock(return_value=False)),
+        patch.object(data.MonitoredFeed, "is_disputable", AsyncMock(return_value=False)),
+    ]
+    await setup_and_start(False, config, config_patches)
+
+    # table.csv repeats rows, so count distinct report timestamps
+    with open("table.csv", "r") as f:
+        evm_report_times = {row[1] for row in csv.reader(f) if "EVMCall" in row}
+    assert len(evm_report_times) == 2, "Expected both EVMCall reports in the table."
